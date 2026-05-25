@@ -1,0 +1,26 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Repomix
+.repomix-output.txt
+
+# Graphify (local metadata — do not commit)
+graphify-out/manifest.json
+graphify-out/cost.json
+graphify-out/cache/
+
+# Dependencies & build outputs
+node_modules/
+opensrc/
+.nuxt/
+.output/
+dist/
+
+# PocketBase runtime data (Docker volume; never commit)
+pb_data/
+
+# Logs & OS
+*.log
+.DS_Store

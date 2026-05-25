@@ -1,0 +1,21 @@
+{
+  "output": {
+    "filePath": ".repomix-output.txt",
+    "style": "markdown",
+    "showLineNumbers": false,
+    "copyToClipboard": false
+  },
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "graphify-out/",
+      "opensrc/",
+      "node_modules/",
+      ".nuxt/",
+      ".output/",
+      "dist/",
+      "*.lock"
+    ]
+  }
+}
