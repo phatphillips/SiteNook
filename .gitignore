@@ -15,8 +15,18 @@ graphify-out/cache/
 node_modules/
 opensrc/
 .nuxt/
+.nitro/
 .output/
 dist/
+apps/web/.nuxt/
+apps/web/.output/
+
+# Legacy / generated artifacts
+reports/
+output.txt
+test.png
+backend/data/
+frontend/dist/
 
 # PocketBase runtime data (Docker volume; never commit)
 pb_data/

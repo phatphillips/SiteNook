@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: ./apps/web
+      target: development
+    command: npm run dev -- --host 0.0.0.0
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      NUXT_PUBLIC_POCKETBASE_URL: http://localhost:8090
+
+  scanner:
+    build:
+      context: ./apps/scanner
+      target: development
+    command: npm run dev
+    volumes:
+      - ./apps/scanner:/app
+      - /app/node_modules
+
+  pocketbase:
+    ports:
+      - "8090:8090"

@@ -1,0 +1,25 @@
+{
+  "name": "accessiq-scanner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.10.1",
+    "dictionary-en": "^4.0.0",
+    "nspell": "^2.1.5",
+    "p-queue": "^8.1.0",
+    "playwright": "^1.60.0",
+    "pocketbase": "^0.25.2",
+    "text-readability": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

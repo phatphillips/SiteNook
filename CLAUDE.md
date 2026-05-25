@@ -21,10 +21,7 @@ AccessIQ is a self-hosted web accessibility and QA monitoring platform (an open-
 | `nginx/` | Reverse proxy: `/` → web, `/api/` and `/_/` → PocketBase |
 | `docker-compose.yml` | Production-style stack: nginx, web, scanner, pocketbase |
 | `docker-compose.override.yml` | Dev overrides: hot reload, exposed ports 3000/8090 |
-| `frontend/` | Legacy Vite + Vue SPA (pre-AccessIQ; not used by Docker stack) |
-| `backend/` | Legacy Express-style server (`server.cjs`); not used by Docker stack |
-| `reports/` | Generated or stored report artifacts |
-| Root `*.cjs` (`index.cjs`, `crawler.cjs`, etc.) | Standalone WordPress accessibility auditor scripts (separate from AccessIQ Docker apps) |
+| `docs/archive/` | Archived planning docs (e.g. project brief) |
 
 ## Key Conventions
 
@@ -108,7 +105,7 @@ Otherwise: **no automated test suite found** for the AccessIQ apps.
 - Do not commit `graphify-out/manifest.json` or `graphify-out/cost.json`
 - Do not treat `apps/web/.output/` or `apps/web/.nuxt/` as source — regenerate via build
 - Avoid editing production data in running containers without migrations
-- Legacy `frontend/` and root `*.cjs` auditor are separate from the Dockerized AccessIQ path — confirm which stack you are changing
+- Do not reintroduce pre-monorepo `frontend/`, `backend/`, or root WordPress auditor scripts
 
 ## Context Files for Agents
 
