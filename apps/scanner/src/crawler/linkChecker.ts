@@ -9,14 +9,21 @@ export interface BrokenLinkRecord {
 
 const TIMEOUT_MS = 5000
 
-export async function checkLinksOnPage(page: Page, origin: string): Promise<BrokenLinkRecord[]> {
+export async function extractLinkHrefsFromPage(page: Page): Promise<string[]> {
   const hrefs = await page.evaluate(() =>
     Array.from(document.querySelectorAll('a[href]'))
       .map(a => (a as HTMLAnchorElement).href)
       .filter(h => h && !h.startsWith('mailto:') && !h.startsWith('tel:'))
   )
+  return [...new Set(hrefs)]
+}
 
-  const unique = [...new Set(hrefs)]
+export async function checkLinksOnPage(
+  page: Page,
+  origin: string,
+  prefetchedHrefs?: string[]
+): Promise<BrokenLinkRecord[]> {
+  const unique = prefetchedHrefs ?? await extractLinkHrefsFromPage(page)
   const results: BrokenLinkRecord[] = []
 
   await Promise.all(unique.map(async (href) => {

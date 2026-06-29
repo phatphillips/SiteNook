@@ -1,102 +1,269 @@
 <script setup lang="ts">
-import type { AccessibilityIssue } from '~/types/accessiq'
+import type { AccessibilityIssue, Scan } from '~/types/accessiq'
+import type { AffectedPageDetail } from '~/utils/affectedPages'
+import { getIssueWhyItMatters } from '~/utils/issueExplanation'
+import { scoreFieldDelta, formatScoreDelta } from '~/utils/scanScoreDelta'
+import { trafficLightFromImpact } from '~/utils/trafficLightStatus'
 
 const props = defineProps<{
   issue: AccessibilityIssue | null
   open: boolean
+  affectedPages?: AffectedPageDetail[]
+  siteId?: string
+  scans?: Scan[]
+  onRefresh?: () => Promise<void>
+  /** Legacy — actions removed; kept for overview compatibility. */
+  readOnly?: boolean
 }>()
 
-const emit = defineEmits<{ 'update:open': [boolean], fixed: [], dismiss: [string] }>()
+const emit = defineEmits<{ 'update:open': [boolean] }>()
 
-const tab = ref('overview')
+const openModel = computed({
+  get: () => props.open,
+  set: (value: boolean) => emit('update:open', value)
+})
 
-const pageUrl = computed(() => props.issue?.expand?.page?.url || '')
+const scansRef = computed(() => props.scans ?? [])
+const { triggerScan } = useSites()
+const { pb } = usePocketBase()
+const toast = useToast()
+
+const detailIssue = ref<AccessibilityIssue | null>(null)
+const detailLoading = ref(false)
+
+const displayIssue = computed(() => detailIssue.value ?? props.issue)
+
+watch(
+  () => [props.open, props.issue?.id] as const,
+  async ([open, issueId]) => {
+    if (!open || !issueId) {
+      detailIssue.value = null
+      return
+    }
+    if (issueId.startsWith('rule:')) {
+      detailIssue.value = props.issue
+      return
+    }
+    detailLoading.value = true
+    try {
+      detailIssue.value = await pb.collection('accessibility_issues').getOne(issueId) as unknown as AccessibilityIssue
+    } catch {
+      detailIssue.value = props.issue
+    } finally {
+      detailLoading.value = false
+    }
+  },
+  { immediate: true }
+)
+
+const rescanning = ref(false)
+const scoreDeltaBanner = ref<string | null>(null)
+const scanBeforeRescan = ref<Scan | null>(null)
+
+const latestCompleteScan = computed(() =>
+  scansRef.value.find(s => s.status === 'complete' || s.status === 'complete_with_errors') ?? null
+)
+
+watch(
+  () => props.issue?.id,
+  () => {
+    accordionOpen.value = 'pages'
+    scoreDeltaBanner.value = null
+    detailIssue.value = null
+  }
+)
+
+const affectedPages = computed(() => props.affectedPages ?? [])
+
+const rescanPageUrl = computed(() => affectedPages.value[0]?.url ?? '')
+
+watch(scansRef, () => {
+  const latest = latestCompleteScan.value
+  if (!rescanning.value || !scanBeforeRescan.value || !latest?.id || latest.id === scanBeforeRescan.value.id) return
+  if (latest.status !== 'complete' && latest.status !== 'complete_with_errors') return
+  const delta = scoreFieldDelta(scanBeforeRescan.value, latest, 'score_overall')
+  if (delta) {
+    scoreDeltaBanner.value = formatScoreDelta(delta, 'Accessibility score')
+  }
+  rescanning.value = false
+}, { deep: true })
+
+const accordionOpen = ref<string | undefined>('pages')
+
+const whyItMatters = computed(() =>
+  displayIssue.value ? getIssueWhyItMatters(displayIssue.value) : ''
+)
+
+const wcagUnderstandingUrl = computed(() => {
+  const sc = displayIssue.value?.wcag_sc
+  if (!sc) return ''
+  return `https://www.w3.org/WAI/WCAG22/Understanding/${sc.replace(/\./g, '')}`
+})
+
+const accordionItems = computed(() => [
+  { label: 'Overview', value: 'overview', slot: 'overview' as const },
+  { label: 'Pages & code', value: 'pages', slot: 'pages' as const },
+  { label: 'How to Fix', value: 'fix', slot: 'fix' as const },
+  { label: 'Resources', value: 'resources', slot: 'resources' as const }
+])
 
 function copy(text: string) {
   navigator.clipboard.writeText(text)
   useToast().add({ title: 'Copied to clipboard' })
 }
+
+async function rescanPage() {
+  if (!props.siteId || !rescanPageUrl.value) return
+  scanBeforeRescan.value = latestCompleteScan.value
+  rescanning.value = true
+  scoreDeltaBanner.value = null
+  try {
+    await triggerScan(props.siteId, 'full', rescanPageUrl.value)
+    toast.add({ title: 'Page scan queued' })
+    await props.onRefresh?.()
+  } catch (e: unknown) {
+    rescanning.value = false
+    toast.add({
+      title: 'Could not queue scan',
+      description: e && typeof e === 'object' && 'message' in e ? String((e as { message: string }).message) : 'Request failed',
+      color: 'error'
+    })
+  }
+}
 </script>
 
 <template>
-  <USlideover :open="open" @update:open="emit('update:open', $event)">
-    <template v-if="issue" #content>
-      <div class="p-6 space-y-4 h-full overflow-y-auto">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <h2 class="text-lg font-semibold">{{ issue.description }}</h2>
-            <div class="flex gap-2 mt-2">
-              <UBadge>{{ issue.wcag_level }}</UBadge>
-              <UBadge :color="issue.impact === 'critical' ? 'error' : 'warning'">{{ issue.impact }}</UBadge>
+  <UModal
+    v-model:open="openModel"
+    :title="displayIssue?.description ?? 'Issue details'"
+    :ui="{ content: 'max-w-2xl' }"
+  >
+    <template v-if="displayIssue" #body>
+      <div v-if="detailLoading" class="flex justify-center py-8">
+        <UIcon name="i-lucide-loader-circle" class="size-6 animate-spin" />
+      </div>
+      <div v-else class="space-y-4 max-h-[70vh] scroll-region">
+        <UAlert
+          v-if="scoreDeltaBanner"
+          color="success"
+          variant="subtle"
+          :title="scoreDeltaBanner"
+        />
+
+        <div class="flex flex-wrap gap-2">
+          <TrafficLightDot :status="trafficLightFromImpact(displayIssue.impact)" />
+          <UBadge variant="subtle">{{ displayIssue.wcag_level }}</UBadge>
+          <UBadge :color="displayIssue.impact === 'critical' ? 'error' : 'warning'" variant="subtle">
+            {{ displayIssue.impact }}
+          </UBadge>
+          <UBadge variant="subtle">{{ displayIssue.rule_id }}</UBadge>
+        </div>
+
+        <div v-if="siteId && rescanPageUrl" class="flex justify-end">
+          <UButton
+            size="sm"
+            variant="outline"
+            icon="i-lucide-refresh-cw"
+            :loading="rescanning"
+            @click="rescanPage"
+          >
+            Rescan this page
+          </UButton>
+        </div>
+
+        <UAccordion
+          v-model="accordionOpen"
+          type="single"
+          :items="accordionItems"
+          :unmount-on-hide="false"
+          class="space-y-1"
+        >
+          <template #overview-body>
+            <div class="space-y-3 pt-2">
+              <p class="text-sm text-muted leading-relaxed">
+                {{ whyItMatters }}
+              </p>
             </div>
-          </div>
-          <UButton icon="i-lucide-x" variant="ghost" @click="emit('update:open', false)" />
-        </div>
+          </template>
 
-        <NuxtLink v-if="pageUrl" :to="pageUrl" target="_blank" class="text-sm text-primary flex items-center gap-1">
-          Open affected page <UIcon name="i-lucide-external-link" class="size-3" />
-        </NuxtLink>
+          <template #pages-body>
+            <div class="pt-2 space-y-4">
+              <p v-if="!affectedPages?.length" class="text-sm text-muted">
+                No affected pages linked for this issue.
+              </p>
+              <article
+                v-for="page in affectedPages"
+                :key="page.url"
+                class="rounded-lg border border-default bg-elevated/30 p-3 space-y-2"
+              >
+                <a
+                  :href="page.url"
+                  target="_blank"
+                  rel="noopener"
+                  class="text-sm text-primary hover:underline break-all font-medium"
+                >
+                  {{ page.url }}
+                </a>
+                <pre
+                  v-if="page.htmlSnippet"
+                  class="text-xs bg-default rounded-lg p-3 overflow-x-auto border border-default ring-1 ring-default/50"
+                ><code>{{ page.htmlSnippet }}</code></pre>
+                <p v-else class="text-xs text-muted">No HTML snippet captured for this page.</p>
+                <div v-if="page.cssSelector" class="flex items-start gap-2">
+                  <code class="text-xs flex-1 break-all text-muted">{{ page.cssSelector }}</code>
+                  <UButton size="xs" variant="outline" @click="copy(page.cssSelector || '')">
+                    Copy selector
+                  </UButton>
+                </div>
+              </article>
+            </div>
+          </template>
 
-        <UTabs v-model="tab" :items="[
-          { label: 'Overview', value: 'overview' },
-          { label: 'Code', value: 'code' },
-          { label: 'How to Fix', value: 'fix' },
-          { label: 'Resources', value: 'resources' }
-        ]" />
+          <template #fix-body>
+            <div class="space-y-3 pt-2">
+              <p class="text-sm text-muted">
+                {{ displayIssue.fix_suggestion || 'See the Resources section for guidance.' }}
+              </p>
+              <UButton
+                v-if="displayIssue.fix_suggestion"
+                size="sm"
+                variant="outline"
+                @click="copy(displayIssue.fix_suggestion || '')"
+              >
+                Copy fix guidance
+              </UButton>
+            </div>
+          </template>
 
-        <div v-if="tab === 'overview'" class="space-y-4">
-          <div>
-            <h3 class="font-medium mb-1">Why this matters</h3>
-            <p class="text-sm text-muted">{{ issue.description }}</p>
-          </div>
-          <div v-if="issue.html_snippet" class="border rounded-lg p-3 bg-elevated">
-            <iframe
-              :srcdoc="issue.html_snippet"
-              sandbox=""
-              class="w-full h-24 border-0"
-              title="Element preview"
-            />
-          </div>
-        </div>
-
-        <div v-else-if="tab === 'code'" class="space-y-3">
-          <pre class="text-xs bg-elevated rounded p-3 overflow-x-auto"><code>{{ issue.html_snippet }}</code></pre>
-          <div class="flex items-center gap-2">
-            <code class="text-sm flex-1">{{ issue.css_selector }}</code>
-            <UButton size="xs" variant="outline" @click="copy(issue.css_selector || '')">Copy</UButton>
-          </div>
-        </div>
-
-        <div v-else-if="tab === 'fix'" class="space-y-3">
-          <h3 class="font-medium">Suggested fix</h3>
-          <p class="text-sm">{{ issue.fix_suggestion }}</p>
-          <div>
-            <p class="text-xs font-medium mb-1">Before</p>
-            <pre class="text-xs bg-red-500/10 rounded p-3"><code>{{ issue.html_snippet }}</code></pre>
-          </div>
-          <UButton size="sm" @click="copy(issue.fix_suggestion || '')">Copy fix guidance</UButton>
-        </div>
-
-        <div v-else class="space-y-2">
-          <UButton v-if="issue.help_url" :to="issue.help_url" target="_blank" variant="link" block>
-            axe-core rule documentation
-          </UButton>
-          <UButton v-if="issue.wcag_sc" :to="`https://www.w3.org/WAI/WCAG22/Understanding/`" target="_blank" variant="link" block>
-            WCAG Success Criterion {{ issue.wcag_sc }}
-          </UButton>
-        </div>
-
-        <div class="flex gap-2 pt-4 border-t border-default">
-          <UButton @click="emit('fixed')">Mark as Fixed</UButton>
-          <UDropdownMenu :items="[[
-            { label: 'Won\'t fix', onSelect: () => emit('dismiss', 'wont_fix') },
-            { label: 'False positive', onSelect: () => emit('dismiss', 'false_positive') },
-            { label: 'Defer', onSelect: () => emit('dismiss', 'defer') }
-          ]]">
-            <UButton color="neutral" variant="outline">Dismiss</UButton>
-          </UDropdownMenu>
-        </div>
+          <template #resources-body>
+            <div class="space-y-2 pt-2">
+              <UButton
+                v-if="displayIssue.help_url"
+                :to="displayIssue.help_url"
+                target="_blank"
+                variant="link"
+                class="px-0"
+                block
+              >
+                axe-core rule documentation
+              </UButton>
+              <UButton
+                v-if="wcagUnderstandingUrl"
+                :to="wcagUnderstandingUrl"
+                target="_blank"
+                variant="link"
+                class="px-0"
+                block
+              >
+                WCAG Success Criterion {{ displayIssue.wcag_sc }}
+              </UButton>
+              <p v-if="!displayIssue.help_url && !displayIssue.wcag_sc" class="text-sm text-muted">
+                No external resources linked for this rule.
+              </p>
+            </div>
+          </template>
+        </UAccordion>
       </div>
     </template>
-  </USlideover>
+  </UModal>
 </template>

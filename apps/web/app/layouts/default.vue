@@ -2,7 +2,7 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 const route = useRoute()
-const { activeSite, activeSiteId, fetchSites } = useSites()
+const { activeSiteId, fetchSites } = useSites()
 
 const open = ref(false)
 
@@ -14,8 +14,25 @@ const siteLinks = computed<NavigationMenuItem[]>(() => {
   return [{
     label: 'Accessibility',
     icon: 'i-lucide-accessibility',
-    to: `/sites/${id}/accessibility`,
-    onSelect: () => { open.value = false }
+    defaultOpen: route.path.includes(`/sites/${id}/accessibility`),
+    type: 'trigger',
+    children: [{
+      label: 'Overview',
+      to: `/sites/${id}/accessibility`,
+      onSelect: () => { open.value = false }
+    }, {
+      label: 'Issues',
+      to: `/sites/${id}/accessibility/issues`,
+      onSelect: () => { open.value = false }
+    }, {
+      label: 'Readability',
+      to: `/sites/${id}/accessibility/readability`,
+      onSelect: () => { open.value = false }
+    }, {
+      label: 'PDFs',
+      to: `/sites/${id}/accessibility/pdfs`,
+      onSelect: () => { open.value = false }
+    }]
   }, {
     label: 'Quality Assurance',
     icon: 'i-lucide-shield-check',
@@ -38,6 +55,28 @@ const siteLinks = computed<NavigationMenuItem[]>(() => {
       to: `/sites/${id}/qa/inventory`,
       onSelect: () => { open.value = false }
     }]
+  }, {
+    label: 'SEO',
+    icon: 'i-lucide-search',
+    defaultOpen: route.path.includes(`/sites/${id}/seo`),
+    type: 'trigger',
+    children: [{
+      label: 'Overview',
+      to: `/sites/${id}/seo`,
+      onSelect: () => { open.value = false }
+    }, {
+      label: 'Technical',
+      to: `/sites/${id}/seo/technical`,
+      onSelect: () => { open.value = false }
+    }, {
+      label: 'Content',
+      to: `/sites/${id}/seo/content`,
+      onSelect: () => { open.value = false }
+    }, {
+      label: 'Search Result Preview',
+      to: `/sites/${id}/seo/preview`,
+      onSelect: () => { open.value = false }
+    }]
   }]
 })
 
@@ -50,6 +89,11 @@ const links = computed<NavigationMenuItem[][]>(() => [[{
   label: 'Sites',
   icon: 'i-lucide-globe',
   to: '/sites',
+  onSelect: () => { open.value = false }
+}, {
+  label: 'Search',
+  icon: 'i-lucide-search',
+  to: '/search',
   onSelect: () => { open.value = false }
 }, ...siteLinks.value, {
   label: 'Scans',
@@ -82,6 +126,10 @@ const links = computed<NavigationMenuItem[][]>(() => [[{
     to: '/settings/users',
     onSelect: () => { open.value = false }
   }, {
+    label: 'Billing & Invoices',
+    to: '/settings/billing',
+    onSelect: () => { open.value = false }
+  }, {
     label: 'Integrations',
     to: '/settings/integrations',
     onSelect: () => { open.value = false }
@@ -109,7 +157,6 @@ const groups = computed(() => [{
           <UIcon name="i-lucide-search-check" class="size-6 text-primary shrink-0" />
           <span v-if="!collapsed" class="font-bold text-lg">AccessIQ</span>
         </div>
-        <SiteSelector :collapsed="collapsed" class="mt-2" />
       </template>
 
       <template #default="{ collapsed }">
@@ -134,7 +181,10 @@ const groups = computed(() => [{
       </template>
     </UDashboardSidebar>
 
-    <UDashboardSearch :groups="groups" />
-    <slot />
+    <div class="min-w-0 flex-1">
+      <UDashboardSearch :groups="groups" />
+      <slot />
+    </div>
   </UDashboardGroup>
 </template>
+

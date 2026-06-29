@@ -21,7 +21,8 @@ AccessIQ is a self-hosted web accessibility and QA monitoring platform (an open-
 | `nginx/` | Reverse proxy: `/` → web, `/api/` and `/_/` → PocketBase |
 | `docker-compose.yml` | Production-style stack: nginx, web, scanner, pocketbase |
 | `docker-compose.override.yml` | Dev overrides: hot reload, exposed ports 3000/8090 |
-| `docs/archive/` | Archived planning docs (e.g. project brief) |
+| `docs/archive/` | Archived planning docs (e.g. [project-brief.md](docs/archive/project-brief.md)) |
+| `docs/README.md` | Documentation index and naming conventions |
 
 ## Key Conventions
 
@@ -109,9 +110,55 @@ Otherwise: **no automated test suite found** for the AccessIQ apps.
 
 ## Context Files for Agents
 
+For a full onboarding brief in a new chat, attach **`@AGENTS.md`**.
+
 When answering questions about this codebase, prefer reading these files first:
 
 - CLAUDE.md (this file)
+- AGENTS.md (on-demand project intro for new agent chats)
+- docs/README.md (documentation index)
+- docs/platform-status.md (shipped features and known gaps)
 - graphify-out/GRAPH_REPORT.md (architecture map)
 - docker-compose.yml (infrastructure)
 - package.json (dependencies and scripts)
+
+## Testing
+
+### Run all unit tests
+From root (if workspaces configured): npm test
+Scanner only: cd apps/scanner && npm test
+Web only: cd apps/web && npm test
+
+### Run E2E tests (Playwright)
+cd apps/web && npm run test:e2e
+cd apps/web && npm run test:e2e:ui   # visual debugger
+
+### Run integration tests (scanner vs test PocketBase)
+npm run test:integration
+# Starts test PocketBase on port 8091, runs tests, tears down
+
+### Test environment rules
+- Test PocketBase: port 8091 (Docker profile: test), uses same build as prod
+- Dev PocketBase: port 8090 — NEVER point tests at this
+- Test admin credentials: test-admin@accessiq.test / test-password-123
+- Test user credentials: test-user@accessiq.test / test-user-password-123
+- Fixtures live in: tests/fixtures/pb_data/
+- Test results: apps/web/tests/results/ (gitignored)
+
+### Key units to test when changing scanner logic
+- parseRawConfig() → apps/scanner/tests/unit/config/
+- matchesExclude/Include() → apps/scanner/tests/unit/crawler/
+- axe utilities + scoring → apps/scanner/tests/unit/accessibility/
+- diffScans() → apps/scanner/tests/unit/accessibility/diffScans.test.ts
+- spell checker → apps/scanner/tests/unit/qa/
+
+### Key units to test when changing frontend
+- useSites, useScanQueueStatus stores → apps/web/tests/unit/stores/
+- Auth and site list flows → apps/web/tests/e2e/
+
+### For agents running tests
+1. Run unit tests first — fastest signal: cd apps/scanner && npm test
+2. For scanner logic changes, also run: npm run test:integration
+3. For UI or auth changes, run: cd apps/web && npm run test:e2e
+4. Read apps/web/tests/results/e2e-results.json for structured pass/fail
+5. If integration tests hang, check container: docker compose --profile test ps

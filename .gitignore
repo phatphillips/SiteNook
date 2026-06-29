@@ -6,10 +6,12 @@
 # Repomix
 .repomix-output.txt
 
-# Graphify (local metadata — do not commit)
-graphify-out/manifest.json
-graphify-out/cost.json
-graphify-out/cache/
+# Graphify (agent-generated — regenerate locally via /graphify)
+graphify-out/
+
+# Agent scratch (local task tracking)
+CURRENT_TASK.MD
+.cursor/
 
 # Dependencies & build outputs
 node_modules/
@@ -20,6 +22,7 @@ opensrc/
 dist/
 apps/web/.nuxt/
 apps/web/.output/
+apps/scanner/dist/
 
 # Legacy / generated artifacts
 reports/
@@ -30,6 +33,20 @@ frontend/dist/
 
 # PocketBase runtime data (Docker volume; never commit)
 pb_data/
+
+# Test outputs
+tests/results/
+apps/web/tests/results/
+apps/scanner/coverage/
+apps/web/coverage/
+playwright-report/
+test-results/
+
+# Test PocketBase runtime data (fixtures are committed, generated data is not)
+tests/fixtures/pb_data/data.db
+tests/fixtures/pb_data/data.db-shm
+tests/fixtures/pb_data/data.db-wal
+tests/fixtures/pb_data/logs/
 
 # Logs & OS
 *.log

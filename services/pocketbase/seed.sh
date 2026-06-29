@@ -35,24 +35,51 @@ if [ -z "$TOKEN" ]; then
 fi
 echo "Got admin token."
 
+AUTH="Authorization: Bearer $TOKEN"
+DEFAULT_ORG_SUBDOMAIN="${DEFAULT_ORG_SUBDOMAIN:-default}"
+DEFAULT_ORG_NAME="${DEFAULT_ORG_NAME:-Default Organization}"
+
+ORG_ID=""
+if [ "$(curl -s -o /dev/null -w '%{http_code}' "$PB_URL/api/collections/organizations" -H "$AUTH")" = "200" ]; then
+  ORG_LIST=$(curl -sf "$PB_URL/api/collections/organizations/records?filter=(subdomain='$DEFAULT_ORG_SUBDOMAIN')&perPage=1" -H "$AUTH" || echo '{"items":[]}')
+  ORG_ID=$(echo "$ORG_LIST" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
+  if [ -z "$ORG_ID" ]; then
+    ORG_RESP=$(curl -sf -X POST "$PB_URL/api/collections/organizations/records" \
+      -H "Content-Type: application/json" \
+      -H "$AUTH" \
+      -d "{\"name\":\"$DEFAULT_ORG_NAME\",\"subdomain\":\"$DEFAULT_ORG_SUBDOMAIN\",\"plan\":\"standard\",\"status\":\"active\",\"subscription_status\":\"none\"}")
+    ORG_ID=$(echo "$ORG_RESP" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
+    echo "Seed: created default organization ($DEFAULT_ORG_SUBDOMAIN)."
+  fi
+fi
+
 EXISTING=$(curl -sf "$PB_URL/api/collections/users/records?filter=(email='$APP_USER_EMAIL')" \
-  -H "Authorization: $TOKEN")
+  -H "$AUTH")
 
 if echo "$EXISTING" | grep -q '"totalItems":[1-9]'; then
   USER_ID=$(echo "$EXISTING" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
   if [ -n "$USER_ID" ]; then
+    PATCH_BODY='{"verified":true,"role":"admin"}'
+    if [ -n "$ORG_ID" ]; then
+      PATCH_BODY="{\"verified\":true,\"role\":\"admin\",\"organization\":\"$ORG_ID\"}"
+    fi
     curl -sf -X PATCH "$PB_URL/api/collections/users/records/$USER_ID" \
       -H "Content-Type: application/json" \
-      -H "Authorization: $TOKEN" \
-      -d '{"verified":true}' > /dev/null || true
+      -H "$AUTH" \
+      -d "$PATCH_BODY" > /dev/null || true
   fi
   echo "Seed: app user already exists, ensured verified=true."
   exit 0
 fi
 
+ORG_FIELD=""
+if [ -n "$ORG_ID" ]; then
+  ORG_FIELD=", \"organization\": \"$ORG_ID\""
+fi
+
 curl -sf -X POST "$PB_URL/api/collections/users/records" \
   -H "Content-Type: application/json" \
-  -H "Authorization: $TOKEN" \
+  -H "$AUTH" \
   -d "{
     \"email\": \"$APP_USER_EMAIL\",
     \"password\": \"$APP_USER_PASSWORD\",
@@ -60,7 +87,7 @@ curl -sf -X POST "$PB_URL/api/collections/users/records" \
     \"name\": \"Admin\",
     \"role\": \"admin\",
     \"emailVisibility\": true,
-    \"verified\": true
+    \"verified\": true$ORG_FIELD
   }" > /dev/null
 
 echo "Seed complete: created app user $APP_USER_EMAIL"

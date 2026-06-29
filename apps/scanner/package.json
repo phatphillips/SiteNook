@@ -6,20 +6,37 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run tests/integration --no-file-parallelism",
+    "prune-retention": "tsx src/scripts/pruneRetention.ts",
+    "purge-closed-orgs": "tsx src/scripts/purgeClosedOrgs.ts",
+    "reset-dev-tenants": "tsx src/scripts/resetDevTenants.ts",
+    "reindex-search": "tsx src/scripts/reindexSearch.ts",
+    "reindex-a11y-summaries": "tsx src/scripts/reindexA11ySummaries.ts"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.10.1",
+    "bullmq": "^5.79.1",
     "dictionary-en": "^4.0.0",
+    "ioredis": "^5.11.1",
     "nspell": "^2.1.5",
     "p-queue": "^8.1.0",
+    "pdf-parse": "^2.4.5",
     "playwright": "^1.60.0",
     "pocketbase": "^0.25.2",
-    "text-readability": "^1.1.1"
+    "text-readability": "^1.1.1",
+    "typesense": "^2.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/pdf-parse": "^1.1.5",
+    "@vitest/coverage-v8": "^4.1.7",
+    "happy-dom": "^20.10.6",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.7"
   }
 }

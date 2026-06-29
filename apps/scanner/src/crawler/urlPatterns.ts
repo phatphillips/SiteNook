@@ -8,7 +8,7 @@ function globToRegExp(pattern: string): RegExp {
   return new RegExp(`^${escaped}$`, 'i')
 }
 
-function urlPathAndQuery(url: string): string {
+export function urlPathAndQuery(url: string): string {
   try {
     const u = new URL(url)
     return `${u.pathname}${u.search}`

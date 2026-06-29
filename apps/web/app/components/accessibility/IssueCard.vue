@@ -1,62 +1,90 @@
 <script setup lang="ts">
 import type { AccessibilityIssue } from '~/types/accessiq'
 
-const props = defineProps<{ issue: AccessibilityIssue }>()
-const emit = defineEmits<{ fix: [], dismiss: [] }>()
+const props = defineProps<{
+  issue: AccessibilityIssue
+  affectedPageUrls?: string[]
+}>()
 
-const borderColor = computed(() => {
-  const map: Record<string, string> = {
-    critical: 'border-l-red-500',
-    serious: 'border-l-orange-500',
-    moderate: 'border-l-yellow-500',
-    minor: 'border-l-gray-400'
-  }
-  return map[props.issue.impact] || 'border-l-gray-400'
+const emit = defineEmits<{ open: [] }>()
+
+const ruleLabel = computed(() =>
+  props.issue.rule_id
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+)
+
+const severityLabel = computed(() => {
+  const impact = props.issue.impact
+  if (impact === 'critical' || impact === 'serious') return 'Critical'
+  return impact.charAt(0).toUpperCase() + impact.slice(1)
 })
 
-const expanded = ref(false)
-const wcagUrl = computed(() =>
-  props.issue.wcag_sc
-    ? `https://www.w3.org/WAI/WCAG22/Understanding/${props.issue.wcag_sc.replace(/\./g, '')}`
-    : props.issue.help_url
-)
+const severityDotClass = computed(() => {
+  const map: Record<string, string> = {
+    critical: 'bg-red-500',
+    serious: 'bg-red-500',
+    moderate: 'bg-amber-500',
+    minor: 'bg-blue-500'
+  }
+  return map[props.issue.impact] || 'bg-muted'
+})
+
+const affectedCount = computed(() => props.affectedPageUrls?.length ?? 0)
+
+const ariaLabel = computed(() => `View details for ${props.issue.description}`)
+
+function openDrawer() {
+  emit('open')
+}
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    openDrawer()
+  }
+}
 </script>
 
 <template>
-  <UCard
-    class="border-l-4"
-    :class="borderColor"
-    :ui="{ body: 'p-4' }"
+  <div
+    role="button"
+    tabindex="0"
+    :aria-label="ariaLabel"
+    class="rounded-lg border border-default bg-elevated/25 p-4 cursor-pointer transition-colors hover:border-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-default"
+    @click="openDrawer"
+    @keydown="onKeydown"
   >
-    <div class="flex flex-wrap items-center gap-2 mb-2">
-      <UBadge :color="issue.impact === 'critical' ? 'error' : issue.impact === 'serious' ? 'warning' : 'neutral'" variant="subtle">
-        {{ issue.impact.toUpperCase() }}
-      </UBadge>
-      <UBadge :color="issue.wcag_level === 'A' ? 'error' : 'warning'" variant="subtle">
+    <div class="flex items-center gap-2 mb-2">
+      <UBadge
+        :color="issue.wcag_level === 'AAA' ? 'warning' : issue.wcag_level === 'AA' ? 'warning' : 'error'"
+        variant="subtle"
+      >
         {{ issue.wcag_level }}
       </UBadge>
-      <NuxtLink v-if="issue.wcag_sc" :to="wcagUrl" target="_blank" class="text-sm text-primary hover:underline">
-        SC {{ issue.wcag_sc }}
-      </NuxtLink>
-      <code class="text-xs text-muted">{{ issue.rule_id }}</code>
+      <span class="text-sm font-medium text-default">{{ ruleLabel }}</span>
+      <UIcon
+        name="i-lucide-chevron-right"
+        class="size-4 text-muted ml-auto shrink-0"
+        aria-hidden="true"
+      />
     </div>
 
-    <p class="font-medium mb-2">{{ issue.description }}</p>
+    <p class="font-semibold text-base mb-2 text-highlighted">
+      {{ issue.description }}
+    </p>
 
-    <pre
-      v-if="issue.html_snippet"
-      class="text-xs bg-elevated rounded p-2 overflow-hidden"
-      :class="expanded ? '' : 'line-clamp-3'"
-    ><code>{{ issue.html_snippet }}</code></pre>
-    <UButton v-if="issue.html_snippet && issue.html_snippet.length > 120" variant="link" size="xs" @click="expanded = !expanded">
-      {{ expanded ? 'Show less' : 'Show more' }}
-    </UButton>
-
-    <p v-if="issue.css_selector" class="text-xs text-muted mt-2 font-mono">{{ issue.css_selector }}</p>
-
-    <div class="flex gap-2 mt-3">
-      <UButton size="xs" @click="emit('fix')">Fix</UButton>
-      <UButton size="xs" color="neutral" variant="outline" @click="emit('dismiss')">Dismiss</UButton>
-    </div>
-  </UCard>
+    <p class="text-sm text-muted flex items-center gap-1.5 flex-wrap">
+      <span
+        class="inline-block size-2 rounded-full shrink-0"
+        :class="severityDotClass"
+        aria-hidden="true"
+      />
+      <span>{{ severityLabel }}</span>
+      <span v-if="affectedCount > 0" aria-hidden="true">·</span>
+      <span v-if="affectedCount > 0">
+        {{ affectedCount }} {{ affectedCount === 1 ? 'page' : 'pages' }} affected
+      </span>
+    </p>
+  </div>
 </template>

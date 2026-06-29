@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
+import { APP_COLOR_MODES, type AppColorMode } from '~/utils/appTheme'
 
 defineProps<{ collapsed?: boolean }>()
 
 const colorMode = useColorMode()
-const { user, logout } = usePocketBase()
+const { sessionUser, logout } = usePocketBase()
 
-const displayName = computed(() => user.value?.name || user.value?.email || 'User')
+const displayName = computed(() => sessionUser.value?.name || sessionUser.value?.email || 'User')
+
+function setColorMode(mode: AppColorMode) {
+  colorMode.preference = mode
+}
 
 const items = computed<DropdownMenuItem[][]>(() => [[{
   type: 'label',
@@ -18,25 +23,16 @@ const items = computed<DropdownMenuItem[][]>(() => [[{
 }], [{
   label: 'Appearance',
   icon: 'i-lucide-sun-moon',
-  children: [{
-    label: 'Light',
-    icon: 'i-lucide-sun',
-    type: 'checkbox',
-    checked: colorMode.value === 'light',
+  children: APP_COLOR_MODES.map(mode => ({
+    label: mode.label,
+    icon: mode.icon,
+    type: 'checkbox' as const,
+    checked: colorMode.value === mode.value,
     onSelect(e: Event) {
       e.preventDefault()
-      colorMode.preference = 'light'
+      setColorMode(mode.value)
     }
-  }, {
-    label: 'Dark',
-    icon: 'i-lucide-moon',
-    type: 'checkbox',
-    checked: colorMode.value === 'dark',
-    onSelect(e: Event) {
-      e.preventDefault()
-      colorMode.preference = 'dark'
-    }
-  }]
+  }))
 }], [{
   label: 'Log out',
   icon: 'i-lucide-log-out',

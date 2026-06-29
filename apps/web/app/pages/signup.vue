@@ -1,80 +1,91 @@
 <script setup lang="ts">
-definePageMeta({ layout: false, middleware: [] })
+definePageMeta({ layout: false, middleware: 'guest' })
 
-const { signup } = usePocketBase()
-const name = ref('')
-const email = ref('')
-const password = ref('')
-const passwordConfirm = ref('')
-const loading = ref(false)
-const error = ref('')
+import { parseSelfServiceSignupFlag } from '~/utils/selfServiceSignup'
 
-async function submit() {
-  error.value = ''
+const config = useRuntimeConfig()
 
-  if (password.value !== passwordConfirm.value) {
-    error.value = 'Passwords do not match.'
-    return
-  }
-
-  if (password.value.length < 8) {
-    error.value = 'Password must be at least 8 characters.'
-    return
-  }
-
-  loading.value = true
-  try {
-    await signup(name.value, email.value, password.value)
-    await navigateTo('/', { replace: true })
-  } catch (e: unknown) {
-    const status = e && typeof e === 'object' && 'status' in e ? Number((e as { status: number }).status) : 0
-    const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message: string }).message) : 'Could not create account.'
-    if (status === 400 && msg.includes('validation')) {
-      error.value = 'An account with this email may already exist.'
-    } else if (status === 400 || status === 401) {
-      error.value = 'Could not create account. Check your details and try again.'
-    } else {
-      error.value = msg
-    }
-  } finally {
-    loading.value = false
-  }
-}
+const supportEmail = computed(() => config.public.supportEmail || 'contact@your-org.com')
+const selfServiceEnabled = computed(() => parseSelfServiceSignupFlag(config.public.selfServiceSignup))
+const signInPath = '/sign-in'
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-elevated/30 p-4">
-    <UCard class="w-full max-w-md">
-      <template #header>
-        <p class="text-center">
-          <UIcon name="i-lucide-search-check" class="size-10 text-primary mx-auto mb-2" />
-        </p>
-        <div class="text-center">
-          <h1 class="text-2xl font-bold">Create account</h1>
-          <p class="text-sm text-muted mt-1">Get started with AccessIQ</p>
+  <AuthPageShell
+    :title="selfServiceEnabled ? 'Get started' : 'Invite only'"
+    :subtitle="selfServiceEnabled
+      ? 'Create a new organization or join an existing team.'
+      : 'Account creation is currently invite-only. Contact your administrator to get set up.'"
+    :icon="selfServiceEnabled ? 'i-lucide-sparkles' : 'i-lucide-user-lock'"
+  >
+    <div v-if="selfServiceEnabled" class="space-y-4">
+      <NuxtLink
+        to="/pricing"
+        class="flex items-start gap-4 rounded-xl border border-default bg-elevated/30 p-4 transition hover:border-primary/40 hover:bg-primary/5"
+      >
+        <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
+          <UIcon name="i-lucide-building-2" class="size-5 text-primary" />
         </div>
-      </template>
+        <div class="min-w-0 text-left">
+          <p class="font-medium text-highlighted">
+            Create an organization
+          </p>
+          <p class="mt-1 text-sm text-muted">
+            Choose a plan and set up a new AccessIQ workspace for your team.
+          </p>
+        </div>
+      </NuxtLink>
 
-      <form class="space-y-4" @submit.prevent="submit">
-        <UFormField label="Name" required>
-          <UInput v-model="name" required autocomplete="name" />
-        </UFormField>
-        <UFormField label="Email" required>
-          <UInput v-model="email" type="email" required autocomplete="email" />
-        </UFormField>
-        <UFormField label="Password" required>
-          <UInput v-model="password" type="password" required autocomplete="new-password" />
-        </UFormField>
-        <UFormField label="Confirm password" required>
-          <UInput v-model="passwordConfirm" type="password" required autocomplete="new-password" />
-        </UFormField>
-        <UAlert v-if="error" color="error" variant="subtle" :title="error" />
-        <UButton type="submit" block :loading="loading">Create account</UButton>
-        <p class="text-center text-sm text-muted">
-          Have an account?
-          <NuxtLink to="/login" class="text-primary hover:underline">Log in</NuxtLink>
+      <NuxtLink
+        :to="signInPath"
+        class="flex items-start gap-4 rounded-xl border border-default bg-elevated/30 p-4 transition hover:border-primary/40 hover:bg-primary/5"
+      >
+        <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-neutral-500/10 ring-1 ring-neutral-500/20">
+          <UIcon name="i-lucide-users" class="size-5 text-neutral-500" />
+        </div>
+        <div class="min-w-0 text-left">
+          <p class="font-medium text-highlighted">
+            Join an existing team
+          </p>
+          <p class="mt-1 text-sm text-muted">
+            Sign in at your organization with your work email.
+          </p>
+        </div>
+      </NuxtLink>
+    </div>
+
+    <div v-else class="space-y-5">
+      <div class="rounded-xl border border-default bg-elevated/30 p-4 text-sm leading-relaxed text-muted">
+        <p>
+          New AccessIQ accounts are created by an organization admin. If you need access, reach out to your team lead or IT contact.
         </p>
-      </form>
-    </UCard>
-  </div>
+      </div>
+
+      <div class="space-y-2 text-sm">
+        <p class="font-medium text-highlighted">
+          Contact
+        </p>
+        <p class="text-muted">
+          <a
+            :href="`mailto:${supportEmail}`"
+            class="inline-flex items-center gap-2 text-primary hover:underline"
+          >
+            <UIcon name="i-lucide-mail" class="size-4" />
+            {{ supportEmail }}
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <UButton :to="signInPath" block size="lg" variant="soft" color="neutral" class="mt-5">
+      Back to sign in
+    </UButton>
+
+    <p class="mt-4 text-center text-xs text-muted">
+      Already have credentials?
+      <NuxtLink :to="signInPath" class="text-primary hover:underline">
+        Sign in
+      </NuxtLink>
+    </p>
+  </AuthPageShell>
 </template>

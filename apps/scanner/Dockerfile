@@ -3,9 +3,10 @@ WORKDIR /app
 
 FROM base AS development
 COPY package.json package-lock.json* ./
-RUN npm install
 COPY . .
-CMD ["npm", "run", "dev"]
+# Dev deps install at container start into a named volume (see docker-compose.override.yml).
+# Avoids Docker copying huge playwright node_modules from image layers on Windows.
+CMD ["sh", "-c", "npm install && npm run dev"]
 
 FROM base AS production
 COPY package.json package-lock.json* ./

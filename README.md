@@ -1,12 +1,21 @@
 # AccessIQ
 
-Self-hosted web accessibility and QA monitoring platform — an open-source SiteImprove replacement.
+Hosted cloud web accessibility and QA monitoring platform — a SiteImprove-style alternative for teams that need WCAG scanning, QA checks, and SEO monitoring without enterprise pricing.
+
+## Deployment models
+
+| Model | Who runs it | Plans |
+|-------|-------------|-------|
+| **Hosted cloud** (default) | AccessIQ operates the stack on `yourorg.accessiq.com` | Free, Starter, Team, Business |
+| **Self-hosted** (Enterprise) | Your IT team runs Docker on your infrastructure | Enterprise — contact sales |
+
+Self-service signup and Stripe billing target **hosted cloud**. Enterprise customers receive a private Docker image, licence key, and optional air-gapped deployment. See [docs/platform/stripe-setup.md](docs/platform/stripe-setup.md) and [docs/platform/litestream-backup.md](docs/platform/litestream-backup.md). Full doc index: [docs/README.md](docs/README.md).
 
 ## Architecture
 
 ```
 Browser → Nginx (port 80)
-            ├── /           → Nuxt 3 dashboard (apps/web)
+            ├── /           → Nuxt 4 dashboard (apps/web)
             ├── /api/       → PocketBase REST API
             └── /_/         → PocketBase admin UI
 
@@ -15,7 +24,7 @@ Scanner worker (apps/scanner) polls PocketBase scan_queue and runs Playwright + 
 
 | Service    | Tech                          | Purpose                          |
 |------------|-------------------------------|----------------------------------|
-| `web`      | Nuxt 3 + Nuxt UI              | Dashboard UI                     |
+| `web`      | Nuxt 4 + Nuxt UI              | Dashboard UI                     |
 | `scanner`  | Node.js + Playwright + axe    | WCAG scanning & QA checks        |
 | `pocketbase` | PocketBase + SQLite         | Database, auth, realtime API     |
 | `nginx`    | Nginx Alpine                  | Reverse proxy                    |
@@ -32,12 +41,19 @@ docker compose up -d --build
 Open http://localhost for the dashboard.  
 PocketBase admin: http://localhost:8090/_/ (dev override exposes port 8090)
 
-### First-time setup
+### First-time setup (local Docker)
 
 1. Create a user in PocketBase admin (`/_/` → Collections → users → New record)
 2. Sign in at http://localhost/login
 3. Add a site under **Sites** → **Add Site**
 4. Click **Scan Now** to queue a crawl
+
+### Hosted SaaS onboarding (production)
+
+1. Set `NUXT_PUBLIC_MARKETING_SITE=true` and `NUXT_PUBLIC_SELF_SERVICE_SIGNUP=true`
+2. Configure Stripe keys — see [docs/platform/stripe-setup.md](docs/platform/stripe-setup.md)
+3. Customers sign up at `/pricing` → Stripe Checkout → `/start` org wizard
+4. Each org gets a subdomain tenant (e.g. `council.accessiq.com`)
 
 ## Development
 
@@ -66,6 +82,9 @@ cd apps/scanner && npm install && npm run dev
 | `SCANNER_CONCURRENCY` | `3` | Parallel pages per scan |
 | `SCANNER_MAX_PAGES` | `500` | Max pages per crawl |
 | `SCANNER_POLL_INTERVAL_MS` | `10000` | Queue poll interval |
+| `SCANNER_BULLMQ_ENABLED` | `false` | Use Redis/BullMQ for scan job dispatch (multi-worker) |
+| `BULLMQ_REDIS_URL` | — | Redis URL when BullMQ enabled (e.g. `redis://redis:6379`) |
+| `LITESTREAM_REPLICA_URL` | — | S3-compatible replica URL for PocketBase backup (see `docker compose --profile backup`) |
 
 ## Adding a Site
 

@@ -1,60 +1,43 @@
 <script setup lang="ts">
-import type { TableColumn } from '@nuxt/ui'
 import type { Site } from '~/types/accessiq'
 
 definePageMeta({ middleware: 'auth' })
 
-const UCheckbox = resolveComponent('UCheckbox')
-
+const { sessionUser, awaitAuthReady } = usePocketBase()
 const { sites, fetchSites, createSite, deleteSites } = useSites()
+const canWrite = computed(() => canWriteOrg(sessionUser.value))
 const toast = useToast()
-const table = useTemplateRef('table')
 
-const showModal = ref(false)
+type SitesTableExpose = {
+  selectedCount: number
+  table: { tableApi?: { getFilteredSelectedRowModel: () => { rows: Array<{ original: Site }> } } } | null
+  clearSelection?: () => void
+}
+
+const sitesTable = useTemplateRef<SitesTableExpose | null>('sitesTable')
+
+const showAddModal = ref(false)
 const showDeleteModal = ref(false)
+const settingsSite = ref<Site | null>(null)
+const showSettingsModal = ref(false)
 const form = reactive({ name: '', url: '', description: '' })
 const loading = ref(false)
 const deleting = ref(false)
 const error = ref('')
-const rowSelection = ref<Record<string, boolean>>({})
 
-onMounted(() => fetchSites().catch(() => {}))
+onMounted(async () => {
+  await awaitAuthReady()
+  fetchSites().catch(() => {})
+})
 
-const selectedCount = computed(() =>
-  table.value?.tableApi?.getFilteredSelectedRowModel().rows.length || 0
-)
+const selectedCount = computed(() => sitesTable.value?.selectedCount ?? 0)
 
-const columns: TableColumn<Site>[] = [
-  {
-    id: 'select',
-    header: ({ table: t }) =>
-      h(UCheckbox, {
-        'modelValue': t.getIsSomePageRowsSelected()
-          ? 'indeterminate'
-          : t.getIsAllPageRowsSelected(),
-        'onUpdate:modelValue': (value: boolean | 'indeterminate') =>
-          t.toggleAllPageRowsSelected(!!value),
-        'ariaLabel': 'Select all sites'
-      }),
-    cell: ({ row }) =>
-      h(UCheckbox, {
-        'modelValue': row.getIsSelected(),
-        'onUpdate:modelValue': (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
-        'ariaLabel': 'Select site'
-      })
-  },
-  { accessorKey: 'name', header: 'Name' },
-  { accessorKey: 'url', header: 'URL' },
-  { accessorKey: 'crawl_schedule', header: 'Schedule' },
-  { id: 'actions', header: '' }
-]
-
-async function submit() {
+async function submitCreate() {
   loading.value = true
   error.value = ''
   try {
     await createSite(form)
-    showModal.value = false
+    showAddModal.value = false
     form.name = ''
     form.url = ''
     form.description = ''
@@ -66,15 +49,29 @@ async function submit() {
   }
 }
 
+async function openSettings(site: Site) {
+  settingsSite.value = site
+  await nextTick()
+  showSettingsModal.value = true
+}
+
+async function onSettingsSaved() {
+  await fetchSites()
+  if (settingsSite.value) {
+    settingsSite.value = sites.value.find(s => s.id === settingsSite.value!.id) ?? settingsSite.value
+  }
+}
+
 async function confirmDelete() {
-  const rows = table.value?.tableApi?.getFilteredSelectedRowModel().rows || []
+  const table = sitesTable.value?.table
+  const rows = table?.tableApi?.getFilteredSelectedRowModel().rows || []
   const ids = rows.map(row => row.original.id)
   if (!ids.length) return
 
   deleting.value = true
   try {
     await deleteSites(ids)
-    rowSelection.value = {}
+    sitesTable.value?.clearSelection?.()
     showDeleteModal.value = false
     toast.add({
       title: 'Sites deleted',
@@ -93,13 +90,10 @@ async function confirmDelete() {
 </script>
 
 <template>
-  <UDashboardPanel id="sites">
+  <AppDashboardPanel id="sites">
     <template #header>
-      <UDashboardNavbar title="Sites">
-        <template #leading>
-          <UDashboardSidebarCollapse />
-        </template>
-        <template #right>
+      <DashboardPageNavbar title="Sites">
+        <template v-if="canWrite" #right>
           <UButton
             v-if="selectedCount"
             color="error"
@@ -109,42 +103,26 @@ async function confirmDelete() {
           >
             Delete ({{ selectedCount }})
           </UButton>
-          <UButton icon="i-lucide-plus" @click="showModal = true">Add Site</UButton>
+          <UButton icon="i-lucide-plus" @click="showAddModal = true">Add Site</UButton>
         </template>
-      </UDashboardNavbar>
+      </DashboardPageNavbar>
     </template>
 
     <template #body>
-      <UTable
-        ref="table"
-        v-model:row-selection="rowSelection"
-        :data="sites"
-        :columns="columns"
-      >
-        <template #name-cell="{ row }">
-          <NuxtLink :to="`/sites/${row.original.id}`" class="text-primary hover:underline">
-            {{ row.original.name }}
-          </NuxtLink>
-        </template>
-        <template #actions-cell="{ row }">
-          <ScanTriggerButton
-            :site-id="row.original.id"
-            label="Scan"
-            size="sm"
-            variant="outline"
-          />
-        </template>
-      </UTable>
-
-      <p v-if="selectedCount" class="text-sm text-muted mt-3">
-        {{ selectedCount }} of {{ sites.length }} site(s) selected.
-      </p>
+      <SitesTable ref="sitesTable" :sites="sites" :can-write="canWrite" @edit="openSettings" />
     </template>
-  </UDashboardPanel>
+  </AppDashboardPanel>
 
-  <UModal v-model:open="showModal" title="Add Site">
+  <SiteSettingsModal
+    v-model:open="showSettingsModal"
+    :site="settingsSite"
+    @saved="onSettingsSaved"
+    @deleted="fetchSites"
+  />
+
+  <UModal v-model:open="showAddModal" title="Add Site">
     <template #body>
-      <form class="space-y-4" @submit.prevent="submit">
+      <form class="space-y-4" @submit.prevent="submitCreate">
         <UFormField label="Name" required>
           <UInput v-model="form.name" required />
         </UFormField>

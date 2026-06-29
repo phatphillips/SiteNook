@@ -1,5 +1,6 @@
 import type { BrowserContext, Page } from 'playwright'
 import type { ScanAuthConfig } from '../config/scanConfig.js'
+import { applyStealthInitScript, buildContextOptions } from './browserProfile.js'
 
 export interface AuthContextOptions {
   auth: ScanAuthConfig
@@ -17,21 +18,16 @@ export async function createAuthenticatedContext(
     headers.Authorization = `Bearer ${options.auth.token}`
   }
 
-  const contextOptions: Record<string, unknown> = {}
-  if (Object.keys(headers).length) {
-    contextOptions.extraHTTPHeaders = headers
-  }
-  if (options.userAgent) {
-    contextOptions.userAgent = options.userAgent
-  }
-  if (options.auth.type === 'basic' && options.auth.username) {
-    contextOptions.httpCredentials = {
-      username: options.auth.username,
-      password: options.auth.password || ''
-    }
-  }
+  const contextOptions = buildContextOptions({
+    customHeaders: headers,
+    userAgent: options.userAgent,
+    httpCredentials: options.auth.type === 'basic' && options.auth.username
+      ? { username: options.auth.username, password: options.auth.password || '' }
+      : undefined
+  })
 
   const context = await browser.newContext(contextOptions)
+  await applyStealthInitScript(context)
 
   if (options.auth.type === 'cookie' && options.auth.cookieString) {
     const cookies = parseCookieString(options.auth.cookieString)

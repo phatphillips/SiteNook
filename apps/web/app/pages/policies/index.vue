@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'plan-feature'], planFeature: 'policies' })
 
 const { pb } = usePocketBase()
 const policies = ref<Record<string, unknown>[]>([])
@@ -31,14 +31,13 @@ async function togglePolicy(id: string, enabled: boolean) {
 </script>
 
 <template>
-  <UDashboardPanel>
+  <AppDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Policies">
-        <template #leading><UDashboardSidebarCollapse /></template>
+      <DashboardPageNavbar title="Policies">
         <template #right>
           <UButton icon="i-lucide-plus" @click="showModal = true">New Policy</UButton>
         </template>
-      </UDashboardNavbar>
+      </DashboardPageNavbar>
     </template>
     <template #body>
       <div class="grid md:grid-cols-2 gap-4">
@@ -61,7 +60,7 @@ async function togglePolicy(id: string, enabled: boolean) {
         </UCard>
       </div>
     </template>
-  </UDashboardPanel>
+  </AppDashboardPanel>
 
   <UModal v-model:open="showModal" title="Create Policy">
     <template #body>

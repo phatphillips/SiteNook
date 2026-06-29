@@ -51,14 +51,15 @@ create_collection() {
 USERS_ID="_pb_users_auth_"
 echo "  users collection ($USERS_ID)"
 
-# Allow public signup + add role field on users
+# Org admins may create users in their organization + role field on users
 curl -sf -X PATCH "$PB_URL/api/collections/users" \
   -H "Content-Type: application/json" \
   -H "$AUTH" \
   -d '{
-    "createRule": "",
-    "listRule": "",
-    "viewRule": "",
+    "createRule": "@request.auth.id != \"\" && @request.auth.role = \"admin\" && organization = @request.auth.organization",
+    "listRule": "organization = @request.auth.organization",
+    "viewRule": "organization = @request.auth.organization",
+    "updateRule": "id = @request.auth.id || (@request.auth.role = \"admin\" && organization = @request.auth.organization)",
     "options": {
       "requireEmail": true,
       "exceptEmailDomains": [],
@@ -72,7 +73,7 @@ curl -sf -X PATCH "$PB_URL/api/collections/users" \
     "fields+": [{
       "name": "role",
       "type": "select",
-      "values": ["admin", "analyst", "viewer"],
+      "values": ["admin", "viewer"],
       "maxSelect": 1
     }]
   }' > /dev/null || echo "  note: role field may already exist on users"
@@ -98,7 +99,11 @@ SITES_RESP=$(create_collection "{
     {\"name\": \"crawl_schedule\", \"type\": \"select\", \"values\": [\"manual\", \"hourly\", \"every_6h\", \"daily\", \"weekly\", \"monthly\"], \"maxSelect\": 1},
     {\"name\": \"custom_headers\", \"type\": \"json\"},
     {\"name\": \"auth_config\", \"type\": \"json\"},
-    {\"name\": \"default_scan_config\", \"type\": \"json\"}
+    {\"name\": \"default_scan_config\", \"type\": \"json\"},
+    {\"name\": \"site_settings\", \"type\": \"json\"},
+    {\"name\": \"score_denominators\", \"type\": \"json\"},
+    {\"name\": \"schedule_next_run_at\", \"type\": \"date\"},
+    {\"name\": \"schedule_last_enqueued_at\", \"type\": \"date\"}
   ]
 }")
 SITES_ID=$(extract_id "$SITES_RESP")
@@ -114,7 +119,7 @@ SCANS_RESP=$(create_collection "{
   \"deleteRule\": \"\",
   \"fields\": [
     {\"name\": \"site\", \"type\": \"relation\", \"required\": true, \"collectionId\": \"$SITES_ID\", \"maxSelect\": 1, \"cascadeDelete\": true},
-    {\"name\": \"status\", \"type\": \"select\", \"values\": [\"queued\", \"running\", \"complete\", \"failed\"], \"maxSelect\": 1},
+    {\"name\": \"status\", \"type\": \"select\", \"values\": [\"queued\", \"running\", \"complete\", \"failed\", \"cancelled\"], \"maxSelect\": 1},
     {\"name\": \"scan_type\", \"type\": \"select\", \"values\": [\"full\", \"accessibility_only\", \"qa_only\"], \"maxSelect\": 1},
     {\"name\": \"pages_crawled\", \"type\": \"number\", \"min\": 0},
     {\"name\": \"started_at\", \"type\": \"date\"},
@@ -124,8 +129,13 @@ SCANS_RESP=$(create_collection "{
     {\"name\": \"score_aa\", \"type\": \"number\", \"min\": 0, \"max\": 100},
     {\"name\": \"score_aaa\", \"type\": \"number\", \"min\": 0, \"max\": 100},
     {\"name\": \"score_qa\", \"type\": \"number\", \"min\": 0, \"max\": 100},
+    {\"name\": \"score_overall\", \"type\": \"number\", \"min\": 0, \"max\": 100},
+    {\"name\": \"score_best_practices\", \"type\": \"number\", \"min\": 0, \"max\": 100},
+    {\"name\": \"score_denominators\", \"type\": \"json\"},
     {\"name\": \"raw_config\", \"type\": \"json\"},
-    {\"name\": \"diff_summary\", \"type\": \"json\"}
+    {\"name\": \"diff_summary\", \"type\": \"json\"},
+    {\"name\": \"error_message\", \"type\": \"text\", \"max\": 500},
+    {\"name\": \"open_issue_count\", \"type\": \"number\", \"min\": 0}
   ]
 }")
 SCANS_ID=$(extract_id "$SCANS_RESP")
@@ -301,10 +311,28 @@ create_collection "{
     {\"name\": \"scan_type\", \"type\": \"select\", \"values\": [\"full\", \"accessibility_only\", \"qa_only\"], \"maxSelect\": 1},
     {\"name\": \"target_url\", \"type\": \"url\"},
     {\"name\": \"raw_config\", \"type\": \"json\"},
-    {\"name\": \"status\", \"type\": \"select\", \"values\": [\"pending\", \"processing\", \"complete\", \"failed\"], \"maxSelect\": 1}
+    {\"name\": \"status\", \"type\": \"select\", \"values\": [\"pending\", \"processing\", \"complete\", \"failed\", \"cancelled\"], \"maxSelect\": 1}
   ]
 }" > /dev/null
 echo "  created scan_queue"
+
+create_collection "{
+  \"name\": \"scan_log_events\",
+  \"type\": \"base\",
+  \"listRule\": \"@request.auth.id != \\\"\\\"\",
+  \"viewRule\": \"@request.auth.id != \\\"\\\"\",
+  \"createRule\": \"\",
+  \"updateRule\": \"\",
+  \"deleteRule\": \"\",
+  \"fields\": [
+    {\"name\": \"scan\", \"type\": \"relation\", \"required\": true, \"collectionId\": \"$SCANS_ID\", \"maxSelect\": 1, \"cascadeDelete\": true},
+    {\"name\": \"site\", \"type\": \"relation\", \"required\": true, \"collectionId\": \"$SITES_ID\", \"maxSelect\": 1, \"cascadeDelete\": true},
+    {\"name\": \"level\", \"type\": \"select\", \"required\": true, \"values\": [\"info\", \"success\", \"warn\", \"error\"], \"maxSelect\": 1},
+    {\"name\": \"message\", \"type\": \"text\", \"required\": true, \"max\": 2000},
+    {\"name\": \"url\", \"type\": \"url\"}
+  ]
+}" > /dev/null
+echo "  created scan_log_events"
 
 fi
 
@@ -357,12 +385,12 @@ ensure_collection_rules() {
     "listRule": "@request.auth.id != \"\"",
     "viewRule": "@request.auth.id != \"\"",
     "createRule": "@request.auth.id != \"\"",
-    "updateRule": "",
-    "deleteRule": ""
+    "updateRule": "@request.auth.id != \"\"",
+    "deleteRule": "@request.auth.id != \"\""
   }'
 
   patch_collection sites "$AUTH_ONLY"
-  patch_collection scans "$READ_ONLY"
+  patch_collection scans "$READ_UPDATE"
   patch_collection pages "$READ_ONLY"
   patch_collection accessibility_issues "$READ_UPDATE"
   patch_collection qa_broken_links "$READ_UPDATE_NO_DELETE"
@@ -370,7 +398,8 @@ ensure_collection_rules() {
   patch_collection qa_inventory "$READ_ONLY"
   patch_collection policies "$AUTH_ONLY"
   patch_collection policy_matches "$READ_UPDATE_NO_DELETE"
-  patch_collection scan_queue "$SCAN_QUEUE"
+  patch_collection scan_queue "$AUTH_ONLY"
+  patch_collection scan_log_events "$READ_ONLY"
 }
 
 ensure_collection_rules

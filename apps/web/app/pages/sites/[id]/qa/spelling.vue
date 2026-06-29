@@ -6,14 +6,13 @@ const { spelling } = useQA(siteId)
 </script>
 
 <template>
-  <UDashboardPanel>
+  <AppDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Spelling">
-        <template #leading><UDashboardSidebarCollapse /></template>
-      </UDashboardNavbar>
+      <DashboardPageNavbar title="Spelling" />
     </template>
     <template #body>
+      <SitePageToolbar class="mb-2" />
       <QaSpellingTable :items="spelling" />
     </template>
-  </UDashboardPanel>
+  </AppDashboardPanel>
 </template>

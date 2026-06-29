@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const colorMode = useColorMode()
 
-const color = computed(() => colorMode.value === 'dark' ? '#1b1718' : 'white')
+const color = computed(() => themeColorMeta(colorMode.value))
 
 useHead({
   meta: [
@@ -18,7 +18,7 @@ useHead({
 })
 
 const title = 'AccessIQ'
-const description = 'Self-hosted web accessibility and QA monitoring platform.'
+const description = 'Hosted cloud web accessibility and QA monitoring platform.'
 
 useSeoMeta({
   title,

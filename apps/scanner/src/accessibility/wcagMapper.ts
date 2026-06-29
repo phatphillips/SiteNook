@@ -71,6 +71,14 @@ const IMPACT_WEIGHTS: Record<string, number> = {
   minor: 1
 }
 
+export function normalizeImpact(impact: string | undefined | null): 'critical' | 'serious' | 'moderate' | 'minor' {
+  if (impact === 'critical' || impact === 'serious' || impact === 'moderate' || impact === 'minor') {
+    return impact
+  }
+  return 'moderate'
+}
+
+/** @deprecated Use calculateSiteimproveScores from siteimproveScore.ts */
 export function calculateScore(issues: Array<{ impact: string }>): number {
   if (issues.length === 0) return 100
   const totalWeight = issues.reduce((sum, i) => sum + (IMPACT_WEIGHTS[i.impact] || 1), 0)

@@ -1,0 +1,11 @@
+dbs:
+  - path: /pb/pb_data/data.db
+    replicas:
+      - type: s3
+        bucket: ${LITESTREAM_S3_BUCKET}
+        path: accessiq/pocketbase
+        endpoint: ${LITESTREAM_S3_ENDPOINT}
+        force-path-style: true
+        access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+        secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
+        region: ${LITESTREAM_S3_REGION:-us-east-1}

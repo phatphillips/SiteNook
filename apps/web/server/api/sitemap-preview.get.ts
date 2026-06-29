@@ -3,12 +3,15 @@ function extractLocTags(xml: string): string[] {
   const re = /<loc>\s*([^<]+?)\s*<\/loc>/gi
   let match
   while ((match = re.exec(xml)) !== null) {
-    urls.push(match[1].trim())
+    const loc = match[1]
+    if (loc) urls.push(loc.trim())
   }
   return urls
 }
 
 export default defineEventHandler(async (event) => {
+  await requirePbUser(event)
+
   const query = getQuery(event)
   const url = String(query.url || '').trim()
   if (!url) {

@@ -1,123 +1,166 @@
 <script setup lang="ts">
-import type { IssueFilters } from '~/types/accessiq'
+import type { AccessibilityIssue, IssueFilters } from '~/types/accessiq'
 
 const props = defineProps<{
   modelValue: IssueFilters
-  totalCount: number
+  issues: AccessibilityIssue[]
   filteredCount: number
+  /** Unique issue types (by rule); defaults to raw open issue count */
+  openCount?: number
+  /** Total open axe node instances across all pages */
+  openOccurrences?: number
 }>()
 
 const emit = defineEmits<{ 'update:modelValue': [IssueFilters] }>()
 
-const filterOptions = {
-  wcagVersions: ['2.0', '2.1', '2.2'],
-  impacts: ['critical', 'serious', 'moderate', 'minor'],
-  types: ['error', 'warning', 'review'],
-  elements: ['image', 'form', 'link', 'heading', 'table', 'media', 'aria', 'other'],
-  roles: ['developer', 'editor', 'designer'],
-  statuses: ['open', 'dismissed', 'fixed']
+const openIssues = computed(() =>
+  props.issues.filter(i => i.status !== 'dismissed')
+)
+
+const totalOpenCount = computed(() => props.openCount ?? openIssues.value.length)
+const totalOccurrences = computed(() => props.openOccurrences ?? openIssues.value.length)
+
+function countImpact(impact: string): number {
+  return openIssues.value.filter(i => i.impact === impact).length
 }
 
-function toggle(key: keyof IssueFilters, value: string) {
-  const current = [...props.modelValue[key]]
-  const idx = current.indexOf(value)
-  if (idx >= 0) current.splice(idx, 1)
-  else current.push(value)
-  emit('update:modelValue', { ...props.modelValue, [key]: current })
+function countWcag(level: 'A' | 'AA' | 'AAA'): number {
+  return openIssues.value.filter(i => i.wcag_level === level).length
 }
 
-function clearAll() {
+const impactPills = computed(() => [
+  { id: 'critical', label: 'Critical', count: countImpact('critical') + countImpact('serious') },
+  { id: 'moderate', label: 'Moderate', count: countImpact('moderate') },
+  { id: 'minor', label: 'Minor', count: countImpact('minor') }
+])
+
+const wcagPills = computed(() => [
+  { id: 'AA', label: 'AA', count: countWcag('AA') },
+  { id: 'AAA', label: 'AAA', count: countWcag('AAA') },
+  { id: 'A', label: 'A', count: countWcag('A') }
+])
+
+const allSelected = computed(() =>
+  props.modelValue.impacts.length === 0
+  && props.modelValue.wcagLevels.length === 0
+  && props.modelValue.targetCategories.length === 0
+)
+
+function toggleImpact(impactId: string) {
+  const impacts = [...props.modelValue.impacts]
+  if (impactId === 'critical') {
+    const hasCritical = impacts.includes('critical') || impacts.includes('serious')
+    if (hasCritical) {
+      emit('update:modelValue', {
+        ...props.modelValue,
+        impacts: impacts.filter(i => i !== 'critical' && i !== 'serious')
+      })
+    } else {
+      emit('update:modelValue', {
+        ...props.modelValue,
+        impacts: [...impacts.filter(i => i !== 'critical' && i !== 'serious'), 'critical', 'serious']
+      })
+    }
+    return
+  }
+  const idx = impacts.indexOf(impactId)
+  if (idx >= 0) impacts.splice(idx, 1)
+  else impacts.push(impactId)
+  emit('update:modelValue', { ...props.modelValue, impacts })
+}
+
+function isImpactActive(impactId: string): boolean {
+  if (impactId === 'critical') {
+    return props.modelValue.impacts.includes('critical') || props.modelValue.impacts.includes('serious')
+  }
+  return props.modelValue.impacts.includes(impactId)
+}
+
+function selectAll() {
   emit('update:modelValue', {
-    wcagVersions: [],
+    ...props.modelValue,
     impacts: [],
+    wcagLevels: [],
+    targetCategories: [],
     types: [],
     elements: [],
-    roles: [],
-    statuses: ['open']
+    roles: []
   })
 }
 
-const hasActiveFilters = computed(() =>
-  props.modelValue.wcagVersions.length > 0
-  || props.modelValue.impacts.length > 0
-  || props.modelValue.types.length > 0
-  || props.modelValue.elements.length > 0
-  || props.modelValue.roles.length > 0
-  || (props.modelValue.statuses.length !== 1 || props.modelValue.statuses[0] !== 'open')
-)
+function toggleWcag(level: 'A' | 'AA' | 'AAA') {
+  const levels = [...props.modelValue.wcagLevels]
+  const idx = levels.indexOf(level)
+  if (idx >= 0) levels.splice(idx, 1)
+  else levels.push(level)
+  emit('update:modelValue', { ...props.modelValue, wcagLevels: levels })
+}
 
-const activeChips = computed(() => {
-  const chips: Array<{ key: keyof IssueFilters, value: string }> = []
-  for (const [key, values] of Object.entries(props.modelValue) as [keyof IssueFilters, string[]][]) {
-    for (const value of values) {
-      if (key === 'statuses' && value === 'open' && values.length === 1) continue
-      chips.push({ key, value })
-    }
-  }
-  return chips
-})
+function pillClass(active: boolean): string {
+  return active
+    ? 'bg-elevated text-default border-default ring-1 ring-default shadow-sm'
+    : 'bg-elevated/50 text-muted border-default hover:bg-elevated hover:text-default'
+}
 </script>
 
 <template>
   <div class="space-y-3">
-    <div class="flex flex-wrap gap-2">
-      <USelectMenu
-        :model-value="modelValue.impacts"
-        :items="filterOptions.impacts"
-        multiple
-        placeholder="Impact"
-        class="w-36"
-        @update:model-value="emit('update:modelValue', { ...modelValue, impacts: $event as string[] })"
-      />
-      <USelectMenu
-        :model-value="modelValue.types"
-        :items="filterOptions.types"
-        multiple
-        placeholder="Type"
-        class="w-36"
-        @update:model-value="emit('update:modelValue', { ...modelValue, types: $event as string[] })"
-      />
-      <USelectMenu
-        :model-value="modelValue.elements"
-        :items="filterOptions.elements"
-        multiple
-        placeholder="Element"
-        class="w-36"
-        @update:model-value="emit('update:modelValue', { ...modelValue, elements: $event as string[] })"
-      />
-      <USelectMenu
-        :model-value="modelValue.roles"
-        :items="filterOptions.roles"
-        multiple
-        placeholder="Role"
-        class="w-36"
-        @update:model-value="emit('update:modelValue', { ...modelValue, roles: $event as string[] })"
-      />
-      <USelectMenu
-        :model-value="modelValue.statuses"
-        :items="filterOptions.statuses"
-        multiple
-        placeholder="Status"
-        class="w-36"
-        @update:model-value="emit('update:modelValue', { ...modelValue, statuses: $event as string[] })"
-      />
-    </div>
-
-    <div v-if="activeChips.length" class="flex flex-wrap items-center gap-2">
-      <UBadge
-        v-for="chip in activeChips"
-        :key="`${chip.key}-${chip.value}`"
-        variant="subtle"
-        class="cursor-pointer"
-        @click="toggle(chip.key, chip.value)"
+    <div class="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors"
+        :class="pillClass(allSelected)"
+        @click="selectAll"
       >
-        {{ chip.value }} ×
-      </UBadge>
-      <UButton variant="link" size="xs" @click="clearAll">Clear all filters</UButton>
+        All
+        <span
+          class="tabular-nums text-xs px-1.5 py-0.5 rounded-full"
+          :class="allSelected ? 'bg-default' : 'bg-elevated'"
+        >
+          {{ openIssues.length }}
+        </span>
+      </button>
+
+      <span class="text-muted text-xs hidden sm:inline">|</span>
+
+      <button
+        v-for="pill in impactPills"
+        :key="pill.id"
+        type="button"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors"
+        :class="pillClass(isImpactActive(pill.id))"
+        @click="toggleImpact(pill.id)"
+      >
+        {{ pill.label }}
+        <span
+          class="tabular-nums text-xs px-1.5 py-0.5 rounded-full"
+          :class="isImpactActive(pill.id) ? 'bg-default' : 'bg-elevated'"
+        >
+          {{ pill.count }}
+        </span>
+      </button>
+
+      <button
+        v-for="pill in wcagPills"
+        :key="pill.id"
+        type="button"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors"
+        :class="pillClass(modelValue.wcagLevels.includes(pill.id))"
+        @click="toggleWcag(pill.id as 'A' | 'AA' | 'AAA')"
+      >
+        {{ pill.label }}
+        <span
+          class="tabular-nums text-xs px-1.5 py-0.5 rounded-full"
+          :class="modelValue.wcagLevels.includes(pill.id) ? 'bg-default' : 'bg-elevated'"
+        >
+          {{ pill.count }}
+        </span>
+      </button>
     </div>
 
     <p class="text-sm text-muted">
-      Showing {{ filteredCount }} of {{ totalCount }} issues
+      Showing {{ filteredCount }} of {{ totalOpenCount }} issue types
+      ({{ totalOccurrences }} occurrences)
     </p>
   </div>
 </template>

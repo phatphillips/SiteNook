@@ -1,5 +1,49 @@
 @import "tailwindcss" theme(static);
 @import "@nuxt/ui";
+@import "./themes/solarized-light.css";
+
+/* Tailwind v4 + theme(static) can emit overflow-y: unset for .overflow-y-auto; use scroll-region instead. */
+@utility scroll-region {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/** Data table chrome — minimal list surface (thin border, no ring). */
+@utility table-surface {
+  @apply rounded-lg border border-default bg-elevated/25 overflow-hidden;
+}
+
+:root {
+  --color-background-secondary: rgba(255, 255, 255, 0.04);
+  --color-background-primary: rgba(255, 255, 255, 0.02);
+  --color-background-warning: rgba(251, 191, 36, 0.12);
+  --border-radius-md: 0.375rem;
+  --border-radius-lg: 0.5rem;
+  --color-text-danger: #e5484d;
+  --color-text-warning: #fbbf24;
+  --color-text-info: #60a5fa;
+  --color-text-success: #00c16a;
+  --color-text-tertiary: rgba(255, 255, 255, 0.35);
+  --color-text-secondary: rgba(255, 255, 255, 0.6);
+  --color-border-secondary: rgba(255, 255, 255, 0.1);
+  --color-border-tertiary: rgba(255, 255, 255, 0.07);
+  --color-chart-line: #00c16a;
+  --color-chart-line-rgb: 0, 193, 106;
+  --color-action-solid: #09090b;
+  --color-action-solid-text: #fafafa;
+}
+
+:root.light,
+.light {
+  --color-action-solid: #09090b;
+  --color-action-solid-text: #fafafa;
+}
+
+:root.dark,
+.dark {
+  --color-action-solid: #fafafa;
+  --color-action-solid-text: #09090b;
+}
 
 @theme static {
   --font-sans: 'Public Sans', sans-serif;
@@ -15,4 +59,180 @@
   --color-green-800: #016538;
   --color-green-900: #0A5331;
   --color-green-950: #052E16;
+}
+
+/** Site target WCAG / ARIA / best-practice badges (overview, settings modal). */
+.site-target-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+}
+
+.site-target-badge--a {
+  background: #c2185b;
+}
+
+.site-target-badge--aa {
+  background: #7b1fa2;
+}
+
+.site-target-badge--aaa {
+  background: linear-gradient(135deg, #3949ab, #7b1fa2);
+}
+
+.site-target-badge--aria {
+  background: #1565c0;
+}
+
+.site-target-badge--bp {
+  background: #0d47a1;
+}
+
+.readability-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+}
+
+.readability-badge--ari { background: #c62828; }
+.readability-badge--cl { background: #6a1b9a; }
+.readability-badge--fk-gl { background: #4527a0; }
+.readability-badge--fk-re { background: #1565c0; }
+.readability-badge--gf { background: #00838f; }
+.readability-badge--lix { background: #2e7d32; }
+.readability-badge--smog { background: #ef6c00; }
+
+/** Centered guest auth pages (login, signup, forgot password). */
+.auth-page {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(255, 255, 255, 0.04), transparent),
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(255, 255, 255, 0.03), transparent),
+    var(--ui-bg);
+}
+
+/** High-contrast primary actions — solid black (light) / white (dark), no green fill. */
+button[data-slot="base"][data-variant="solid"]:not([data-color="error"]):not([data-color="warning"]):not([data-color="success"]):not([data-color="info"]),
+a[data-slot="base"][data-variant="solid"]:not([data-color="error"]):not([data-color="warning"]):not([data-color="success"]):not([data-color="info"]) {
+  background-color: var(--color-action-solid);
+  color: var(--color-action-solid-text);
+}
+
+button[data-slot="base"][data-variant="solid"]:not([data-color="error"]):not([data-color="warning"]):not([data-color="success"]):not([data-color="info"]):hover:not(:disabled),
+a[data-slot="base"][data-variant="solid"]:not([data-color="error"]):not([data-color="warning"]):not([data-color="success"]):not([data-color="info"]):hover {
+  opacity: 0.9;
+}
+
+button[data-slot="base"].action-solid,
+a[data-slot="base"].action-solid {
+  background-color: var(--color-action-solid);
+  color: var(--color-action-solid-text);
+}
+
+button[data-slot="base"].action-solid:hover:not(:disabled),
+a[data-slot="base"].action-solid:hover {
+  opacity: 0.9;
+}
+
+/** Auth + team drawer forms — inputs should span the panel width (not switches). */
+.auth-page-card form [data-slot="root"],
+.auth-page-card form [data-slot="base"],
+.auth-page-card form [data-slot="trailing"],
+.team-member-drawer .w-full [data-slot="root"],
+.team-member-drawer .w-full [data-slot="base"],
+.team-member-drawer .w-full [data-slot="trailing"],
+.team-member-add-modal [data-slot="root"],
+.team-member-add-modal [data-slot="base"],
+.team-member-add-modal [data-slot="trailing"] {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Class is on the portaled content panel itself, not a wrapper ancestor. */
+.team-member-drawer[data-slot="content"] {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+}
+
+.team-member-drawer[data-slot="content"] [data-slot="header"],
+.team-member-drawer__header {
+  flex-shrink: 0;
+  width: 100%;
+  overflow: visible;
+}
+
+.team-member-drawer[data-slot="content"] [data-slot="header"] > * {
+  width: 100%;
+  overflow: visible;
+}
+
+.team-member-drawer[data-slot="content"] [data-slot="body"] {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.team-member-drawer[data-slot="content"] [data-slot="footer"] {
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+.team-member-drawer[data-slot="content"] [data-slot="footer"] > div {
+  width: 100%;
+}
+
+.team-member-drawer__footer-actions {
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.team-member-role-select {
+  appearance: none;
+  border-radius: calc(var(--ui-radius) * 1.5);
+  border: 1px solid var(--ui-border);
+  background-color: var(--ui-bg);
+  color: var(--ui-text);
+  padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 1rem;
+}
+
+.team-member-role-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.team-member-role-select:focus {
+  outline: 2px solid color-mix(in srgb, var(--ui-primary) 50%, transparent);
+  outline-offset: 1px;
+}
+
+.search-snippet-mark {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-chart-line) 35%, transparent);
+  color: inherit;
+  padding: 0 1px;
 }

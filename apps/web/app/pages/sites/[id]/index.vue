@@ -14,19 +14,17 @@ onMounted(async () => {
 </script>
 
 <template>
-  <UDashboardPanel>
+  <AppDashboardPanel>
     <template #header>
-      <UDashboardNavbar :title="site?.name || 'Site'">
-        <template #leading>
-          <UDashboardSidebarCollapse />
-        </template>
+      <DashboardPageNavbar :title="site?.name || 'Site'">
         <template #right>
           <ScanTriggerButton :site-id="siteId" />
         </template>
-      </UDashboardNavbar>
+      </DashboardPageNavbar>
     </template>
     <template #body>
-      <div class="grid md:grid-cols-2 gap-4">
+      <SitePageToolbar class="mb-2" />
+      <div class="grid md:grid-cols-3 gap-4">
         <UCard :to="`/sites/${siteId}/accessibility`">
           <template #header><h3 class="font-medium">Accessibility</h3></template>
           <p class="text-sm text-muted">WCAG compliance dashboard</p>
@@ -35,8 +33,12 @@ onMounted(async () => {
           <template #header><h3 class="font-medium">Quality Assurance</h3></template>
           <p class="text-sm text-muted">Links, spelling, inventory</p>
         </UCard>
+        <UCard :to="`/sites/${siteId}/seo`">
+          <template #header><h3 class="font-medium">SEO</h3></template>
+          <p class="text-sm text-muted">Technical &amp; content SEO</p>
+        </UCard>
       </div>
       <p v-if="site" class="mt-4 text-sm text-muted">{{ site.url }}</p>
     </template>
-  </UDashboardPanel>
+  </AppDashboardPanel>
 </template>

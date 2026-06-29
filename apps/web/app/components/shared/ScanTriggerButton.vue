@@ -5,19 +5,31 @@ const props = withDefaults(defineProps<{
   scanType?: string
   label?: string
   queuedLabel?: string
+  busyLabel?: string
+  icon?: string
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   variant?: 'solid' | 'outline' | 'soft' | 'subtle' | 'ghost' | 'link'
+  /** Icon-only control (e.g. per-row scan in By Page table). */
+  iconOnly?: boolean
 }>(), {
   scanType: 'full',
   label: 'Scan Now',
   queuedLabel: 'Queued…',
+  busyLabel: 'Scanning…',
+  icon: 'i-lucide-radar',
   size: 'md',
-  variant: 'solid'
+  variant: 'solid',
+  iconOnly: false
 })
 
 const route = useRoute()
-const { pb } = usePocketBase()
+const { pb, sessionUser } = usePocketBase()
 const { sites, activeSiteId, fetchSites } = useSites()
+const canWrite = computed(() => canWriteOrg(sessionUser.value))
+
+const emit = defineEmits<{
+  queued: []
+}>()
 
 const showConfigModal = ref(false)
 const loadedSite = ref<import('~/types/accessiq').Site | null>(null)
@@ -25,15 +37,16 @@ const loadedSite = ref<import('~/types/accessiq').Site | null>(null)
 const resolvedSiteId = computed(() =>
   props.siteId || (route.params.id as string | undefined) || activeSiteId.value
 )
+const queueSiteId = computed<string | undefined>(() => resolvedSiteId.value ?? undefined)
 
 const site = computed(() =>
   sites.value.find(s => s.id === resolvedSiteId.value) || loadedSite.value
 )
 
-const { isQueued, refresh } = useScanQueueStatus(resolvedSiteId)
+const { isQueued, isRunning, isBusy, refresh } = useScanQueueStatus(queueSiteId)
 
 const buttonLabel = computed(() =>
-  isQueued.value ? props.queuedLabel : props.label
+  isQueued.value ? props.queuedLabel : (isRunning.value ? props.busyLabel : props.label)
 )
 
 async function openModal() {
@@ -43,6 +56,11 @@ async function openModal() {
       description: 'Select a site before scanning.',
       color: 'warning'
     })
+    return
+  }
+
+  if (!pb) {
+    useToast().add({ title: 'Not ready', description: 'Try again in a moment.', color: 'warning' })
     return
   }
 
@@ -61,19 +79,21 @@ async function openModal() {
 
 async function onQueued() {
   await refresh()
+  emit('queued')
 }
 </script>
 
 <template>
-  <div class="inline-flex">
+  <div v-if="canWrite" class="inline-flex">
     <UButton
-      color="primary"
-      icon="i-lucide-radar"
-      :label="buttonLabel"
+      :color="iconOnly ? 'neutral' : variant === 'ghost' ? 'neutral' : 'primary'"
+      :icon="icon"
+      :label="iconOnly ? undefined : buttonLabel"
+      :aria-label="iconOnly ? (isBusy ? buttonLabel : label) : undefined"
       :size="size"
       :variant="variant"
-      :loading="isQueued"
-      :disabled="isQueued"
+      :square="iconOnly"
+      :loading="isBusy"
       @click="openModal"
     />
     <ScanConfigModal

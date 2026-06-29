@@ -1,13 +1,13 @@
 import type PocketBase from 'pocketbase'
-import PocketBaseLib, { type RecordModel } from 'pocketbase'
+import { ClientResponseError, type RecordModel } from 'pocketbase'
 import { createSharedComposable } from '@vueuse/core'
-
-function isUserRecord(record: RecordModel | null | undefined) {
-  return !!record && (record.collectionName === 'users' || record.collectionId === '_pb_users_auth_')
-}
+import { getUserOrganizationId } from '~/utils/orgAccess'
+import { parseTenantOnlyFlag, shouldEnforceTenantOnlyApex } from '~/utils/tenantOnlyApex'
+import { isUserRecord, syncPbAuthState } from '~/utils/pbAuth'
+import { resetAppSessionState } from '~/utils/sessionReset'
 
 function getAuthErrorMessage(error: unknown): string {
-  if (error instanceof PocketBaseLib.ClientResponseError) {
+  if (error instanceof ClientResponseError) {
     if (error.status === 400 || error.status === 401) {
       return 'Invalid email or password. Please try again.'
     }
@@ -20,18 +20,27 @@ function getAuthErrorMessage(error: unknown): string {
 }
 
 const _usePocketBase = () => {
-  const pb = useNuxtApp().$pb as PocketBase
+  const nuxtApp = useNuxtApp()
+  const pb = nuxtApp.$pb as PocketBase | null
   const user = useState<RecordModel | null>('pb-user', () => null)
   const isAuthenticated = useState('pb-authenticated', () => false)
+  const authReady = useState('pb-auth-ready', () => false)
 
   function syncAuth() {
-    const record = pb.authStore.record
-    const authed = pb.authStore.isValid && isUserRecord(record)
-    isAuthenticated.value = authed
-    user.value = authed ? record! : null
+    if (!pb) return
+    syncPbAuthState(pb, user, isAuthenticated)
+  }
+
+  async function awaitAuthReady() {
+    if (import.meta.server) return
+    if (authReady.value) return
+    await nuxtApp.$authReady
   }
 
   function requireUser(): RecordModel {
+    if (!pb) {
+      throw new Error('Session expired. Please sign in again.')
+    }
     syncAuth()
     const record = pb.authStore.record
     if (!pb.authStore.isValid || !isUserRecord(record)) {
@@ -41,12 +50,55 @@ const _usePocketBase = () => {
   }
 
   async function login(email: string, password: string) {
-    await pb.collection('users').authWithPassword(email.trim(), password)
+    if (!pb) throw new Error('Sign in is only available in the browser.')
+    resetAppSessionState()
+    pb.authStore.clear()
+    user.value = null
+    isAuthenticated.value = false
+    const auth = await pb.collection('users').authWithPassword(email.trim(), password)
+
+    const { organization, isTenantHost, isApexHost, loadTenantContext } = useTenantOrg()
+    const config = useRuntimeConfig()
+    try {
+      await loadTenantContext(true)
+    } catch {
+      // Unknown tenant hosts surface via middleware; still block obvious org mismatches below.
+    }
+
+    if (
+      shouldEnforceTenantOnlyApex(
+        parseTenantOnlyFlag(config.public.tenantOnly),
+        isApexHost.value,
+        config.public.appDomain
+      )
+    ) {
+      pb.authStore.clear()
+      user.value = null
+      isAuthenticated.value = false
+      throw new Error('Sign in at your organization URL (e.g. your-org.' + config.public.appDomain + '/login).')
+    }
+
+    if (isTenantHost.value && organization.value?.id) {
+      const userOrgId = getUserOrganizationId(auth.record)
+      if (!userOrgId || userOrgId !== organization.value.id) {
+        pb.authStore.clear()
+        user.value = null
+        isAuthenticated.value = false
+        throw new Error('This account does not belong to this organization. Check your organization sign-in URL.')
+      }
+    }
+
+    const userOrgId = getUserOrganizationId(auth.record)
+    if (userOrgId) {
+      await pb.collection('organizations').getOne(userOrgId, { fields: 'id,status,purge_scheduled_at,closed_at' })
+    }
+
     syncAuth()
-    return { record: user.value!, token: pb.authStore.token }
+    return { record: auth.record, token: pb.authStore.token }
   }
 
   async function signup(name: string, email: string, password: string) {
+    if (!pb) throw new Error('Sign up is only available in the browser.')
     const payload: Record<string, unknown> = {
       email: email.trim(),
       password,
@@ -59,20 +111,38 @@ const _usePocketBase = () => {
     return login(email, password)
   }
 
+  async function requestPasswordReset(email: string) {
+    if (!pb) throw new Error('Password reset is only available in the browser.')
+    await pb.collection('users').requestPasswordReset(email.trim())
+  }
+
+  async function confirmPasswordReset(token: string, password: string) {
+    if (!pb) throw new Error('Password reset is only available in the browser.')
+    await pb.collection('users').confirmPasswordReset(token, password, password)
+  }
+
   async function logout() {
-    pb.authStore.clear()
+    resetAppSessionState()
+    if (pb) {
+      pb.authStore.clear()
+    }
     user.value = null
     isAuthenticated.value = false
-    await navigateTo('/login')
+    syncAuth()
+    await navigateTo('/login', { replace: true })
   }
 
   function restoreAuth() {
-    if (import.meta.server) return
+    if (import.meta.server || !pb) return
     syncAuth()
   }
 
   function useRealtimeScan(scanId: Ref<string | undefined> | string | undefined) {
     const scan = ref<RecordModel | null>(null)
+
+    if (import.meta.server || !pb) {
+      return scan
+    }
 
     let unsubscribe: (() => void) | null = null
 
@@ -108,14 +178,23 @@ const _usePocketBase = () => {
     return scan
   }
 
+  // Read the synced Vue state — pb.authStore is not reactive, so a computed that
+  // touches it directly will cache the first signed-in user until a full reload.
+  const sessionUser = computed(() => (isAuthenticated.value ? user.value : null))
+
   return {
     pb,
     user,
+    sessionUser,
     isAuthenticated,
+    authReady,
     login,
     signup,
+    requestPasswordReset,
+    confirmPasswordReset,
     logout,
     restoreAuth,
+    awaitAuthReady,
     requireUser,
     syncAuth,
     useRealtimeScan,

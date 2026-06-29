@@ -44,9 +44,25 @@ export async function batchCreate<T extends Record<string, unknown>>(
   records: T[],
   batchSize = 50
 ): Promise<void> {
+  if (!records.length) return
+
   const pb = getPocketBase()
   for (let i = 0; i < records.length; i += batchSize) {
     const batch = records.slice(i, i + batchSize)
-    await Promise.all(batch.map(record => pb.collection(collection).create(record)))
+    const results = await Promise.allSettled(
+      batch.map(record => pb.collection(collection).create(record))
+    )
+
+    const failed = results.find(r => r.status === 'rejected')
+    if (failed?.status === 'rejected') {
+      const index = results.indexOf(failed)
+      const reason = failed.reason
+      const detail = reason && typeof reason === 'object' && 'message' in reason
+        ? String((reason as { message: string }).message)
+        : String(reason)
+      throw new Error(
+        `Failed to create ${collection} record ${i + index + 1}/${records.length}: ${detail}`
+      )
+    }
   }
 }

@@ -1,7 +1,7 @@
 export type ScanMode = 'full' | 'pages' | 'sitemap'
 export type AuthType = 'none' | 'basic' | 'form' | 'cookie' | 'bearer'
 export type ViewportPreset = 'desktop' | 'tablet' | 'mobile'
-export type WaitStrategy = 'load' | 'networkidle' | 'delay2s' | 'delay5s'
+export type WaitStrategy = 'load' | 'networkidle' | 'delay2s' | 'delay5s' | 'delay10s'
 export type ScheduleFrequency = 'hourly' | 'every_6h' | 'daily' | 'weekly' | 'monthly'
 
 export interface ScanAuthConfig {
@@ -16,6 +16,7 @@ export interface ScanAuthConfig {
   token?: string
 }
 
+/** Crawl / browser execution settings (stored in default_scan_config). */
 export interface ScanConfig {
   mode: ScanMode
   pages: string[]
@@ -26,21 +27,11 @@ export interface ScanConfig {
   respectRobots: boolean
   includePatterns: string[]
   excludePatterns: string[]
-  wcagVersion: '2.0' | '2.1' | '2.2'
-  wcagLevels: Array<'A' | 'AA' | 'AAA'>
-  bestPractices: boolean
-  checkLinks: boolean
-  checkSpelling: boolean
-  spellLanguage: string
-  checkReadability: boolean
-  runPolicies: boolean
   viewport: ViewportPreset
   waitStrategy: WaitStrategy
   concurrency: number
   timeout: number
   auth: ScanAuthConfig
-  notifyEmail: string | null
-  diffFromPrevious: boolean
   scheduleEnabled: boolean
   scheduleFrequency: ScheduleFrequency
   scheduleTime: string
@@ -54,6 +45,25 @@ export interface HeaderRow {
 }
 
 const DEFAULT_EXCLUDE = ['/logout', '/wp-admin/*', '/cdn-cgi/*']
+
+export function coercePositiveInt(value: unknown, fallback: number, max?: number): number {
+  const n = Math.floor(Number(value))
+  if (!Number.isFinite(n) || n < 1) return fallback
+  if (max != null) return Math.min(max, n)
+  return n
+}
+
+export function normalizeScanConfig(config: ScanConfig): ScanConfig {
+  const waitStrategy = config.waitStrategy === 'delay5s' ? 'delay10s' : config.waitStrategy
+  return {
+    ...config,
+    waitStrategy,
+    maxPages: coercePositiveInt(config.maxPages, 500),
+    maxDepth: coercePositiveInt(config.maxDepth, 10),
+    concurrency: coercePositiveInt(config.concurrency, 3, 10),
+    timeout: coercePositiveInt(config.timeout, 30)
+  }
+}
 
 export function getDefaultScanConfig(siteUrl?: string, maxPages = 500): ScanConfig {
   let sitemapUrl = ''
@@ -76,16 +86,8 @@ export function getDefaultScanConfig(siteUrl?: string, maxPages = 500): ScanConf
     respectRobots: true,
     includePatterns: [],
     excludePatterns: [...DEFAULT_EXCLUDE],
-    wcagVersion: '2.2',
-    wcagLevels: ['A', 'AA', 'AAA'],
-    bestPractices: true,
-    checkLinks: true,
-    checkSpelling: true,
-    spellLanguage: 'en-AU',
-    checkReadability: true,
-    runPolicies: true,
     viewport: 'desktop',
-    waitStrategy: 'networkidle',
+    waitStrategy: 'load',
     concurrency: 3,
     timeout: 30,
     auth: {
@@ -94,13 +96,29 @@ export function getDefaultScanConfig(siteUrl?: string, maxPages = 500): ScanConf
       passwordSelector: 'input[type=password]',
       submitSelector: 'button[type=submit]'
     },
-    notifyEmail: null,
-    diffFromPrevious: true,
-    scheduleEnabled: false,
+    scheduleEnabled: true,
     scheduleFrequency: 'daily',
-    scheduleTime: '02:00',
+    scheduleTime: '14:00',
     customHeaders: {},
     userAgent: null
+  }
+}
+
+/** Merge queue/rescan overrides onto a site's saved default_scan_config. */
+export function mergeScanConfigRaw(base: unknown, override: unknown): Record<string, unknown> {
+  const b = base && typeof base === 'object' ? (base as Record<string, unknown>) : {}
+  const o = override && typeof override === 'object' ? (override as Record<string, unknown>) : {}
+  return {
+    ...b,
+    ...o,
+    auth: { ...(b.auth as Record<string, unknown> || {}), ...(o.auth as Record<string, unknown> || {}) },
+    includePatterns: (o.includePatterns as string[] | undefined) ?? (b.includePatterns as string[] | undefined),
+    excludePatterns: (o.excludePatterns as string[] | undefined) ?? (b.excludePatterns as string[] | undefined),
+    pages: (o.pages as string[] | undefined) ?? (b.pages as string[] | undefined),
+    customHeaders: {
+      ...(b.customHeaders as Record<string, string> || {}),
+      ...(o.customHeaders as Record<string, string> || {})
+    }
   }
 }
 
@@ -109,7 +127,7 @@ export function parseScanConfig(raw: unknown, siteUrl?: string, maxPages = 500):
   if (!raw || typeof raw !== 'object') return defaults
 
   const data = raw as Partial<ScanConfig> & {
-    schedule?: { frequency?: ScheduleFrequency, time?: string } | null
+    schedule?: { frequency?: ScheduleFrequency, time?: string, timezone?: string } | null
   }
 
   const parsed: ScanConfig = {
@@ -118,7 +136,6 @@ export function parseScanConfig(raw: unknown, siteUrl?: string, maxPages = 500):
     auth: { ...defaults.auth, ...(data.auth || {}) },
     includePatterns: data.includePatterns ?? defaults.includePatterns,
     excludePatterns: data.excludePatterns ?? defaults.excludePatterns,
-    wcagLevels: data.wcagLevels ?? defaults.wcagLevels,
     pages: data.pages ?? defaults.pages,
     customHeaders: data.customHeaders ?? defaults.customHeaders
   }
@@ -129,7 +146,7 @@ export function parseScanConfig(raw: unknown, siteUrl?: string, maxPages = 500):
     parsed.scheduleTime = data.schedule.time ?? defaults.scheduleTime
   }
 
-  return parsed
+  return normalizeScanConfig(parsed)
 }
 
 export function headerRowsFromConfig(headers: Record<string, string>): HeaderRow[] {
@@ -147,21 +164,34 @@ export function configFromHeaderRows(rows: HeaderRow[]): Record<string, string> 
   return out
 }
 
-export function deriveScanType(config: ScanConfig): 'full' | 'accessibility_only' | 'qa_only' {
-  const hasA11y = config.wcagLevels.length > 0
-  const hasQa = config.checkLinks || config.checkSpelling || config.checkReadability || config.runPolicies
-  if (hasA11y && hasQa) return 'full'
-  if (hasA11y) return 'accessibility_only'
-  if (hasQa) return 'qa_only'
+/** Scans always run full accessibility + QA inventory. */
+export function deriveScanType(_config: ScanConfig): 'full' {
   return 'full'
 }
 
-export function serializeScanConfig(config: ScanConfig): Record<string, unknown> {
-  const { scheduleEnabled, scheduleFrequency, scheduleTime, ...raw } = config
+export function getBrowserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch {
+    return 'UTC'
+  }
+}
+
+export function serializeScanConfig(
+  config: ScanConfig,
+  options?: { scheduleTimezone?: string }
+): Record<string, unknown> {
+  const normalized = normalizeScanConfig(config)
+  const { scheduleEnabled, scheduleFrequency, scheduleTime, ...raw } = normalized
+  const scheduleTimezone = options?.scheduleTimezone ?? getBrowserTimezone()
   return {
     ...raw,
     schedule: scheduleEnabled
-      ? { frequency: scheduleFrequency, time: scheduleTime }
+      ? {
+          frequency: scheduleFrequency,
+          time: scheduleTime,
+          timezone: scheduleTimezone
+        }
       : null
   }
 }
@@ -233,28 +263,14 @@ export function scopeSummary(config: ScanConfig, pageCount?: number): string {
   return `${mode}${limit}`
 }
 
-export function accessibilitySummary(config: ScanConfig): string {
-  const levels = config.wcagLevels.join(', ') || 'None'
-  const bp = config.bestPractices ? 'Best practices on' : 'Best practices off'
-  return `WCAG ${config.wcagVersion} · ${levels} · ${bp}`
-}
-
-export function qaSummary(config: ScanConfig): string {
-  const parts: string[] = []
-  if (config.checkLinks) parts.push('Links')
-  if (config.checkSpelling) parts.push('Spelling')
-  if (config.checkReadability) parts.push('Readability')
-  if (config.runPolicies) parts.push('Policies')
-  return parts.length ? parts.join(', ') : 'None'
-}
-
 export function browserSummary(config: ScanConfig): string {
   const vp = config.viewport.charAt(0).toUpperCase() + config.viewport.slice(1)
   const waitLabels: Record<WaitStrategy, string> = {
     load: 'Load event',
     networkidle: 'Network idle',
     delay2s: 'Delay 2s',
-    delay5s: 'Delay 5s'
+    delay5s: 'Delay 10s',
+    delay10s: 'Delay 10s'
   }
   return `${vp} · ${waitLabels[config.waitStrategy]} · Concurrency ${config.concurrency}`
 }
@@ -270,12 +286,9 @@ export function authSummary(config: ScanConfig): string {
   return labels[config.auth.type]
 }
 
-export function notificationsSummary(config: ScanConfig): string {
-  const parts: string[] = []
-  if (config.notifyEmail) parts.push('Email on')
-  if (config.diffFromPrevious) parts.push('Diff on')
-  if (config.scheduleEnabled) parts.push(`Schedule: ${config.scheduleFrequency}`)
-  return parts.length ? parts.join(' · ') : 'Defaults'
+export function scheduleSummary(config: ScanConfig): string {
+  if (!config.scheduleEnabled) return 'Manual only'
+  return `${config.scheduleFrequency} · ${config.scheduleTime}`
 }
 
 export function advancedSummary(config: ScanConfig): string {

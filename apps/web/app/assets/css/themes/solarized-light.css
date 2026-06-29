@@ -1,0 +1,73 @@
+/**
+ * Solarized Light — Ethan Schoonover palette mapped to Nuxt UI semantic tokens.
+ * Applied when html has class `solarized-light` (@nuxtjs/color-mode).
+ */
+:root.solarized-light,
+.solarized-light {
+  /* Ethan Schoonover base palette */
+  --solarized-base03: #002b36;
+  --solarized-base02: #073642;
+  --solarized-base01: #586e75;
+  --solarized-base00: #657b83;
+  --solarized-base0: #839496;
+  --solarized-base1: #93a1a1;
+  --solarized-base2: #eee8d5;
+  --solarized-base3: #fdf6e3;
+  --solarized-yellow: #b58900;
+  --solarized-orange: #cb4b16;
+  --solarized-red: #dc322f;
+  --solarized-magenta: #d33682;
+  --solarized-violet: #6c71c4;
+  --solarized-blue: #268bd2;
+  --solarized-cyan: #2aa198;
+  --solarized-green: #859900;
+
+  --ui-primary: var(--solarized-base01);
+  --ui-secondary: var(--solarized-violet);
+  --ui-success: var(--solarized-green);
+  --ui-info: var(--solarized-blue);
+  --ui-warning: var(--solarized-yellow);
+  --ui-error: var(--solarized-red);
+
+  --ui-text-dimmed: var(--solarized-base1);
+  --ui-text-muted: var(--solarized-base0);
+  --ui-text-toned: var(--solarized-base00);
+  --ui-text: var(--solarized-base00);
+  --ui-text-highlighted: var(--solarized-base02);
+  --ui-text-inverted: var(--solarized-base3);
+
+  --ui-bg: var(--solarized-base3);
+  --ui-bg-muted: #f5efd8;
+  --ui-bg-elevated: var(--solarized-base2);
+  --ui-bg-accented: #e4dcc8;
+  --ui-bg-inverted: var(--solarized-base01);
+
+  --ui-border: #d6cdb8;
+  --ui-border-muted: #e8e0cc;
+  --ui-border-accented: var(--solarized-base1);
+  --ui-border-inverted: var(--solarized-base01);
+
+  /* App-specific tokens (see main.css :root) */
+  --color-background-secondary: rgba(7, 54, 66, 0.04);
+  --color-background-primary: rgba(7, 54, 66, 0.02);
+  --color-background-warning: rgba(181, 137, 0, 0.15);
+  --color-text-danger: var(--solarized-red);
+  --color-text-warning: var(--solarized-yellow);
+  --color-text-info: var(--solarized-blue);
+  --color-text-success: var(--solarized-green);
+  --color-text-tertiary: rgba(101, 123, 131, 0.55);
+  --color-text-secondary: rgba(101, 123, 131, 0.85);
+  --color-border-secondary: rgba(147, 161, 161, 0.35);
+  --color-border-tertiary: rgba(147, 161, 161, 0.2);
+  --color-chart-line: var(--solarized-green);
+  --color-chart-line-rgb: 133, 153, 0;
+  --color-action-solid: var(--solarized-base01);
+  --color-action-solid-text: var(--solarized-base3);
+}
+
+.solarized-light .auth-page {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(181, 137, 0, 0.06), transparent),
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(38, 139, 210, 0.05), transparent),
+    var(--ui-bg);
+}

@@ -1,6 +1,7 @@
 #!/bin/sh
-# Ensures PocketBase API rules allow authenticated app users to read/write
-# and enqueue scans. Runs on every PocketBase startup.
+# Ensures PocketBase API rules enforce organization + org-role scoping.
+# site_access join is deprecated (schema kept) — org membership + users.role govern access.
+# Runs on every PocketBase startup.
 set -e
 
 PB_URL="${PB_URL:-http://127.0.0.1:8090}"
@@ -54,56 +55,127 @@ patch_collection() {
   fi
 }
 
-AUTH_ONLY='{
-  "listRule": "@request.auth.id != \"\"",
-  "viewRule": "@request.auth.id != \"\"",
-  "createRule": "@request.auth.id != \"\"",
-  "updateRule": "@request.auth.id != \"\"",
-  "deleteRule": "@request.auth.id != \"\""
-}'
+# Org-wide read for any member; write for org admin only.
+ORG_WRITE='(@request.auth.role = \"admin\")'
 
-READ_ONLY='{
-  "listRule": "@request.auth.id != \"\"",
-  "viewRule": "@request.auth.id != \"\"",
+ORGANIZATIONS='{
+  "listRule": "@request.auth.id != \"\" && id = @request.auth.organization",
+  "viewRule": "@request.auth.id != \"\" && id = @request.auth.organization",
   "createRule": "",
-  "updateRule": "",
+  "updateRule": "@request.auth.role = \"admin\" && id = @request.auth.organization",
   "deleteRule": ""
 }'
 
-READ_UPDATE='{
-  "listRule": "@request.auth.id != \"\"",
-  "viewRule": "@request.auth.id != \"\"",
-  "createRule": "",
-  "updateRule": "@request.auth.id != \"\"",
-  "deleteRule": "@request.auth.id != \"\""
+SITES="{
+  \"listRule\": \"organization = @request.auth.organization\",
+  \"viewRule\": \"organization = @request.auth.organization\",
+  \"createRule\": \"@request.auth.id != \\\"\\\" && organization = @request.auth.organization && ${ORG_WRITE}\",
+  \"updateRule\": \"@request.auth.id != \\\"\\\" && organization = @request.auth.organization && ${ORG_WRITE}\",
+  \"deleteRule\": \"@request.auth.id != \\\"\\\" && organization = @request.auth.organization && ${ORG_WRITE}\"
+}"
+
+SCANS="{
+  \"listRule\": \"site.organization = @request.auth.organization\",
+  \"viewRule\": \"site.organization = @request.auth.organization\",
+  \"createRule\": \"\",
+  \"updateRule\": \"site.organization = @request.auth.organization && ${ORG_WRITE}\",
+  \"deleteRule\": \"site.organization = @request.auth.organization && ${ORG_WRITE}\"
+}"
+
+PAGES="{
+  \"listRule\": \"site.organization = @request.auth.organization\",
+  \"viewRule\": \"site.organization = @request.auth.organization\",
+  \"createRule\": \"\",
+  \"updateRule\": \"\",
+  \"deleteRule\": \"\"
+}"
+
+ISSUES="{
+  \"listRule\": \"scan.site.organization = @request.auth.organization\",
+  \"viewRule\": \"scan.site.organization = @request.auth.organization\",
+  \"createRule\": \"\",
+  \"updateRule\": \"scan.site.organization = @request.auth.organization && ${ORG_WRITE}\",
+  \"deleteRule\": \"scan.site.organization = @request.auth.organization && ${ORG_WRITE}\"
+}"
+
+QA_BROKEN="{
+  \"listRule\": \"scan.site.organization = @request.auth.organization\",
+  \"viewRule\": \"scan.site.organization = @request.auth.organization\",
+  \"createRule\": \"\",
+  \"updateRule\": \"scan.site.organization = @request.auth.organization && ${ORG_WRITE}\",
+  \"deleteRule\": \"\"
+}"
+
+QA_SPELLING="{
+  \"listRule\": \"scan.site.organization = @request.auth.organization\",
+  \"viewRule\": \"scan.site.organization = @request.auth.organization\",
+  \"createRule\": \"\",
+  \"updateRule\": \"scan.site.organization = @request.auth.organization && ${ORG_WRITE}\",
+  \"deleteRule\": \"\"
+}"
+
+QA_INVENTORY="{
+  \"listRule\": \"scan.site.organization = @request.auth.organization\",
+  \"viewRule\": \"scan.site.organization = @request.auth.organization\",
+  \"createRule\": \"\",
+  \"updateRule\": \"\",
+  \"deleteRule\": \"\"
+}"
+
+POLICIES="{
+  \"listRule\": \"site.organization = @request.auth.organization\",
+  \"viewRule\": \"site.organization = @request.auth.organization\",
+  \"createRule\": \"site.organization = @request.auth.organization && ${ORG_WRITE}\",
+  \"updateRule\": \"site.organization = @request.auth.organization && ${ORG_WRITE}\",
+  \"deleteRule\": \"site.organization = @request.auth.organization && ${ORG_WRITE}\"
+}"
+
+POLICY_MATCHES="{
+  \"listRule\": \"scan.site.organization = @request.auth.organization\",
+  \"viewRule\": \"scan.site.organization = @request.auth.organization\",
+  \"createRule\": \"\",
+  \"updateRule\": \"scan.site.organization = @request.auth.organization && ${ORG_WRITE}\",
+  \"deleteRule\": \"\"
+}"
+
+SCAN_QUEUE="{
+  \"listRule\": \"site.organization = @request.auth.organization\",
+  \"viewRule\": \"site.organization = @request.auth.organization\",
+  \"createRule\": \"site.organization = @request.auth.organization && ${ORG_WRITE}\",
+  \"updateRule\": \"site.organization = @request.auth.organization && ${ORG_WRITE}\",
+  \"deleteRule\": \"site.organization = @request.auth.organization && ${ORG_WRITE}\"
+}"
+
+SCAN_LOG_EVENTS="{
+  \"listRule\": \"site.organization = @request.auth.organization\",
+  \"viewRule\": \"site.organization = @request.auth.organization\",
+  \"createRule\": \"\",
+  \"updateRule\": \"\",
+  \"deleteRule\": \"\"
+}"
+
+# Deprecated: site_access is no longer used for authorization (kept for schema/data only).
+SITE_ACCESS_RULES='{
+  "listRule": "@request.auth.id != \"\" && (user = @request.auth.id || (@request.auth.role = \"admin\" && site.organization = @request.auth.organization))",
+  "viewRule": "@request.auth.id != \"\" && (user = @request.auth.id || (@request.auth.role = \"admin\" && site.organization = @request.auth.organization))",
+  "createRule": "@request.auth.role = \"admin\" && site.organization = @request.auth.organization",
+  "updateRule": "@request.auth.role = \"admin\" && site.organization = @request.auth.organization",
+  "deleteRule": "@request.auth.role = \"admin\" && site.organization = @request.auth.organization"
 }'
 
-READ_UPDATE_NO_DELETE='{
-  "listRule": "@request.auth.id != \"\"",
-  "viewRule": "@request.auth.id != \"\"",
-  "createRule": "",
-  "updateRule": "@request.auth.id != \"\"",
-  "deleteRule": ""
-}'
-
-SCAN_QUEUE='{
-  "listRule": "@request.auth.id != \"\"",
-  "viewRule": "@request.auth.id != \"\"",
-  "createRule": "@request.auth.id != \"\"",
-  "updateRule": "",
-  "deleteRule": ""
-}'
-
-patch_collection sites "$AUTH_ONLY"
-patch_collection scans "$READ_ONLY"
-patch_collection pages "$READ_ONLY"
-patch_collection accessibility_issues "$READ_UPDATE"
-patch_collection qa_broken_links "$READ_UPDATE_NO_DELETE"
-patch_collection qa_spelling "$READ_UPDATE_NO_DELETE"
-patch_collection qa_inventory "$READ_ONLY"
-patch_collection policies "$AUTH_ONLY"
-patch_collection policy_matches "$READ_UPDATE_NO_DELETE"
+patch_collection organizations "$ORGANIZATIONS"
+patch_collection sites "$SITES"
+patch_collection scans "$SCANS"
+patch_collection pages "$PAGES"
+patch_collection accessibility_issues "$ISSUES"
+patch_collection qa_broken_links "$QA_BROKEN"
+patch_collection qa_spelling "$QA_SPELLING"
+patch_collection qa_inventory "$QA_INVENTORY"
+patch_collection policies "$POLICIES"
+patch_collection policy_matches "$POLICY_MATCHES"
 patch_collection scan_queue "$SCAN_QUEUE"
+patch_collection scan_log_events "$SCAN_LOG_EVENTS"
+patch_collection site_access "$SITE_ACCESS_RULES"
 
 if collection_exists "scan_queue"; then
   curl -sf -X PATCH "$PB_URL/api/collections/scan_queue" \
@@ -113,6 +185,15 @@ if collection_exists "scan_queue"; then
       "fields+": [{
         "name": "target_url",
         "type": "url"
+      }]
+    }' > /dev/null || true
+  curl -sf -X PATCH "$PB_URL/api/collections/scan_queue" \
+    -H "Content-Type: application/json" \
+    -H "$AUTH" \
+    -d '{
+      "fields+": [{
+        "name": "raw_config",
+        "type": "json"
       }]
     }' > /dev/null || true
 fi

@@ -29,6 +29,8 @@ elif [ -n "$PB_ADMIN_EMAIL" ] && [ -n "$PB_ADMIN_PASSWORD" ]; then
   /pb/pocketbase superuser upsert "$PB_ADMIN_EMAIL" "$PB_ADMIN_PASSWORD" --dir=/pb/pb_data || true
 fi
 
+/pb/stamp-legacy-migrations.sh || true
+
 echo "Starting PocketBase..."
 /pb/pocketbase serve --dir=/pb/pb_data --http=0.0.0.0:8090 &
 PB_PID=$!
@@ -43,7 +45,13 @@ if [ ! -f /pb/pb_data/.seeded ]; then
   /pb/seed.sh && touch /pb/pb_data/.seeded
 fi
 
+/pb/patch-multi-tenant.sh || true
 /pb/patch-users.sh || true
+/pb/patch-scan-status.sh || true
+/pb/patch-site-schedule.sh || true
+/pb/patch-site-settings.sh || true
+/pb/patch-score-denominators.sh || true
+/pb/patch-scan-log-events.sh || true
 /pb/patch-rules.sh || true
 
 wait "$PB_PID"

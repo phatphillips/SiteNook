@@ -10,23 +10,24 @@ import {
   isValidHttpUrl,
   validateAuth,
   scopeSummary,
-  accessibilitySummary,
-  qaSummary,
   browserSummary,
   authSummary,
-  notificationsSummary,
+  scheduleSummary,
   advancedSummary,
   configFromHeaderRows,
   headerRowsFromConfig,
   getSiteHostname,
   deriveScanType,
   serializeScanConfig,
+  normalizeScanConfig,
   frequencyToCrawlSchedule
 } from '~/utils/scanConfig'
 
 const props = defineProps<{
   site: Site | null
   initialPageUrl?: string
+  /** When set (e.g. rescan from history), overrides site default_scan_config */
+  initialRawConfig?: Record<string, unknown> | null
 }>()
 
 const open = defineModel<boolean>('open', { default: false })
@@ -36,8 +37,8 @@ const emit = defineEmits<{
   scheduleSaved: []
 }>()
 
-const { user } = usePocketBase()
 const { queueScanWithConfig, saveDefaultScanConfig, saveSiteSchedule } = useSites()
+const { isSiteBusy } = useScans()
 const toast = useToast()
 const config = useRuntimeConfig()
 
@@ -62,27 +63,6 @@ const scanModeItems = [
   { label: 'Sitemap', value: 'sitemap', description: 'Parse sitemap.xml and scan discovered URLs' }
 ]
 
-const wcagVersionItems = [
-  { label: 'WCAG 2.0', value: '2.0' },
-  { label: 'WCAG 2.1', value: '2.1' },
-  { label: 'WCAG 2.2', value: '2.2' }
-]
-
-const wcagLevelItems = [
-  { label: 'Level A', value: 'A' },
-  { label: 'Level AA', value: 'AA' },
-  { label: 'Level AAA', value: 'AAA' }
-]
-
-const spellLanguageItems = [
-  { label: 'English (AU)', value: 'en-AU' },
-  { label: 'English (US)', value: 'en-US' },
-  { label: 'English (UK)', value: 'en-GB' },
-  { label: 'French', value: 'fr' },
-  { label: 'German', value: 'de' },
-  { label: 'Spanish', value: 'es' }
-]
-
 const viewportItems = [
   { label: 'Desktop (1280×800)', value: 'desktop' },
   { label: 'Tablet (768×1024)', value: 'tablet' },
@@ -93,7 +73,7 @@ const waitStrategyItems = [
   { label: 'Load event (fast)', value: 'load' },
   { label: 'Network idle (recommended)', value: 'networkidle' },
   { label: 'Fixed delay 2s', value: 'delay2s' },
-  { label: 'Fixed delay 5s', value: 'delay5s' }
+  { label: 'Fixed delay 10s (WAF-friendly)', value: 'delay10s' }
 ]
 
 const authTypeItems = [
@@ -121,26 +101,17 @@ const primaryLabel = computed(() =>
   configState.scheduleEnabled ? 'Save Schedule' : 'Start Scan'
 )
 
-const notifyEnabled = computed({
-  get: () => configState.notifyEmail !== null && configState.notifyEmail !== '',
-  set: (enabled: boolean) => {
-    configState.notifyEmail = enabled ? String(user.value?.email || '') : null
-  }
-})
-
 const accordionItems = computed(() => [
   { label: `Scope  ›  ${scopeSummary(configState, pageUrlCount.value)}`, value: 'scope', slot: 'scope' as const },
-  { label: `Accessibility  ›  ${accessibilitySummary(configState)}`, value: 'accessibility', slot: 'accessibility' as const },
-  { label: `Quality Assurance  ›  ${qaSummary(configState)}`, value: 'qa', slot: 'qa' as const },
+  { label: `Schedule  ›  ${scheduleSummary(configState)}`, value: 'schedule', slot: 'schedule' as const },
   { label: `Browser  ›  ${browserSummary(configState)}`, value: 'browser', slot: 'browser' as const },
   { label: `Authentication  ›  ${authSummary(configState)}`, value: 'auth', slot: 'auth' as const },
-  { label: `Notifications  ›  ${notificationsSummary(configState)}`, value: 'notifications', slot: 'notifications' as const },
   { label: `Advanced  ›  ${advancedSummary(configState)}`, value: 'advanced', slot: 'advanced' as const }
 ])
 
 function resetForm() {
   const site = props.site
-  const saved = site?.default_scan_config
+  const saved = props.initialRawConfig ?? site?.default_scan_config
   const base = parseScanConfig(saved, site?.url, maxPagesDefault)
 
   if (props.initialPageUrl) {
@@ -160,8 +131,6 @@ function resetForm() {
   sitemapCount.value = null
   sitemapError.value = ''
   authErrors.value = []
-
-  configState.notifyEmail = null
 }
 
 watch(open, (isOpen) => {
@@ -172,6 +141,10 @@ watch(open, (isOpen) => {
 })
 
 watch(() => props.site?.id, () => {
+  if (open.value) resetForm()
+})
+
+watch(() => props.initialRawConfig, () => {
   if (open.value) resetForm()
 })
 
@@ -200,13 +173,22 @@ function removeHeaderRow(index: number) {
   if (!headerRows.value.length) headerRows.value.push({ key: '', value: '' })
 }
 
+const { pb, awaitAuthReady } = usePocketBase()
+
 async function fetchSitemapPreview() {
   sitemapLoading.value = true
   sitemapError.value = ''
   sitemapCount.value = null
   try {
+    await awaitAuthReady()
+    const token = pb?.authStore.token
+    if (!token) {
+      sitemapError.value = 'Sign in again to preview the sitemap.'
+      return
+    }
     const result = await $fetch<{ count: number }>('/api/sitemap-preview', {
-      query: { url: configState.sitemapUrl }
+      query: { url: configState.sitemapUrl },
+      headers: { Authorization: token }
     })
     sitemapCount.value = result.count
   } catch (e: unknown) {
@@ -219,11 +201,11 @@ async function fetchSitemapPreview() {
 }
 
 function buildSubmitConfig(): ScanConfig {
-  return {
+  return normalizeScanConfig({
     ...configState,
     pages: parsePageUrls(pagesText.value),
     customHeaders: configFromHeaderRows(headerRows.value)
-  }
+  })
 }
 
 async function saveAsDefault() {
@@ -278,6 +260,14 @@ async function submit() {
       toast.add({ title: 'Schedule saved', description: 'Recurring scan schedule updated for this site.' })
       emit('scheduleSaved')
     } else {
+      if (isSiteBusy(props.site.id)) {
+        toast.add({
+          title: 'Site busy',
+          description: 'Wait for the current scan to finish or stop it from the Scans page.',
+          color: 'warning'
+        })
+        return
+      }
       await queueScanWithConfig(props.site.id, raw, deriveScanType(finalConfig))
       toast.add({ title: 'Scan queued', description: 'The scanner will begin shortly.' })
       emit('queued')
@@ -329,10 +319,10 @@ async function submit() {
                 </UFormField>
               </div>
               <UFormField label="Stay on this domain" help="Don't follow links to external domains">
-                <UToggle v-model="configState.stayOnDomain" />
+                <USwitch v-model="configState.stayOnDomain" />
               </UFormField>
               <UFormField label="Respect robots.txt" help="Skip pages disallowed by robots.txt">
-                <UToggle v-model="configState.respectRobots" />
+                <USwitch v-model="configState.respectRobots" />
               </UFormField>
             </div>
 
@@ -395,41 +385,22 @@ async function submit() {
           </div>
         </template>
 
-        <template #accessibility-body>
+        <template #schedule-body>
           <div class="space-y-4 pt-2">
-            <UFormField label="WCAG version">
-              <USelectMenu v-model="configState.wcagVersion" :items="wcagVersionItems" value-key="value" />
+            <UFormField
+              label="Schedule this scan"
+              help="Save as a recurring schedule for this site (replaces any existing schedule)."
+            >
+              <USwitch v-model="configState.scheduleEnabled" />
             </UFormField>
-            <UFormField label="Conformance levels" help="Uncheck levels you don't want to report on.">
-              <UCheckboxGroup
-                v-model="configState.wcagLevels"
-                :items="wcagLevelItems"
-                orientation="horizontal"
-              />
-            </UFormField>
-            <UFormField label="Include best practice checks" help="Flags common issues beyond strict WCAG (e.g. missing &lt;h1&gt;, duplicate IDs)">
-              <UToggle v-model="configState.bestPractices" />
-            </UFormField>
-          </div>
-        </template>
-
-        <template #qa-body>
-          <div class="space-y-4 pt-2">
-            <UFormField label="Check broken links" help="Verify all internal and external hyperlinks with HTTP HEAD requests">
-              <UToggle v-model="configState.checkLinks" />
-            </UFormField>
-            <UFormField label="Spell check" help="Check page text against the selected dictionary">
-              <UToggle v-model="configState.checkSpelling" />
-            </UFormField>
-            <UFormField v-if="configState.checkSpelling" label="Language">
-              <USelectMenu v-model="configState.spellLanguage" :items="spellLanguageItems" value-key="value" />
-            </UFormField>
-            <UFormField label="Readability scoring" help="Calculate Flesch-Kincaid readability score per page">
-              <UToggle v-model="configState.checkReadability" />
-            </UFormField>
-            <UFormField label="Run custom policies" help="Apply your saved keyword and regex policies during this scan">
-              <UToggle v-model="configState.runPolicies" />
-            </UFormField>
+            <div v-if="configState.scheduleEnabled" class="grid sm:grid-cols-2 gap-4">
+              <UFormField label="Frequency">
+                <USelectMenu v-model="configState.scheduleFrequency" :items="scheduleFrequencyItems" value-key="value" />
+              </UFormField>
+              <UFormField v-if="showScheduleTime" label="Run at">
+                <UInput v-model="configState.scheduleTime" type="time" />
+              </UFormField>
+            </div>
           </div>
         </template>
 
@@ -512,31 +483,6 @@ async function submit() {
           </div>
         </template>
 
-        <template #notifications-body>
-          <div class="space-y-4 pt-2">
-            <UFormField label="Email on completion" help="Send a summary report when this scan finishes">
-              <UToggle v-model="notifyEnabled" />
-            </UFormField>
-            <UFormField v-if="notifyEnabled" label="Email address">
-              <UInput v-model="configState.notifyEmail" type="email" />
-            </UFormField>
-            <UFormField label="Show diff from last scan" help="Highlight new issues introduced and issues fixed since the last scan">
-              <UToggle v-model="configState.diffFromPrevious" />
-            </UFormField>
-            <UFormField label="Schedule this scan" help="Save as a recurring schedule for this site (replaces any existing schedule)">
-              <UToggle v-model="configState.scheduleEnabled" />
-            </UFormField>
-            <div v-if="configState.scheduleEnabled" class="grid sm:grid-cols-2 gap-4">
-              <UFormField label="Frequency">
-                <USelectMenu v-model="configState.scheduleFrequency" :items="scheduleFrequencyItems" value-key="value" />
-              </UFormField>
-              <UFormField v-if="showScheduleTime" label="Run at">
-                <UInput v-model="configState.scheduleTime" type="time" />
-              </UFormField>
-            </div>
-          </div>
-        </template>
-
         <template #advanced-body>
           <div class="space-y-4 pt-2">
             <UFormField label="Custom HTTP headers" help="Sent with every Playwright request. Useful for feature flags, bypass tokens, or CDN authentication.">
@@ -568,7 +514,6 @@ async function submit() {
           <UButton label="Cancel" color="neutral" variant="outline" @click="open = false" />
           <UButton
             :label="primaryLabel"
-            color="primary"
             :loading="submitting"
             @click="submit"
           />
