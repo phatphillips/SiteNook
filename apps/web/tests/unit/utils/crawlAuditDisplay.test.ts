@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildSiteFileRows, issueForCrawlFile } from '../../../app/utils/crawlAuditDisplay'
-import type { SeoCrawlAudit, SeoIssue } from '../../../app/types/accessiq'
+import type { SeoCrawlAudit, SeoIssue } from '../../../app/types/sitenook'
 
 const sampleAudit: SeoCrawlAudit = {
   robots: {

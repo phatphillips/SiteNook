@@ -1,6 +1,6 @@
 import { createError } from 'h3'
 import type { RecordModel } from 'pocketbase'
-import type { Organization } from '~/types/accessiq'
+import type { Organization } from '~/types/sitenook'
 import { isOrgAdmin, requireUserOrganizationId } from '~/utils/orgAccess'
 import { buildStripeReturnUrl } from '../../utils/stripeReturnUrl'
 

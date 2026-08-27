@@ -1,10 +1,10 @@
-import type { AccessibilityIssue, Site } from '~/types/accessiq'
+import type { AccessibilityIssue, Site } from '~/types/sitenook'
 import {
   coerceReadabilityMethods,
   DEFAULT_READABILITY_METHODS,
   type ReadabilityMethodId
 } from '~/utils/readabilityMethods'
-import { isBestPracticeRule } from '~/utils/siteimproveScore'
+import { isAriaRule, isBestPracticeRule } from '~/utils/siteimproveScore'
 
 export type WcagVersionTarget = '2.0' | '2.1' | '2.2'
 export type WcagConformanceTarget = 'A' | 'AA' | 'AAA'
@@ -251,8 +251,9 @@ export function classifyIssueCategory(issue: {
   wcag_sc?: string
   element_type?: string
 }): IssueTargetCategory {
-  if (issue.wcag_sc) return 'wcag'
-  if (issue.rule_id.startsWith('aria-') || issue.element_type === 'aria') return 'aria'
+  // Align with score pools (ariaCategoryScore / bestPracticeCategoryScore):
+  // only axe best-practice aria-* rules belong to ARIA; WCAG aria-* stay wcag.
+  if (isAriaRule(issue.rule_id) && isBestPracticeRule(issue.rule_id)) return 'aria'
   if (isBestPracticeRule(issue.rule_id)) return 'best_practice'
   return 'wcag'
 }
@@ -359,6 +360,42 @@ export function accessibilityTargetRows(settings: SiteSettings): SiteTargetRow[]
       label: 'Page depth weighting',
       value: settings.depthWeightedScoring ? 'Shallow pages weighted higher' : 'All pages equal',
       enabled: settings.depthWeightedScoring
+    }
+  ]
+}
+
+export interface QaTargetBadgeItem {
+  id: string
+  icon: string
+  label: string
+  enabled: boolean
+}
+
+export function qaTargetBadgeItems(settings: SiteSettings): QaTargetBadgeItem[] {
+  return [
+    {
+      id: 'links',
+      icon: 'i-lucide-unlink',
+      label: 'Broken links',
+      enabled: settings.checkLinks
+    },
+    {
+      id: 'spelling',
+      icon: 'i-lucide-spell-check',
+      label: 'Spell check',
+      enabled: settings.checkSpelling
+    },
+    {
+      id: 'readability',
+      icon: 'i-lucide-book-open-text',
+      label: 'Readability',
+      enabled: settings.checkReadability
+    },
+    {
+      id: 'policies',
+      icon: 'i-lucide-shield-alert',
+      label: 'Custom policies',
+      enabled: settings.runPolicies
     }
   ]
 }

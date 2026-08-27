@@ -12,7 +12,7 @@ export async function checkLlmsTxt(origin: string): Promise<LlmsCheckResult> {
   const url = `${origin}/llms.txt`
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'AccessIQ-Scanner/1.0' }
+      headers: { 'User-Agent': 'SiteNook-Scanner/1.0' }
     })
     if (!res.ok) {
       return { url, found: false, status: res.status, valid: false, linkCount: 0, hasSummary: false }

@@ -1,5 +1,6 @@
 import { createError, getRouterParam, sendStream, setHeader } from 'h3'
 import { getPbAdmin } from '../../../utils/pbAdmin'
+import { pocketBaseFileUrl } from '../../../utils/pocketbaseFileUrl'
 
 export default defineEventHandler(async (event) => {
   const token = getRouterParam(event, 'token')?.trim()
@@ -22,7 +23,7 @@ export default defineEventHandler(async (event) => {
 
   let response: Response
   if (file) {
-    const fileUrl = pb.files.getUrl(doc, file)
+    const fileUrl = pocketBaseFileUrl(pb, doc, file)
     const adminToken = pb.authStore.token
     response = await fetch(fileUrl, {
       headers: adminToken ? { Authorization: adminToken } : {}

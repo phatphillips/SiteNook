@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Organization } from '~/types/accessiq'
+import type { Organization } from '~/types/sitenook'
 import type { PlanChangeAssessment, OrganizationPlanUsage } from '~/utils/planEligibility'
 import type { PaidCheckoutPlan } from '~/utils/planLimits'
 

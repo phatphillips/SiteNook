@@ -1,0 +1,34 @@
+{
+  "elementCount": 4,
+  "types": {
+    "heading": 1,
+    "paragraph": 2,
+    "table": 1
+  },
+  "items": [
+    {
+      "id": 1,
+      "type": "heading",
+      "page": 1,
+      "content": "SiteNook Fixture: Untagged Simple",
+      "bbox": [
+        72,
+        700,
+        480,
+        730
+      ]
+    },
+    {
+      "id": 2,
+      "type": "paragraph",
+      "page": 1,
+      "content": "This paragraph is intentionally untagged",
+      "bbox": [
+        72,
+        660,
+        520,
+        690
+      ]
+    }
+  ]
+}

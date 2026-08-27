@@ -2,7 +2,7 @@ export type ScanMode = 'full' | 'pages' | 'sitemap'
 export type AuthType = 'none' | 'basic' | 'form' | 'cookie' | 'bearer'
 export type ViewportPreset = 'desktop' | 'tablet' | 'mobile'
 export type WaitStrategy = 'load' | 'networkidle' | 'delay2s' | 'delay5s' | 'delay10s'
-export type ScheduleFrequency = 'hourly' | 'every_6h' | 'daily' | 'weekly' | 'monthly'
+export type ScheduleFrequency = 'hourly' | 'every_6h' | 'every_5d' | 'daily' | 'weekly' | 'monthly'
 
 export interface ScanAuthConfig {
   type: AuthType

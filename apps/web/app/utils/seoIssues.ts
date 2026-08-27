@@ -1,4 +1,4 @@
-import type { SeoIssue } from '~/types/accessiq'
+import type { SeoIssue } from '~/types/sitenook'
 import type { AffectedPageSummary } from '~/utils/affectedPages'
 import { dedupePageUrls } from '~/utils/pageUrl'
 

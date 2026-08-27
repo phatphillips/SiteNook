@@ -25,6 +25,22 @@ export default defineAppConfig({
         body: 'overflow-y-auto flex flex-col flex-1 min-h-0 scroll-region p-4 sm:p-6'
       }
     },
+    navigationMenu: {
+      slots: {
+        link: 'rounded-md px-3 py-2 font-medium text-muted before:rounded-md data-[active=true]:text-highlighted data-[active=true]:before:bg-[var(--sidebar-nav-active-bg)] data-[active=true]:before:opacity-100',
+        childLink: 'rounded-md px-3 py-2 font-medium text-muted before:rounded-md data-[active=true]:text-highlighted data-[active=true]:before:bg-[var(--sidebar-nav-active-bg)] data-[active=true]:before:opacity-100',
+        linkLeadingIcon: 'text-dimmed group-data-[active=true]:text-highlighted',
+        childLinkIcon: 'text-dimmed group-data-[active=true]:text-highlighted'
+      }
+    },
+    dashboardSidebar: {
+      slots: {
+        handle: ''
+      }
+    },
+    dashboardResizeHandle: {
+      base: 'sidebar-resize-handle hidden lg:block touch-none select-none cursor-ew-resize relative before:absolute before:inset-y-0 before:-left-4 before:-right-2 before:z-10'
+    },
     table: {
       slots: {
         root: 'relative w-full',

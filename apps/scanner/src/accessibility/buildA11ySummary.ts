@@ -4,6 +4,7 @@ import {
   type ElementTotals,
   type SiteimproveScoreIssue
 } from './siteimproveScore.js'
+import type { A11yCheckStats } from './a11yCheckStats.js'
 import type { SiteTargetSettings } from './siteTarget.js'
 import { normalizePageUrl } from '../search/urlKey.js'
 
@@ -69,6 +70,7 @@ export function buildA11ySummary(
   options: {
     pageCount: number
     elementTotals?: ElementTotals
+    checkStats?: A11yCheckStats | null
     includePagesBreakdown?: boolean
     siteTarget?: SiteTargetSettings
   }
@@ -152,7 +154,12 @@ export function buildA11ySummary(
       open_count: row.open_count,
       dismissed_count: row.dismissed_count,
       page_count: row.page_keys.size,
-      points_to_gain: pointsToGainIfAllResolvedForRule(scoreIssues, totals, row.rule_id),
+      points_to_gain: pointsToGainIfAllResolvedForRule(
+        scoreIssues,
+        totals,
+        row.rule_id,
+        options.checkStats
+      ),
       sample_page_urls: [...row.sample_urls],
       description: row.description,
       type: row.type,

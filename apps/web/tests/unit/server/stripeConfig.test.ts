@@ -23,6 +23,8 @@ describe('stripeConfig', () => {
       stripeTeamPriceId: ' price_team ',
       stripeStarterPriceId: ' price_starter ',
       stripeBusinessPriceId: ' price_business ',
+      stripeSelfhostPriceId: ' price_selfhost ',
+      stripeSelfhostAnnualPriceId: ' price_selfhost_annual ',
       stripeDevBypassToken: ' dev_bypass ',
       public: { stripePublishableKey: ' pk_test_abc ' }
     })
@@ -32,6 +34,8 @@ describe('stripeConfig', () => {
     expect(config.teamPriceId).toBe('price_team')
     expect(config.starterPriceId).toBe('price_starter')
     expect(config.businessPriceId).toBe('price_business')
+    expect(config.selfhostPriceId).toBe('price_selfhost')
+    expect(config.selfhostAnnualPriceId).toBe('price_selfhost_annual')
     expect(config.publishableKey).toBe('pk_test_abc')
     expect(config.devBypassToken).toBe('dev_bypass')
   })

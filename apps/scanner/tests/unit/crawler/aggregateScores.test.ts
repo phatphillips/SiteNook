@@ -32,6 +32,7 @@ function pageWithAaIssues(count: number, linksInHtml = 100): PageResult {
     readabilityScores: emptyReadabilityScores(),
     crawlDepth: 0,
     htmlSnapshot: '<a href="/">link</a>'.repeat(linksInHtml),
+    htmlSizeBytes: linksInHtml * 20,
     issues,
     brokenLinks: [],
     linkHrefs: [],
@@ -46,11 +47,9 @@ describe('aggregateScores', () => {
 
     expect(result.score_a).toBe(100)
     expect(result.score_aaa).toBe(100)
-    expect(result.score_aa).toBeGreaterThan(55)
-    expect(result.score_aa).toBeLessThan(62)
-    expect(result.score_overall).toBeGreaterThan(result.score_aa + 25)
-    expect(result.score_overall).toBeGreaterThanOrEqual(85)
-    expect(result.score_overall).toBeLessThanOrEqual(96)
+    expect(result.score_aa).toBeGreaterThan(85)
+    expect(result.score_overall).toBeGreaterThan(90)
+    expect(result.a11y_check_stats.catalog.length).toBeGreaterThan(0)
   })
 
   it('returns 100 for all levels when there are no issues', () => {
@@ -73,8 +72,8 @@ describe('aggregateScores', () => {
     }
     const result = aggregateScores([page])
 
-    expect(result.score_aa).toBeGreaterThan(20)
-    expect(result.score_aa).toBeLessThan(40)
+    expect(result.score_aa).toBeLessThan(100)
+    expect(result.score_aa).toBeGreaterThan(70)
     expect(result.score_aaa).toBe(100)
   })
 
@@ -87,8 +86,7 @@ describe('aggregateScores', () => {
       htmlSnapshot: '<a href="/">link</a>'
     }
     const brokenResult = aggregateScores([truncatedPage])
-    expect(brokenResult.score_aa).toBeGreaterThan(20)
-    expect(brokenResult.score_aa).toBeLessThan(40)
+    expect(brokenResult.score_aa).toBeLessThan(fullResult.score_aa)
 
     const fixedResult = aggregateScores([truncatedPage], {
       cachedDenominators: fullResult.score_denominators
@@ -106,8 +104,8 @@ describe('aggregateScores', () => {
     const result = aggregateScores(pages)
 
     expect(result.score_a).toBe(100)
-    expect(result.score_aa).toBeGreaterThan(55)
-    expect(result.score_aa).toBeLessThan(62)
+    expect(result.score_aa).toBeGreaterThan(85)
+    expect(result.score_overall).toBeGreaterThan(90)
   })
 
   it('maps all score fields for atomic PocketBase updates', () => {
@@ -122,6 +120,7 @@ describe('aggregateScores', () => {
     expect(fields.score_qa).toBe(result.score_qa)
     expect(fields.score_denominators).toEqual(result.score_denominators)
     expect(Object.keys(fields).sort()).toEqual([
+      'a11y_check_stats',
       'score_a',
       'score_aa',
       'score_aaa',

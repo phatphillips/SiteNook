@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Scan, Site } from '~/types/accessiq'
+import type { Scan, Site } from '~/types/sitenook'
 import { formatNextScanLabel } from '~/utils/scheduleNextRun'
 
 const props = defineProps<{

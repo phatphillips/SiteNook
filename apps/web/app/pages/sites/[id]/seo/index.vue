@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import type { OverviewDateRange } from '~/utils/overviewDateRange'
-import type { SeoIssue } from '~/types/accessiq'
+import type { Scan, SeoIssue } from '~/types/sitenook'
 import { filterScansByDateRange, overviewRangeBounds } from '~/utils/overviewDateRange'
-import { buildDailyTrendSeries, hasEnoughTrendData } from '~/utils/scanTrendSeries'
-import { siteSettingsForSite } from '~/utils/siteSettings'
-import { countSeoIssuesBySeverity, topRules } from '~/utils/seoIssues'
-import { ruleLabel } from '~/utils/seoRules'
-import { trafficLightFromCount } from '~/utils/trafficLightStatus'
+import { hydrateScanSeoIssueCounts } from '~/utils/hydrateScanSeoIssueCounts'
+import { buildSeoIssueBreakdown } from '~/utils/seoIssueBreakdown'
+import { compareTimestampsDesc } from '~/utils/sortTimestamps'
+import { scanTimestamp } from '~/utils/scanDisplay'
 
 definePageMeta({ middleware: ['auth', 'plan-feature'], planFeature: 'seoModule' })
 
 const route = useRoute()
 const siteId = computed(() => route.params.id as string)
-const { sites, activeSiteId } = useSites()
+const { activeSiteId } = useSites()
+const { pb } = usePocketBase()
 const {
   latestScan,
   scans,
@@ -22,81 +22,92 @@ const {
   technicalScore,
   contentScore,
   crawlabilityScore,
-  categoryCounts,
   crawlabilityIssues,
-  contentStructureIssueCount,
-  contentReadabilityIssueCount,
-  avgReadabilityScore
-} = useSEO(siteId)
+  avgReadabilityScore,
+  loading
+} = useSEO(siteId, { summary: false, parts: ['issues', 'pages'] })
 
 const dateRange = ref<OverviewDateRange>({ preset: 30 })
+const selectedCategoryId = ref<string | null>(null)
 const selectedIssue = ref<SeoIssue | null>(null)
 const drawerOpen = ref(false)
-
-const siteSettings = computed(() =>
-  siteSettingsForSite(sites.value.find(s => s.id === siteId.value))
-)
+const hydratedScans = ref<Scan[]>([])
 
 const rangeBounds = computed(() => overviewRangeBounds(dateRange.value))
 
+const overviewInitialLoading = computed(
+  () => loading.value && !latestScan.value
+)
+
+const technicalIssueCount = computed(() =>
+  openIssues.value.filter(issue =>
+    issue.category === 'technical' && issue.subcategory !== 'crawlability'
+  ).length
+)
+
+const contentIssueCount = computed(() =>
+  openIssues.value.filter(issue => issue.category === 'content').length
+)
+
+const breakdownRows = computed(() =>
+  buildSeoIssueBreakdown({
+    technical: technicalIssueCount.value,
+    crawlability: crawlabilityIssues.value.length,
+    content: contentIssueCount.value,
+    siteId: siteId.value
+  })
+)
+
 const filteredScans = computed(() =>
-  filterScansByDateRange(scans.value, rangeBounds.value)
+  filterScansByDateRange(hydratedScans.value, rangeBounds.value)
 )
 
-const seoTrend = computed(() =>
-  buildDailyTrendSeries(filteredScans.value, scan => scan.score_seo ?? null, rangeBounds.value)
+const completeScansInRange = computed(() =>
+  filteredScans.value
+    .filter(s => s.status === 'complete' || s.status === 'complete_with_errors')
+    .sort((a, b) => compareTimestampsDesc(scanTimestamp(a), scanTimestamp(b)))
 )
 
-const crawlabilityTrend = computed(() =>
-  buildDailyTrendSeries(
-    filteredScans.value,
-    scan => scan.score_seo_crawlability ?? null,
-    rangeBounds.value
+const scoreDelta = computed((): number | null => {
+  const current = completeScansInRange.value[0]
+  const previous = completeScansInRange.value[1]
+  if (!current || !previous) return null
+  if (current.score_seo == null || previous.score_seo == null) return null
+  return Math.round((current.score_seo - previous.score_seo) * 10) / 10
+})
+
+const technicalPreviewIssues = computed(() =>
+  openIssues.value.filter(issue =>
+    issue.category === 'technical' && issue.subcategory !== 'crawlability'
   )
 )
 
-const overviewCardUi = {
-  root: 'bg-elevated/25 border border-default',
-  body: 'p-4 sm:p-6'
-}
-
-const topTechnicalRules = computed(() =>
-  topRules(openIssues.value.filter(i =>
-    i.category === 'technical' && i.subcategory !== 'crawlability'
-  ))
-)
-const topContentRules = computed(() =>
-  topRules(openIssues.value.filter(i => i.category === 'content' && !['low-readability', 'thin-content'].includes(i.rule_id)))
+const contentPreviewIssues = computed(() =>
+  openIssues.value.filter(issue => issue.category === 'content')
 )
 
-const technicalSeverityCounts = computed(() =>
-  countSeoIssuesBySeverity(openIssues.value, i =>
-    i.category === 'technical' && i.subcategory !== 'crawlability'
-  )
+const showTechnicalPreview = computed(() =>
+  !selectedCategoryId.value || selectedCategoryId.value === 'technical'
+)
+const showCrawlabilityPreview = computed(() =>
+  !selectedCategoryId.value || selectedCategoryId.value === 'crawlability'
+)
+const showContentPreview = computed(() =>
+  !selectedCategoryId.value || selectedCategoryId.value === 'content'
 )
 
-const crawlabilitySeverityCounts = computed(() =>
-  countSeoIssuesBySeverity(openIssues.value, i => i.subcategory === 'crawlability')
-)
-
-const contentSeverityCounts = computed(() =>
-  countSeoIssuesBySeverity(openIssues.value, i => i.category === 'content')
-)
-
-function formatSeveritySummary(counts: { serious: number, moderate: number }): string {
-  const parts: string[] = []
-  if (counts.serious) parts.push(`${counts.serious} Serious`)
-  if (counts.moderate) parts.push(`${counts.moderate} Moderate`)
-  return parts.join(' · ') || 'No serious or moderate issues'
-}
-
-const showSeoTrend = computed(() => hasEnoughTrendData(seoTrend.value))
-const showCrawlabilityTrend = computed(() => hasEnoughTrendData(crawlabilityTrend.value))
-
-function openCrawlIssue(issue: SeoIssue) {
+function openIssue(issue: SeoIssue) {
   selectedIssue.value = issue
   drawerOpen.value = true
 }
+
+watch(scans, async (next) => {
+  if (!pb || !next.length) {
+    hydratedScans.value = next
+    return
+  }
+  hydratedScans.value = await hydrateScanSeoIssueCounts(pb, next)
+}, { immediate: true })
 
 onMounted(() => {
   activeSiteId.value = siteId.value
@@ -104,186 +115,86 @@ onMounted(() => {
 </script>
 
 <template>
-  <AppDashboardPanel>
+  <AppDashboardPanel full-width>
     <template #header>
       <DashboardPageNavbar title="SEO">
         <template #right><ScanTriggerButton :site-id="siteId" /></template>
       </DashboardPageNavbar>
     </template>
     <template #body>
-      <SitePageToolbar class="mb-2">
+      <SitePageToolbar class="mb-2" :show-site-selector="false">
         <template #trailing>
-          <div class="flex flex-col items-end gap-1">
-            <p class="text-xs text-muted self-stretch sm:self-end">
-              Score trend period — filters the charts below only
-            </p>
-            <AccessibilityOverviewDateRangeControls v-model="dateRange" />
-          </div>
+          <AccessibilityOverviewDateRangeControls v-model="dateRange" />
         </template>
       </SitePageToolbar>
 
-      <ScanStatusSummaryCard :scan="latestScan" title="SEO Data Source" class="mb-6" />
-
       <section class="mb-6">
-        <UCard :ui="overviewCardUi">
-          <div class="grid lg:grid-cols-2 gap-6 lg:gap-8 items-center">
-            <SiteTargetSummary variant="qa" :settings="siteSettings" />
-            <div class="flex flex-col items-center justify-center gap-4 min-h-[10rem]">
-              <AccessibilityScoreDonut
-                v-if="seoScore != null"
-                :score="seoScore"
-                label="SEO score"
-              />
-              <p v-else class="text-sm text-muted text-center max-w-xs">
-                SEO score appears after a completed scan with SEO checks enabled.
-              </p>
-              <div
-                v-if="technicalScore != null || contentScore != null || crawlabilityScore != null"
-                class="flex flex-wrap justify-center gap-6 text-sm"
-              >
-                <div v-if="technicalScore != null" class="text-center">
-                  <p class="text-muted">Technical</p>
-                  <p class="text-xl font-bold">{{ technicalScore }}</p>
-                  <NuxtLink
-                    :to="`/sites/${siteId}/seo/technical`"
-                    class="text-xs text-muted hover:text-primary mt-1 inline-block"
-                  >
-                    {{ formatSeveritySummary(technicalSeverityCounts) }}
-                  </NuxtLink>
-                </div>
-                <div v-if="crawlabilityScore != null" class="text-center">
-                  <p class="text-muted">Crawlability</p>
-                  <p class="text-xl font-bold">{{ crawlabilityScore }}</p>
-                  <NuxtLink
-                    :to="`/sites/${siteId}/seo/technical?subcategory=crawlability`"
-                    class="text-xs text-muted hover:text-primary mt-1 inline-block"
-                  >
-                    {{ formatSeveritySummary(crawlabilitySeverityCounts) }}
-                  </NuxtLink>
-                </div>
-                <div v-if="contentScore != null" class="text-center">
-                  <p class="text-muted">Content</p>
-                  <p class="text-xl font-bold">{{ contentScore }}</p>
-                  <NuxtLink
-                    :to="`/sites/${siteId}/seo/content`"
-                    class="text-xs text-muted hover:text-primary mt-1 inline-block"
-                  >
-                    {{ formatSeveritySummary(contentSeverityCounts) }}
-                  </NuxtLink>
-                </div>
-              </div>
-            </div>
-          </div>
-        </UCard>
-      </section>
-
-      <SiteFilesPanel
-        v-if="crawlAudit"
-        :audit="crawlAudit"
-        :issues="openIssues"
-        class="mb-6"
-        @view-issue="openCrawlIssue"
-      />
-
-      <section class="mb-6">
-        <AccessibilityMetricTrendCard
-          v-if="showSeoTrend"
-          title="SEO score trend"
-          :value="seoScore != null ? `${seoScore}%` : '—'"
-          subtitle="SEO score over selected period"
-          :points="seoTrend"
-          series-label="SEO"
-          :format-tooltip-value="(v: number) => `${Math.round(v)}%`"
-          :y-min="0"
-          :y-max="100"
+        <div v-if="overviewInitialLoading" class="flex justify-center py-12">
+          <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin" />
+        </div>
+        <SeoOverviewScoreSection
+          v-else-if="latestScan"
+          :site-id="siteId"
+          :scans="filteredScans"
+          :expand-scans="hydratedScans"
+          :seo-score="seoScore"
+          :score-delta="scoreDelta"
+          :range-bounds="rangeBounds"
+          :breakdown-rows="breakdownRows"
+          :selected-category-id="selectedCategoryId"
+          :technical-score="technicalScore"
+          :crawlability-score="crawlabilityScore"
+          :content-score="contentScore"
+          :avg-readability-score="avgReadabilityScore"
+          :preview-issues="openIssues"
+          @update:selected-category-id="selectedCategoryId = $event"
         />
         <UCard
           v-else
-          :ui="{ root: 'overflow-hidden bg-elevated/25', body: 'p-4 sm:p-5' }"
+          :ui="{ root: 'bg-elevated/25 border border-default', body: 'p-6' }"
         >
-          <p class="text-[11px] font-semibold uppercase tracking-wide text-muted mb-3">
-            SEO score trend
-          </p>
-          <p class="text-sm text-muted py-4 text-center">
-            Not enough scan data yet. Run more scans to see your score trend over time.
+          <p class="text-center text-sm text-muted">
+            Run a scan with SEO checks enabled to see SEO scores and issue breakdowns.
           </p>
         </UCard>
       </section>
 
-      <section v-if="showCrawlabilityTrend" class="mb-6">
-        <AccessibilityMetricTrendCard
-          title="Crawlability trend"
-          :value="crawlabilityScore != null ? `${crawlabilityScore}%` : '—'"
-          subtitle="robots.txt, sitemap, and llms.txt health"
-          :points="crawlabilityTrend"
-          series-label="Crawlability"
-          :format-tooltip-value="(v: number) => `${Math.round(v)}%`"
-          :y-min="0"
-          :y-max="100"
+      <section v-if="latestScan && !overviewInitialLoading" class="grid gap-4 xl:grid-cols-2">
+        <SeoIssuesPreviewTable
+          v-if="showTechnicalPreview"
+          title="Top technical issues"
+          :issues="technicalPreviewIssues"
+          :loading="loading"
+          :site-id="siteId"
+          :footer-to="`/sites/${siteId}/seo/technical`"
+          footer-label="View all technical issues"
+          empty-label="No technical SEO issues on the latest scan."
+          :class="{ 'xl:col-span-2': selectedCategoryId === 'technical' }"
+          @select="openIssue"
+        />
+        <div
+          v-if="showCrawlabilityPreview && crawlAudit"
+          :class="{ 'xl:col-span-2': selectedCategoryId === 'crawlability' }"
+        >
+          <SeoSiteFilesPanel
+            :audit="crawlAudit"
+            :issues="openIssues"
+            @view-issue="openIssue"
+          />
+        </div>
+        <SeoIssuesPreviewTable
+          v-if="showContentPreview"
+          title="Top content issues"
+          :issues="contentPreviewIssues"
+          :loading="loading"
+          :site-id="siteId"
+          :footer-to="`/sites/${siteId}/seo/content`"
+          footer-label="View all content issues"
+          empty-label="No content SEO issues on the latest scan."
+          :class="{ 'xl:col-span-2': selectedCategoryId === 'content' }"
+          @select="openIssue"
         />
       </section>
-
-      <div class="grid md:grid-cols-2 gap-4 mb-4">
-        <UCard :to="`/sites/${siteId}/seo/technical`" class="cursor-pointer">
-          <div class="flex items-center gap-2 mb-1">
-            <TrafficLightDot :status="trafficLightFromCount(categoryCounts.technical)" />
-            <p class="text-sm text-muted">Technical</p>
-          </div>
-          <p class="text-3xl font-bold">{{ categoryCounts.technical }}</p>
-          <ul v-if="topTechnicalRules.length" class="mt-3 text-xs text-muted space-y-1">
-            <li v-for="rule in topTechnicalRules" :key="rule" class="flex items-center gap-1.5">
-              <TrafficLightDot status="orange" />
-              {{ ruleLabel(rule) }}
-            </li>
-          </ul>
-        </UCard>
-        <UCard :to="`/sites/${siteId}/seo/content`" class="cursor-pointer">
-          <div class="flex items-center gap-2 mb-1">
-            <TrafficLightDot :status="trafficLightFromCount(categoryCounts.content)" />
-            <p class="text-sm text-muted">Content</p>
-          </div>
-          <p class="text-3xl font-bold">{{ categoryCounts.content }}</p>
-          <ul v-if="topContentRules.length" class="mt-3 text-xs text-muted space-y-1">
-            <li v-for="rule in topContentRules" :key="rule">{{ ruleLabel(rule) }}</li>
-          </ul>
-        </UCard>
-      </div>
-
-      <div class="grid md:grid-cols-2 gap-4 mb-4">
-        <UCard :to="`/sites/${siteId}/seo/technical?subcategory=crawlability`">
-          <div class="flex items-center gap-2 mb-1">
-            <TrafficLightDot :status="trafficLightFromCount(crawlabilityIssues.length)" />
-            <p class="text-sm text-muted">Crawlability issues</p>
-          </div>
-          <p class="text-2xl font-bold">{{ crawlabilityIssues.length }}</p>
-          <p class="text-xs text-muted mt-2">robots.txt, sitemap, llms.txt</p>
-        </UCard>
-        <UCard>
-          <div class="flex items-center gap-2 mb-1">
-            <TrafficLightDot :status="trafficLightFromCount(contentStructureIssueCount)" />
-            <p class="text-sm text-muted">Content structure</p>
-          </div>
-          <p class="text-2xl font-bold">{{ contentStructureIssueCount }}</p>
-          <p class="text-xs text-muted mt-2">Titles, headings, duplicates</p>
-        </UCard>
-        <UCard>
-          <div class="flex items-center gap-2 mb-1">
-            <TrafficLightDot :status="trafficLightFromCount(contentReadabilityIssueCount)" />
-            <p class="text-sm text-muted">Readability</p>
-          </div>
-          <p class="text-2xl font-bold">
-            {{ avgReadabilityScore != null ? `${avgReadabilityScore} Flesch` : '—' }}
-          </p>
-          <p class="text-xs text-muted mt-2">
-            {{ contentReadabilityIssueCount }} thin / low-readability issue(s)
-          </p>
-        </UCard>
-      </div>
-
-      <UCard :to="`/sites/${siteId}/seo/preview`" class="cursor-pointer">
-        <p class="text-sm text-muted">Search Result Preview</p>
-        <p class="text-lg font-medium">Preview titles and meta descriptions in Google-style snippets</p>
-      </UCard>
 
       <SeoIssueDetailDrawer
         :issue="selectedIssue"

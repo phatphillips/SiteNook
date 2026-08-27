@@ -1,11 +1,12 @@
 import type { H3Event } from 'h3'
 import { createError } from 'h3'
-import type { OrganizationPlan } from '~/types/accessiq'
+import type { OrganizationPlan } from '~/types/sitenook'
 import {
   isDevCheckoutBypassToken,
   parseCheckoutPlan,
   parsePaidCheckoutPlan
 } from '~/utils/stripeCheckout'
+import { parseTeamTrialFlag } from '~/utils/planPricing'
 import {
   buildPaidCheckoutUpsertInput,
   isStoredCheckoutSessionValid
@@ -18,6 +19,7 @@ import { isDevCheckoutBypassAllowed, readStripeServerConfig } from './stripeConf
 
 export type StartAccessIntent
   = | { kind: 'free' }
+    | { kind: 'team_trial' }
     | { kind: 'paid_checkout', sessionId: string, plan: OrganizationPlan }
     | { kind: 'dev_bypass', plan: OrganizationPlan }
     | { kind: 'deny', redirectTo: string, message: string }
@@ -28,6 +30,7 @@ export interface StartAccessGrant {
   checkoutSessionId?: string
   customerEmail?: string
   devBypass?: boolean
+  teamTrial?: boolean
 }
 
 export interface StartAccessDeny {
@@ -39,11 +42,12 @@ export interface StartAccessDeny {
 export type StartAccessResult = StartAccessGrant | StartAccessDeny
 
 export function parseStartAccessIntent(
-  query: { plan?: unknown, checkout?: unknown },
+  query: { plan?: unknown, checkout?: unknown, trial?: unknown },
   options: { devBypassAllowed: boolean }
 ): StartAccessIntent {
   const plan = parseCheckoutPlan(query.plan)
   const checkout = typeof query.checkout === 'string' ? query.checkout.trim() : ''
+  const wantsTrial = parseTeamTrialFlag(query.trial)
 
   if (plan === 'free') {
     return { kind: 'free' }
@@ -58,6 +62,20 @@ export function parseStartAccessIntent(
   }
 
   const paidPlan = parsePaidCheckoutPlan(plan)
+
+  if (wantsTrial) {
+    if (paidPlan === 'team' && !checkout) {
+      return { kind: 'team_trial' }
+    }
+    if (paidPlan && paidPlan !== 'team') {
+      return {
+        kind: 'deny',
+        redirectTo: '/pricing',
+        message: 'The free trial is available on the Team plan. Choose Team or subscribe to another plan.'
+      }
+    }
+  }
+
   if (isDevCheckoutBypassToken(checkout)) {
     if (!options.devBypassAllowed) {
       return {
@@ -112,7 +130,7 @@ export function parseStartAccessIntent(
 
 export async function resolveStartAccess(
   event: H3Event,
-  query: { plan?: unknown, checkout?: unknown }
+  query: { plan?: unknown, checkout?: unknown, trial?: unknown }
 ): Promise<StartAccessResult> {
   const config = useRuntimeConfig(event)
   const stripeConfig = readStripeServerConfig(config)
@@ -132,6 +150,10 @@ export async function resolveStartAccess(
 
   if (intent.kind === 'free') {
     return { allowed: true, plan: 'free' }
+  }
+
+  if (intent.kind === 'team_trial') {
+    return { allowed: true, plan: 'team', teamTrial: true }
   }
 
   if (intent.kind === 'dev_bypass') {
@@ -183,11 +205,13 @@ export async function resolveStartAccess(
 export async function assertSignupPlanAuthorized(
   event: H3Event,
   planValue: unknown,
-  checkoutSessionIdValue: unknown
-): Promise<{ plan: OrganizationPlan, checkoutSessionId?: string }> {
+  checkoutSessionIdValue: unknown,
+  trialValue?: unknown
+): Promise<{ plan: OrganizationPlan, checkoutSessionId?: string, teamTrial?: boolean }> {
   const access = await resolveStartAccess(event, {
     plan: planValue,
-    checkout: checkoutSessionIdValue
+    checkout: checkoutSessionIdValue,
+    trial: trialValue
   })
 
   if (!access.allowed) {
@@ -199,6 +223,7 @@ export async function assertSignupPlanAuthorized(
 
   return {
     plan: access.plan,
-    checkoutSessionId: access.checkoutSessionId
+    checkoutSessionId: access.checkoutSessionId,
+    teamTrial: access.teamTrial
   }
 }

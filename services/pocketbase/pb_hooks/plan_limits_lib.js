@@ -120,14 +120,16 @@ function enforceUserCreateLimit(e) {
 }
 
 function enforcePolicyCreateLimit(e) {
-  const siteId = normalizeOrgId(e.record.get('site'))
-  if (!siteId) return
-  let orgId = ''
-  try {
-    const site = e.app.findRecordById('sites', siteId)
-    orgId = normalizeOrgId(site.get('organization'))
-  } catch (_) {
-    return
+  let orgId = normalizeOrgId(e.record.get('organization'))
+  if (!orgId) {
+    const siteId = normalizeOrgId(e.record.get('site'))
+    if (!siteId) return
+    try {
+      const site = e.app.findRecordById('sites', siteId)
+      orgId = normalizeOrgId(site.get('organization'))
+    } catch (_) {
+      return
+    }
   }
   if (!orgId) return
   const limits = getLimitsForOrg(e.app, orgId)
@@ -144,6 +146,8 @@ function enforceOrganizationUpdateLock(e) {
     'stripe_customer_id',
     'stripe_subscription_id',
     'subscription_status',
+    'trial_ends_at',
+    'trial_nudge_stage',
     'status',
     'closed_at',
     'purge_scheduled_at',

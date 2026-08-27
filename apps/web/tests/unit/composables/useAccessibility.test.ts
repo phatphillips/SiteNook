@@ -5,7 +5,7 @@ import {
   formatPointsToGain,
   pickMostRecentScan
 } from '~/composables/useAccessibility'
-import type { AccessibilityIssue, Scan } from '~/types/accessiq'
+import type { AccessibilityIssue, Scan } from '~/types/sitenook'
 
 function issue(partial: Partial<AccessibilityIssue> & Pick<AccessibilityIssue, 'rule_id' | 'impact'>): AccessibilityIssue {
   return {

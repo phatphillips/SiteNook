@@ -55,7 +55,7 @@ describe('siteimproveScore (web)', () => {
     expect(withDismissed.overall).toBeGreaterThan(openOnly.overall)
   })
 
-  it('overall reflects clean levels at full weight when only one level fails', () => {
+  it('keeps overall high when only one AA rule fails in the catalog', () => {
     const issues = Array.from({ length: 18 }, () => ({
       rule_id: 'link-name',
       wcag_level: 'AA' as const,
@@ -76,12 +76,28 @@ describe('siteimproveScore (web)', () => {
 
     expect(scores.levelA).toBe(100)
     expect(scores.levelAAA).toBe(100)
-    expect(scores.levelAA).toBeGreaterThan(55)
-    expect(scores.levelAA).toBeLessThan(62)
-    // Overall should be pulled only toward the failing AA level, not collapse to levelAA
-    expect(scores.overall).toBeGreaterThan(scores.levelAA + 25)
-    expect(scores.overall).toBeGreaterThanOrEqual(85)
-    expect(scores.overall).toBeLessThanOrEqual(96)
+    expect(scores.levelAA).toBeGreaterThan(85)
+    expect(scores.overall).toBeGreaterThan(90)
+  })
+
+  it('does not collapse AA when scan catalog only lists failing rules', () => {
+    const issues = Array.from({ length: 40 }, () => ({
+      rule_id: 'color-contrast',
+      wcag_level: 'AA' as const,
+      status: 'open'
+    }))
+    const totals = {
+      image: 0, link: 0, form: 0, heading: 0, table: 0, media: 0, aria: 0, other: 0
+    }
+    const shortCatalogStats = {
+      catalog: [{ rule_id: 'color-contrast', wcag_level: 'AA' as const, is_best_practice: false }],
+      rules: { 'color-contrast': { failed: 40, passed: 0, incomplete: 0 } }
+    }
+    const scores = calculateSiteimproveScores(issues, totals, shortCatalogStats)
+    expect(scores.levelAA).toBeGreaterThan(80)
+    expect(scores.overall).toBeGreaterThan(85)
+    const gain = pointsToGainIfAllResolvedForRule(issues, totals, 'color-contrast', shortCatalogStats)
+    expect(gain).toBeLessThan(5)
   })
 
   it('produces level scores separate from overall', () => {

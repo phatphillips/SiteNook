@@ -1,6 +1,6 @@
 # Tables
 
-AccessIQ uses two table patterns in the Nuxt dashboard: **Nuxt UI `UTable`** (backed by TanStack Table) for rich data grids, and **hand-written `<table>` elements** where the layout is fixed or needs custom expand-row behavior. This document covers styling, search, column visibility toggling, and sorting as implemented today.
+SiteNook uses two table patterns in the Nuxt dashboard: **Nuxt UI `UTable`** (backed by TanStack Table) for rich data grids, and **hand-written `<table>` elements** where the layout is fixed or needs custom expand-row behavior. This document covers styling, search, column visibility toggling, and sorting as implemented today.
 
 ## Where tables appear
 

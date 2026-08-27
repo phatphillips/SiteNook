@@ -30,9 +30,9 @@ describe('checkSpelling', () => {
   })
 
   it('does not flag custom dictionary entries', () => {
-    addToDictionary('accessiq')
-    const results = checkSpelling('Welcome to AccessIQ monitoring platform.')
+    addToDictionary('sitenook')
+    const results = checkSpelling('Welcome to SiteNook monitoring platform.')
 
-    expect(results.find(r => r.word === 'accessiq')).toBeUndefined()
+    expect(results.find(r => r.word === 'sitenook')).toBeUndefined()
   })
 })

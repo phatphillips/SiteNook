@@ -10,6 +10,28 @@ export type TeamActivityAction =
   | 'invite_resent'
   | 'org_closed'
   | 'subscription_updated'
+  | 'analytics_connected'
+  | 'analytics_disconnected'
+  | 'analytics_reconnected'
+  | 'analytics_sync_needs_reconnect'
+
+const PROVIDER_LABELS: Record<string, string> = {
+  ga4: 'Google Analytics 4',
+  cloudflare: 'Cloudflare Web Analytics',
+  plausible: 'Plausible Analytics',
+  umami: 'Umami',
+  fathom: 'Fathom Analytics',
+  matomo: 'Matomo'
+}
+
+function providerLabel(details?: Record<string, unknown> | null): string {
+  const key = String(details?.provider ?? '').trim()
+  return PROVIDER_LABELS[key] || key || 'analytics provider'
+}
+
+function siteLabel(details?: Record<string, unknown> | null): string {
+  return String(details?.siteName ?? '').trim() || 'a site'
+}
 
 export interface TeamActivityLogEntry {
   id: string
@@ -62,6 +84,14 @@ export function getTeamActivityActionMeta(action: string): TeamActivityActionMet
       return { label: 'Organization closed', icon: 'i-lucide-building-2', color: 'error' }
     case 'subscription_updated':
       return { label: 'Subscription updated', icon: 'i-lucide-receipt', color: 'info' }
+    case 'analytics_connected':
+      return { label: 'Analytics connected', icon: 'i-lucide-link', color: 'primary' }
+    case 'analytics_disconnected':
+      return { label: 'Analytics disconnected', icon: 'i-lucide-unlink', color: 'neutral' }
+    case 'analytics_reconnected':
+      return { label: 'Analytics reconnected', icon: 'i-lucide-refresh-cw', color: 'info' }
+    case 'analytics_sync_needs_reconnect':
+      return { label: 'Analytics needs reconnect', icon: 'i-lucide-alert-triangle', color: 'warning' }
     default:
       return { label: 'Team update', icon: 'i-lucide-history', color: 'neutral' }
   }
@@ -95,6 +125,14 @@ export function formatTeamActivitySentence(entry: TeamActivityLogEntry): string 
       return `${actor} closed the organization`
     case 'subscription_updated':
       return `Subscription updated for the organization`
+    case 'analytics_connected':
+      return `${actor} connected ${providerLabel(entry.details)} to ${siteLabel(entry.details)}`
+    case 'analytics_disconnected':
+      return `${actor} disconnected ${providerLabel(entry.details)} from ${siteLabel(entry.details)}`
+    case 'analytics_reconnected':
+      return `${actor} reconnected ${providerLabel(entry.details)} on ${siteLabel(entry.details)}`
+    case 'analytics_sync_needs_reconnect':
+      return `${providerLabel(entry.details)} on ${siteLabel(entry.details)} needs to be reconnected`
     default:
       return `${actor} updated ${target}`
   }
@@ -136,6 +174,14 @@ export function formatTeamActivityDetail(entry: TeamActivityLogEntry): string | 
     case 'subscription_updated': {
       const status = String(entry.details?.status ?? '').trim()
       return status ? `Status: ${status}` : null
+    }
+    case 'analytics_connected':
+    case 'analytics_disconnected':
+    case 'analytics_reconnected':
+    case 'analytics_sync_needs_reconnect': {
+      const provider = providerLabel(entry.details)
+      const site = siteLabel(entry.details)
+      return `${provider} · ${site}`
     }
     default:
       return targetEmail ? `Email: ${targetEmail}` : null

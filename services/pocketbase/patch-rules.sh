@@ -122,12 +122,20 @@ QA_INVENTORY="{
   \"deleteRule\": \"\"
 }"
 
+QA_INVENTORY_REFS="{
+  \"listRule\": \"scan.site.organization = @request.auth.organization\",
+  \"viewRule\": \"scan.site.organization = @request.auth.organization\",
+  \"createRule\": \"\",
+  \"updateRule\": \"\",
+  \"deleteRule\": \"\"
+}"
+
 POLICIES="{
-  \"listRule\": \"site.organization = @request.auth.organization\",
-  \"viewRule\": \"site.organization = @request.auth.organization\",
-  \"createRule\": \"site.organization = @request.auth.organization && ${ORG_WRITE}\",
-  \"updateRule\": \"site.organization = @request.auth.organization && ${ORG_WRITE}\",
-  \"deleteRule\": \"site.organization = @request.auth.organization && ${ORG_WRITE}\"
+  \"listRule\": \"organization = @request.auth.organization\",
+  \"viewRule\": \"organization = @request.auth.organization\",
+  \"createRule\": \"organization = @request.auth.organization && ${ORG_WRITE} && (site = \\\"\\\" || site.organization = @request.auth.organization)\",
+  \"updateRule\": \"organization = @request.auth.organization && ${ORG_WRITE} && (site = \\\"\\\" || site.organization = @request.auth.organization)\",
+  \"deleteRule\": \"organization = @request.auth.organization && ${ORG_WRITE}\"
 }"
 
 POLICY_MATCHES="{
@@ -171,6 +179,7 @@ patch_collection accessibility_issues "$ISSUES"
 patch_collection qa_broken_links "$QA_BROKEN"
 patch_collection qa_spelling "$QA_SPELLING"
 patch_collection qa_inventory "$QA_INVENTORY"
+patch_collection qa_inventory_refs "$QA_INVENTORY_REFS"
 patch_collection policies "$POLICIES"
 patch_collection policy_matches "$POLICY_MATCHES"
 patch_collection scan_queue "$SCAN_QUEUE"

@@ -16,8 +16,8 @@ export function buildDefaultSiteScanConfig(
   return serializeScanConfig(
     {
       ...config,
-      scheduleEnabled: true,
-      scheduleFrequency: 'daily',
+      scheduleEnabled: false,
+      scheduleFrequency: 'every_5d',
       scheduleTime: '14:00'
     },
     { scheduleTimezone: tz }

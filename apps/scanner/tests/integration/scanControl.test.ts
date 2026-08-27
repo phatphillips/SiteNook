@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import PocketBase from 'pocketbase'
 
 const PB_URL = process.env.PB_TEST_URL || 'http://localhost:8091'
-const USER_EMAIL = process.env.PB_TEST_USER_EMAIL || 'test-user@accessiq.test'
+const USER_EMAIL = process.env.PB_TEST_USER_EMAIL || 'test-user@sitenook.test'
 const USER_PASSWORD = process.env.PB_TEST_USER_PASSWORD || 'test-user-password-123'
 
 describe('scan control (integration)', () => {

@@ -1,4 +1,4 @@
-import type { PdfIssue } from '~/types/accessiq'
+import type { PdfIssue } from '~/types/sitenook'
 
 export interface PdfIssueGuidance {
   summary: string
@@ -72,10 +72,11 @@ const GUIDANCE: Record<string, PdfIssueGuidance> = {
 }
 
 const DEFAULT_GUIDANCE: PdfIssueGuidance = {
-  summary: 'This PDF/UA validation rule failed. Review the technical description and update the document structure or metadata.',
+  summary:
+    'This PDF/UA validation rule failed. Review the technical description and update the document structure or metadata. Prefer SiteNook’s assisted fix, then re-validate — assisted tagging is not certified PDF/UA.',
   fixSteps: [
-    'Open the PDF in an accessibility checker (e.g. Adobe Acrobat Preflight, PAC).',
-    'Fix the reported structure or metadata issue in the tag tree or document properties.',
+    'Use PDF Inspector → Generate assisted fix, then review before/after on Compare.',
+    'Finish remaining issues in Acrobat/PAC if the assisted fix still fails critical rules.',
     'Re-validate the PDF after saving.'
   ],
   learnMoreUrl: 'https://www.pdfa.org/resource/pdf-ua-1-in-a-nutshell/'

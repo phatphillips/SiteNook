@@ -1,4 +1,4 @@
-import type { OrganizationPlan } from '~/types/accessiq'
+import type { OrganizationPlan } from '~/types/sitenook'
 
 export const ORGANIZATION_PLANS: OrganizationPlan[] = [
   'free',
@@ -32,7 +32,7 @@ const UNLIMITED_MEMBERS = 999_999
 export const PLAN_LIMITS: Record<OrganizationPlan, PlanLimitSet> = {
   free: {
     maxSites: 1,
-    maxPagesPerScan: 100,
+    maxPagesPerScan: 20,
     maxTeamMembers: 2,
     scanHistoryDays: 7,
     scheduledScans: false,

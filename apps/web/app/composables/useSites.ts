@@ -1,5 +1,5 @@
 import { createSharedComposable } from '@vueuse/core'
-import type { Site } from '~/types/accessiq'
+import type { Site } from '~/types/sitenook'
 import { requireUserOrganizationId } from '~/utils/orgAccess'
 import { buildDefaultSiteScanConfig, buildDefaultSiteSettingsRecord } from '~/utils/defaultSiteScan'
 import {
@@ -10,27 +10,51 @@ import {
   serializeScanConfig
 } from '~/utils/scanConfig'
 import {
-  computeScheduleNextRunAt,
   computeScheduleNextRunAfterManualFullScan,
+  computeScheduleNextRunWithMinGap,
+  CRAWL_SCHEDULE_AUTO,
   getScheduleTimeFromConfig,
   getScheduleTimezoneFromConfig
 } from '~/utils/scheduleNextRun'
 import {
   describePlanLimitExceeded,
   getPlanLimits,
-  normalizeOrganizationPlan,
-  planHasFeature
+  normalizeOrganizationPlan
 } from '~/utils/planLimits'
 import { queuePriorityForPlan } from '~/utils/planQueuePriority'
+
+export const ALL_SITES = '__all__' as const
 
 function _useSites() {
   const { pb, requireUser, awaitAuthReady, syncAuth } = usePocketBase()
   const { organization } = useTenantOrg()
   const sites = ref<Site[]>([])
-  const activeSiteId = useState<string | null>('active-site-id', () => null)
+  const workspaceSiteId = useState<string>('workspace-site-id', () => ALL_SITES)
   const loading = ref(false)
 
-  const activeSite = computed(() => sites.value.find(s => s.id === activeSiteId.value) || sites.value[0] || null)
+  const isAllSites = computed(() => workspaceSiteId.value === ALL_SITES)
+
+  const activeSiteId = computed({
+    get(): string | null {
+      return isAllSites.value ? null : workspaceSiteId.value
+    },
+    set(value: string | null) {
+      workspaceSiteId.value = value ?? ALL_SITES
+    }
+  })
+
+  const activeSite = computed(() => {
+    if (isAllSites.value) return null
+    return sites.value.find(s => s.id === workspaceSiteId.value) || sites.value[0] || null
+  })
+
+  function selectAllSites() {
+    workspaceSiteId.value = ALL_SITES
+  }
+
+  function selectSite(siteId: string) {
+    workspaceSiteId.value = siteId
+  }
 
   function patchSiteInList(record: Site) {
     const idx = sites.value.findIndex(s => s.id === record.id)
@@ -73,13 +97,23 @@ function _useSites() {
   async function fetchSites() {
     await awaitAuthReady()
     syncAuth()
-    requireUser()
+    try {
+      requireUser()
+    } catch {
+      return
+    }
     loading.value = true
     try {
       const fetched = await pb.collection('sites').getFullList({ sort: 'name' }) as unknown as Site[]
       sites.value = mergeFetchedSites(fetched)
-      if (!activeSiteId.value && sites.value.length) {
-        activeSiteId.value = sites.value[0]!.id
+
+      if (isAllSites.value) {
+        return
+      }
+
+      const selectedExists = sites.value.some(site => site.id === workspaceSiteId.value)
+      if (!selectedExists) {
+        workspaceSiteId.value = sites.value[0]?.id ?? ALL_SITES
       }
     } finally {
       loading.value = false
@@ -101,24 +135,14 @@ function _useSites() {
 
     const timeZone = getBrowserTimezone()
     const defaultScanConfig = buildDefaultSiteScanConfig(data.url, timeZone)
-    const now = new Date()
-    const crawlSchedule = limits.scheduledScans ? 'daily' : 'manual'
-    const scheduleNextRunAt = limits.scheduledScans
-      ? computeScheduleNextRunAt('daily', {
-          scheduleTime: '14:00',
-          from: now,
-          now,
-          timeZone
-        })
-      : null
     const record = await pb.collection('sites').create({
       ...data,
       organization: organizationId,
       owner: currentUser.id,
-      crawl_schedule: crawlSchedule,
+      crawl_schedule: CRAWL_SCHEDULE_AUTO,
       default_scan_config: defaultScanConfig,
       site_settings: buildDefaultSiteSettingsRecord(),
-      schedule_next_run_at: scheduleNextRunAt,
+      schedule_next_run_at: null,
       schedule_last_enqueued_at: null
     })
     await pb.collection('site_access').create({
@@ -127,8 +151,49 @@ function _useSites() {
       role: 'owner'
     })
     await fetchSites()
-    activeSiteId.value = record.id
+    selectSite(record.id)
     return record
+  }
+
+  async function createSiteAndQueueScan(
+    data: { name: string, url: string, description?: string },
+    rawConfig: Record<string, unknown>,
+    scanType: string
+  ) {
+    const record = await createSite(data)
+    await pb.collection('sites').update(record.id, {
+      default_scan_config: rawConfig
+    })
+    await queueScanWithConfig(record.id, rawConfig, scanType)
+    await fetchSites()
+    return record
+  }
+
+  async function bumpScheduleAfterFullScan(siteId: string) {
+    const site = sites.value.find(s => s.id === siteId)
+    if (!site?.crawl_schedule || site.crawl_schedule === 'manual') return
+
+    const now = new Date()
+    const scheduleTime = getScheduleTimeFromConfig(site.default_scan_config)
+    const timeZone = getScheduleTimezoneFromConfig(site.default_scan_config, getBrowserTimezone())
+    const scheduleNextRunAt = computeScheduleNextRunWithMinGap(
+      site.crawl_schedule,
+      {
+        scheduleTime,
+        from: now,
+        now,
+        timeZone
+      },
+      now
+    ) ?? computeScheduleNextRunAfterManualFullScan(site.crawl_schedule, {
+      scheduleTime,
+      now,
+      timeZone
+    })
+    if (scheduleNextRunAt) {
+      await pb.collection('sites').update(siteId, { schedule_next_run_at: scheduleNextRunAt })
+      site.schedule_next_run_at = scheduleNextRunAt
+    }
   }
 
   async function queueScanWithConfig(
@@ -148,21 +213,7 @@ function _useSites() {
     })
 
     if (scanType === 'full') {
-      const site = sites.value.find(s => s.id === siteId)
-      if (site?.crawl_schedule && site.crawl_schedule !== 'manual') {
-        const now = new Date()
-        const scheduleTime = getScheduleTimeFromConfig(site.default_scan_config)
-        const timeZone = getScheduleTimezoneFromConfig(site.default_scan_config, getBrowserTimezone())
-        const scheduleNextRunAt = computeScheduleNextRunAfterManualFullScan(site.crawl_schedule, {
-          scheduleTime,
-          now,
-          timeZone
-        })
-        if (scheduleNextRunAt) {
-          await pb.collection('sites').update(siteId, { schedule_next_run_at: scheduleNextRunAt })
-          site.schedule_next_run_at = scheduleNextRunAt
-        }
-      }
+      await bumpScheduleAfterFullScan(siteId)
     }
   }
 
@@ -180,19 +231,14 @@ function _useSites() {
     rawConfig: Record<string, unknown>
   ) {
     requireUser()
-    const plan = currentOrgPlan()
-    if (crawlSchedule !== 'manual' && !planHasFeature(plan, 'scheduledScans')) {
-      throw new Error(describePlanLimitExceeded('scheduledScans', plan))
-    }
     const now = new Date()
     const scheduleTime = getScheduleTimeFromConfig(rawConfig)
     const timeZone = getScheduleTimezoneFromConfig(rawConfig, getBrowserTimezone())
-    const scheduleNextRunAt = computeScheduleNextRunAt(crawlSchedule, {
-      scheduleTime,
-      from: now,
-      now,
-      timeZone
-    })
+    const scheduleNextRunAt = computeScheduleNextRunWithMinGap(
+      crawlSchedule,
+      { scheduleTime, from: now, now, timeZone },
+      now
+    )
     await pb.collection('sites').update(siteId, {
       crawl_schedule: crawlSchedule,
       default_scan_config: rawConfig,
@@ -213,7 +259,7 @@ function _useSites() {
   }
 
   /** @deprecated Use ScanConfigModal + queueScanWithConfig */
-  async function triggerScan(siteId?: string, scanType = 'full', targetUrl?: string) {
+  async function triggerScan(siteId?: string, _scanType = 'full', targetUrl?: string) {
     const id = siteId || activeSiteId.value
     if (!id) throw new Error('No site selected')
 
@@ -233,8 +279,8 @@ function _useSites() {
 
     await Promise.all(siteIds.map(id => pb.collection('sites').delete(id)))
 
-    if (activeSiteId.value && siteIds.includes(activeSiteId.value)) {
-      activeSiteId.value = null
+    if (!isAllSites.value && activeSiteId.value && siteIds.includes(activeSiteId.value)) {
+      selectAllSites()
     }
 
     await fetchSites()
@@ -285,19 +331,24 @@ function _useSites() {
 
   function resetSession() {
     sites.value = []
-    activeSiteId.value = null
+    workspaceSiteId.value = ALL_SITES
     loading.value = false
   }
 
   return {
+    ALL_SITES,
     sites,
     activeSite,
     activeSiteId,
+    isAllSites,
     loading,
     resetSession,
+    selectAllSites,
+    selectSite,
     fetchSites,
     refreshSite,
     createSite,
+    createSiteAndQueueScan,
     updateSite,
     saveSiteSettings,
     deleteSites,

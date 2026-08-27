@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ActiveScanRow } from '~/types/accessiq'
+import type { ActiveScanRow } from '~/types/sitenook'
 import { crawlLogLevelBadgeClass, crawlLogLevelClass } from '~/utils/crawlLog'
 import { summarizeCrawlLogErrors } from '~/utils/crawlLog'
 

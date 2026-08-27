@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ActiveScanRow, Scan, Site } from '~/types/accessiq'
+import type { ActiveScanRow, Scan, Site } from '~/types/sitenook'
 
 definePageMeta({ middleware: 'auth' })
 

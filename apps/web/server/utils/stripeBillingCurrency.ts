@@ -1,5 +1,5 @@
 import type Stripe from 'stripe'
-import type { Organization } from '~/types/accessiq'
+import type { Organization } from '~/types/sitenook'
 
 export async function resolveOrganizationBillingCurrency(
   stripe: Stripe,

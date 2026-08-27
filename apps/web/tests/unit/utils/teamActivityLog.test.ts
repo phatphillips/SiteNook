@@ -61,4 +61,18 @@ describe('teamActivityLog', () => {
     expect(getTeamActivityActionMeta(entry.action).label).toBe('Billing contact added')
     expect(formatTeamActivityTimestamp(entry)).toContain('Jun')
   })
+
+  it('formats analytics connect activity', () => {
+    const entry = {
+      id: '5',
+      action: 'analytics_connected' as const,
+      created: '2026-06-12T15:42:00.000Z',
+      actor: { id: 'a1', name: 'Heather' },
+      details: { provider: 'plausible', siteId: 's1', siteName: 'Marketing site' }
+    }
+    expect(formatTeamActivitySentence(entry)).toContain('Plausible Analytics')
+    expect(formatTeamActivitySentence(entry)).toContain('Marketing site')
+    expect(getTeamActivityActionMeta(entry.action).label).toBe('Analytics connected')
+    expect(formatTeamActivityDetail(entry)).toContain('Plausible')
+  })
 })

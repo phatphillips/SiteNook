@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { format, parseISO, isValid } from 'date-fns'
-import type { OverviewDateRange, OverviewRangePreset } from '~/utils/overviewDateRange'
+import type { OverviewDateRange } from '~/utils/overviewDateRange'
 
 const range = defineModel<OverviewDateRange>({ required: true })
 
@@ -47,7 +47,7 @@ watch(
 <template>
   <div class="flex flex-wrap items-center justify-end gap-2">
     <div
-      class="inline-flex h-8 p-0.5 rounded-lg bg-default dark:bg-elevated/50 border border-default"
+      class="a11y-segmented-control"
       role="group"
       aria-label="Trend period"
     >
@@ -55,10 +55,8 @@ watch(
         v-for="item in presetItems"
         :key="item.value"
         type="button"
-        class="h-7 px-3 rounded-md text-sm font-medium transition-colors"
-        :class="range.preset === item.value
-          ? 'bg-white dark:bg-white text-[rgb(10_10_10)] shadow-sm'
-          : 'text-muted hover:text-default'"
+        class="a11y-segmented-control__btn"
+        :aria-pressed="range.preset === item.value"
         @click="selectPreset(item.value)"
       >
         {{ item.label }}

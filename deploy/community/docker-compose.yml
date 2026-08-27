@@ -1,0 +1,90 @@
+# SiteNook Community / Self-host appliance
+# Pulls pre-built images from GHCR. Application source stays private.
+#
+# Typesense is an optional upstream dependency (official image). Search is OFF by default
+# so SiteNook images do not redistribute Typesense binaries (GPL consideration).
+
+name: sitenook-community
+
+services:
+  nginx:
+    image: ${SITENOOK_NGINX_IMAGE:-ghcr.io/phatphillips/sitenook-nginx:latest}
+    ports:
+      - "${SITENOOK_HTTP_PORT:-80}:80"
+    depends_on:
+      web:
+        condition: service_started
+      pocketbase:
+        condition: service_healthy
+
+  web:
+    image: ${SITENOOK_WEB_IMAGE:-ghcr.io/phatphillips/sitenook-web:latest}
+    environment:
+      NUXT_PUBLIC_POCKETBASE_URL: /api
+      NUXT_PUBLIC_APP_URL: ${NUXT_PUBLIC_APP_URL:-http://localhost}
+      NUXT_PUBLIC_APP_DOMAIN: ${NUXT_PUBLIC_APP_DOMAIN:-localhost}
+      NUXT_POCKETBASE_URL: http://pocketbase:8090
+      NUXT_PB_ADMIN_EMAIL: ${PB_ADMIN_EMAIL}
+      NUXT_PB_ADMIN_PASSWORD: ${PB_ADMIN_PASSWORD}
+      SITENOOK_DEPLOYMENT_MODE: appliance
+      SITENOOK_LICENCE_KEY: ${SITENOOK_LICENCE_KEY:-${ACCESSIQ_LICENCE_KEY:-}}
+      SITENOOK_LICENCE_SERVER_URL: ${SITENOOK_LICENCE_SERVER_URL:-${ACCESSIQ_LICENCE_SERVER_URL:-}}
+      SITENOOK_INSTANCE_DOMAIN: ${SITENOOK_INSTANCE_DOMAIN:-${ACCESSIQ_INSTANCE_DOMAIN:-localhost}}
+      TYPESENSE_ENABLED: ${TYPESENSE_ENABLED:-0}
+      TYPESENSE_URL: ${TYPESENSE_URL:-http://typesense:8108}
+      TYPESENSE_API_KEY: ${TYPESENSE_API_KEY:-}
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+
+  scanner:
+    image: ${SITENOOK_SCANNER_IMAGE:-ghcr.io/phatphillips/sitenook-scanner:latest}
+    environment:
+      POCKETBASE_URL: http://pocketbase:8090
+      POCKETBASE_ADMIN_EMAIL: ${PB_ADMIN_EMAIL}
+      POCKETBASE_ADMIN_PASSWORD: ${PB_ADMIN_PASSWORD}
+      SITENOOK_DEPLOYMENT_MODE: appliance
+      SITENOOK_LICENCE_KEY: ${SITENOOK_LICENCE_KEY:-${ACCESSIQ_LICENCE_KEY:-}}
+      SITENOOK_LICENCE_SERVER_URL: ${SITENOOK_LICENCE_SERVER_URL:-${ACCESSIQ_LICENCE_SERVER_URL:-}}
+      SITENOOK_INSTANCE_DOMAIN: ${SITENOOK_INSTANCE_DOMAIN:-${ACCESSIQ_INSTANCE_DOMAIN:-localhost}}
+      MAX_PAGES_PER_SCAN: ${SCANNER_MAX_PAGES:-500}
+      TYPESENSE_ENABLED: ${TYPESENSE_ENABLED:-0}
+      TYPESENSE_URL: ${TYPESENSE_URL:-http://typesense:8108}
+      TYPESENSE_API_KEY: ${TYPESENSE_API_KEY:-}
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    shm_size: "2gb"
+    restart: unless-stopped
+
+  pocketbase:
+    image: ${SITENOOK_POCKETBASE_IMAGE:-ghcr.io/phatphillips/sitenook-pocketbase:latest}
+    environment:
+      PB_ADMIN_EMAIL: ${PB_ADMIN_EMAIL}
+      PB_ADMIN_PASSWORD: ${PB_ADMIN_PASSWORD}
+      APP_USER_EMAIL: ${APP_USER_EMAIL:-}
+      APP_USER_PASSWORD: ${APP_USER_PASSWORD:-}
+    volumes:
+      - pb_data:/pb/pb_data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8090/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  # Optional — official Typesense image (not bundled into SiteNook images).
+  typesense:
+    profiles: ["search"]
+    image: typesense/typesense:27.1
+    restart: unless-stopped
+    volumes:
+      - typesense_data:/data
+    environment:
+      TYPESENSE_DATA_DIR: /data
+      TYPESENSE_API_KEY: ${TYPESENSE_API_KEY:-changeme}
+    command: '--data-dir /data --enable-cors'
+
+volumes:
+  pb_data:
+  typesense_data:

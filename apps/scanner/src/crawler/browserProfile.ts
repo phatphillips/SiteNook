@@ -9,16 +9,27 @@ export const DEFAULT_BROWSER_LOCALE = process.env.SCANNER_BROWSER_LOCALE || 'en-
 export const DEFAULT_BROWSER_TIMEZONE =
   process.env.SCANNER_TIMEZONE || process.env.SCANNER_BROWSER_TIMEZONE || 'Australia/Hobart'
 
-/** Headers sent on every page navigation (merged under site custom headers). */
+/**
+ * Headers applied via Playwright `extraHTTPHeaders` (every request, including fonts/CSS/images).
+ *
+ * Do NOT put navigation-only metadata here (`Sec-Fetch-*`, document `Accept`, etc.).
+ * Those break Google Fonts / similar CDNs: CSS returns 200 but `.woff2` faces never load,
+ * so Material icon ligatures render as text and brand fonts fall back in screenshots.
+ */
 export const DEFAULT_BROWSER_HEADERS: Record<string, string> = {
-  'Accept-Language': 'en-AU,en;q=0.9',
-  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-  'Upgrade-Insecure-Requests': '1',
-  'Sec-Fetch-Dest': 'document',
-  'Sec-Fetch-Mode': 'navigate',
-  'Sec-Fetch-Site': 'none',
-  'Sec-Fetch-User': '?1'
+  'Accept-Language': 'en-AU,en;q=0.9'
 }
+
+/** Headers that must not be forced onto font/CSS/image subrequests. */
+const UNSAFE_GLOBAL_HEADER_NAMES = new Set([
+  'accept',
+  'upgrade-insecure-requests',
+  'sec-fetch-dest',
+  'sec-fetch-mode',
+  'sec-fetch-site',
+  'sec-fetch-user',
+  'sec-fetch-storage-access'
+])
 
 export const CHROMIUM_LAUNCH_ARGS = [
   '--no-sandbox',
@@ -34,13 +45,25 @@ export function resolveUserAgent(configured: string | null | undefined): string 
   return DEFAULT_BROWSER_USER_AGENT
 }
 
+/** Drop navigation-only headers that break webfont loading when applied globally. */
+export function sanitizeBrowserHeaders(
+  headers: Record<string, string>
+): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(headers)) {
+    if (UNSAFE_GLOBAL_HEADER_NAMES.has(key.toLowerCase())) continue
+    out[key] = value
+  }
+  return out
+}
+
 export function mergeBrowserHeaders(
   customHeaders?: Record<string, string>
 ): Record<string, string> {
-  return {
+  return sanitizeBrowserHeaders({
     ...DEFAULT_BROWSER_HEADERS,
     ...(customHeaders || {})
-  }
+  })
 }
 
 export function buildContextOptions(options: {

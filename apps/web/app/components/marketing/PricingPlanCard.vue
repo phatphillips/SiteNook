@@ -1,39 +1,58 @@
 <script setup lang="ts">
-import type { BillingInterval, PlanCtaAction } from '~/utils/planPricing'
-import type { PlanOffering } from '~/utils/planPricing'
-import { formatPlanPrice } from '~/utils/planPricing'
-
+import type { BillingInterval, PlanCtaAction, PlanOffering } from '~/utils/planPricing'
+import { formatPlanPrice, getPlanAnnualSavingsPercent } from '~/utils/planPricing'
 import type { PaidCheckoutPlan } from '~/utils/planLimits'
 
 const props = defineProps<{
   plan: PlanOffering
   interval: BillingInterval
   cta: PlanCtaAction
+  secondaryCta?: PlanCtaAction | null
   checkoutLoadingPlan?: PaidCheckoutPlan | null
 }>()
 
 const emit = defineEmits<{
   checkout: [plan: 'starter' | 'team' | 'business', interval: BillingInterval]
+  ctaClick: [planId: string, label: string]
 }>()
 
 const price = computed(() => formatPlanPrice(props.plan, props.interval))
+
+const annualSavings = computed(() => getPlanAnnualSavingsPercent(props.plan))
 
 const featureHeading = computed(() => {
   if (!props.plan.inheritsFrom) return null
   return `Everything in ${props.plan.inheritsFrom}, plus:`
 })
+
+const highlightedBadge = computed(() => {
+  if (props.plan.id === 'team' || props.plan.highlighted) return 'Best value'
+  return null
+})
+
+const honestyLine = computed(() => {
+  if (props.plan.id === 'team') return 'No credit card for the trial. Cancel anytime.'
+  return 'Cancel anytime from Billing settings.'
+})
+
+function onCtaClick(action: PlanCtaAction) {
+  emit('ctaClick', props.plan.id, action.label)
+  if (action.kind === 'checkout') {
+    emit('checkout', action.plan, action.interval)
+  }
+}
 </script>
 
 <template>
   <UCard
     :ui="{
       root: plan.highlighted
-        ? 'ring-2 ring-default border border-default bg-elevated/40'
-        : 'ring ring-default border border-default bg-elevated/30'
+        ? 'h-full ring-2 ring-[var(--color-action-solid)] border border-default bg-elevated/50 shadow-sm'
+        : 'h-full ring ring-default border border-default bg-elevated/30'
     }"
   >
     <div class="flex h-full flex-col">
-      <div class="flex items-start justify-between gap-3">
+      <div class="flex min-h-11 items-start justify-between gap-3">
         <div>
           <h2 class="text-xl font-semibold text-highlighted">
             {{ plan.name }}
@@ -42,26 +61,40 @@ const featureHeading = computed(() => {
             {{ plan.description }}
           </p>
         </div>
-        <UBadge v-if="plan.highlighted" color="neutral" variant="subtle">
-          Popular
+        <UBadge
+          v-if="highlightedBadge"
+          color="primary"
+          variant="solid"
+          class="shrink-0"
+        >
+          {{ highlightedBadge }}
         </UBadge>
       </div>
 
-      <div class="mt-6 flex items-baseline gap-2">
-        <span class="text-4xl font-semibold tracking-tight text-highlighted">
-          {{ price.priceLabel }}
-        </span>
-        <span class="text-sm text-muted">
-          {{ price.priceDetail }}
-        </span>
+      <div class="mt-6">
+        <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span class="text-4xl font-semibold tracking-tight text-highlighted">
+            {{ price.priceLabel }}
+          </span>
+          <span class="text-sm text-muted">
+            {{ price.priceDetail }}
+          </span>
+        </div>
+        <p
+          v-if="interval === 'annual' && annualSavings != null"
+          class="mt-2 text-sm font-medium text-highlighted"
+        >
+          Save {{ annualSavings }}% vs monthly
+        </p>
       </div>
 
       <div
-        class="mt-4 flex items-center gap-2 rounded-lg border border-default/80 bg-elevated/60 px-3 py-2 text-sm text-muted"
+        class="mt-4 flex min-h-11 items-center gap-2 rounded-lg border border-default/80 bg-elevated/60 px-3 py-2.5 text-sm text-muted"
       >
         <UIcon
-          :name="plan.contactSales ? 'i-lucide-sliders-horizontal' : 'i-lucide-gauge'"
+          name="i-lucide-gauge"
           class="size-4 shrink-0 text-muted"
+          aria-hidden="true"
         />
         <span>{{ plan.primaryMetric }}</span>
       </div>
@@ -75,7 +108,11 @@ const featureHeading = computed(() => {
           :key="feature"
           class="flex items-start gap-2"
         >
-          <UIcon name="i-lucide-check" class="mt-0.5 size-4 shrink-0 text-default" />
+          <UIcon
+            name="i-lucide-check"
+            class="mt-0.5 size-4 shrink-0 text-default"
+            aria-hidden="true"
+          />
           <span>{{ feature }}</span>
         </li>
       </ul>
@@ -85,11 +122,11 @@ const featureHeading = computed(() => {
           v-if="cta.kind === 'checkout'"
           block
           size="lg"
-          :color="plan.highlighted || plan.contactSales ? 'neutral' : 'neutral'"
-          :variant="plan.contactSales ? 'solid' : 'solid'"
+          variant="solid"
+          class="min-h-11"
           :loading="checkoutLoadingPlan === cta.plan"
           :disabled="!!checkoutLoadingPlan"
-          @click="emit('checkout', cta.plan, cta.interval)"
+          @click="onCtaClick(cta)"
         >
           {{ cta.label }}
         </UButton>
@@ -98,8 +135,9 @@ const featureHeading = computed(() => {
           :to="cta.href"
           block
           size="lg"
-          :color="plan.highlighted ? 'neutral' : 'neutral'"
+          class="min-h-11"
           :variant="plan.highlighted ? 'solid' : 'outline'"
+          @click="emit('ctaClick', plan.id, cta.label)"
         >
           {{ cta.label }}
         </UButton>
@@ -109,11 +147,20 @@ const featureHeading = computed(() => {
           block
           size="lg"
           variant="solid"
+          class="min-h-11"
+          @click="emit('ctaClick', plan.id, cta.label)"
         >
           {{ cta.label }}
         </UButton>
         <div v-else class="space-y-2">
-          <UButton block size="lg" variant="soft" color="neutral" disabled>
+          <UButton
+            block
+            size="lg"
+            variant="soft"
+            color="neutral"
+            class="min-h-11"
+            disabled
+          >
             {{ cta.label }}
           </UButton>
           <p class="text-center text-xs leading-relaxed text-muted">
@@ -121,9 +168,40 @@ const featureHeading = computed(() => {
           </p>
         </div>
 
-        <p class="flex items-center justify-center gap-1.5 pt-1 text-center text-xs text-muted">
-          <UIcon name="i-lucide-server" class="size-3.5" />
-          {{ plan.deploymentLabel }}<template v-if="plan.id !== 'enterprise'"> · managed by AccessIQ</template>
+        <template v-if="secondaryCta && secondaryCta.kind !== cta.kind">
+          <UButton
+            v-if="secondaryCta.kind === 'checkout'"
+            block
+            size="md"
+            variant="ghost"
+            color="neutral"
+            class="min-h-11"
+            :loading="checkoutLoadingPlan === secondaryCta.plan"
+            :disabled="!!checkoutLoadingPlan"
+            @click="onCtaClick(secondaryCta)"
+          >
+            Or {{ secondaryCta.label.toLowerCase() }} now
+          </UButton>
+          <UButton
+            v-else-if="secondaryCta.kind === 'link'"
+            :to="secondaryCta.href"
+            block
+            size="md"
+            variant="ghost"
+            color="neutral"
+            class="min-h-11"
+            @click="emit('ctaClick', plan.id, secondaryCta.label)"
+          >
+            Or {{ secondaryCta.label.toLowerCase() }} now
+          </UButton>
+        </template>
+
+        <p class="pt-1 text-center text-xs text-muted">
+          {{ honestyLine }}
+        </p>
+        <p class="flex items-center justify-center gap-1.5 text-center text-xs text-muted">
+          <UIcon name="i-lucide-server" class="size-3.5" aria-hidden="true" />
+          {{ plan.deploymentLabel }} · managed by SiteNook
         </p>
       </div>
     </div>

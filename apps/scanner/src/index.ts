@@ -1,24 +1,34 @@
 import { chromium } from 'playwright'
-import { authenticateAdmin, getPocketBase } from './db/pocketbaseClient.js'
+import { authenticateAdmin, ensureAuthenticated, getPocketBase, isPocketBaseConnectionError, resetPocketBaseClient, withPocketBaseRetry } from './db/pocketbaseClient.js'
 import {
   crawlSite,
   type PageResult
 } from './crawler/siteCrawler.js'
 import { loadPolicies } from './db/savePageResult.js'
+import { axeExcludeSelectorsFromPolicies } from './qa/policyEngine.js'
 import { createPageResultPersistence } from './db/pageResultWriter.js'
-import { finalizeScan, seoSettingsFromSite } from './db/finalizeScan.js'
+import { finalizeScan, schedulePostScanReconcile, seoSettingsFromSite } from './db/finalizeScan.js'
 import { normalizeSeoUrl } from './seo/linkGraph.js'
 import { hasPendingQueueItems, processBackgroundScanStep } from './crawler/backgroundScan.js'
 import { initSpellChecker } from './qa/spellChecker.js'
+import { enrichScanInventorySizes } from './qa/resolveInventorySizes.js'
+import { consolidateScanInventory } from './qa/consolidateScanInventory.js'
+import {
+  consolidateScanInventoryRefs,
+  patchInventoryFoundOnPageCounts
+} from './qa/consolidateScanInventoryRefs.js'
 import { configForStorage, mergeRawScanConfigs, parseRawConfig } from './config/scanConfig.js'
 import { parseSiteSettings } from './config/siteSettings.js'
-import { shouldUseSitemapSeeds, trySitemapSeedUrls } from './crawler/crawlSeeds.js'
+import { ensureStartUrlInSeeds, shouldUseSitemapSeeds, trySitemapSeedUrls } from './crawler/crawlSeeds.js'
 import { parseSitemap } from './crawler/sitemapParser.js'
 import { filterUrls } from './crawler/urlPatterns.js'
 import { loadRobotsDisallows } from './crawler/robots.js'
 import { createAuthenticatedContext } from './crawler/authHandler.js'
 import { CHROMIUM_LAUNCH_ARGS } from './crawler/browserProfile.js'
-import { reconcileSchedulesOnStartup, startSchedulerLoop } from './scheduler/scanScheduler.js'
+import { reconcileSchedulesOnStartup, scheduleVerificationScan, startSchedulerLoop } from './scheduler/scanScheduler.js'
+import { evaluateScanQuality, previousTrustedPageCount } from './crawler/scanQuality.js'
+import { startReportScheduleLoop } from './scheduler/reportScheduleScheduler.js'
+import { processTeamTrialLifecycle } from './scheduler/trialLifecycle.js'
 import { purgeDueClosedOrganizations } from './db/purgeClosedOrgs.js'
 import {
   enqueuePendingScansToBullMq,
@@ -32,8 +42,18 @@ import {
 } from './db/scanRetention.js'
 import { ScanLogWriter, type ScanLogEventInput } from './db/scanLogEvents.js'
 import { getMaxPagesPerScanForPlan, planHasFeature } from './config/planLimits.js'
+import {
+  effectiveOrgPlanForScan,
+  heartbeatApplianceLicence,
+  isApplianceDeploymentMode,
+  syncApplianceOrgPlans,
+  validateApplianceLicence
+} from './licence/applianceLicence.js'
 import { enqueueCrawlPdfs } from './pdf/enqueueCrawlPdfs.js'
 import { pollPdfValidationQueue, recoverStalePdfJobs } from './pdf/pdfValidationWorker.js'
+import { pollPdfRemediationQueue, recoverStaleRemediationJobs } from './pdf/pdfRemediationWorker.js'
+import { recomputeDashboardRollupsForSite } from './dashboard/rollupWriter.js'
+import { startReportJobLoop } from './reports/reportWorker.js'
 
 const POLL_INTERVAL = Number(process.env.SCANNER_POLL_INTERVAL_MS || 10000)
 const MAX_PAGES = Number(process.env.MAX_PAGES_PER_SCAN || 500)
@@ -84,17 +104,20 @@ async function recoverStaleJobs() {
 async function failScanAndQueue(
   scanId: string | undefined,
   queueId: string,
-  message: string
+  message: string,
+  crawlFinishedAt?: string
 ) {
   const pb = getPocketBase()
   console.error(message)
   if (scanId) {
     try {
-      await pb.collection('scans').update(scanId, {
+      const patch: Record<string, unknown> = {
         status: 'failed',
         completed_at: new Date().toISOString(),
         error_message: summarizeScanError(message)
-      })
+      }
+      if (crawlFinishedAt) patch.crawl_finished_at = crawlFinishedAt
+      await pb.collection('scans').update(scanId, patch)
     } catch (err) {
       console.error(`Could not mark scan ${scanId} as failed:`, err)
     }
@@ -122,7 +145,10 @@ async function buildUrlQueue(
   if (config.mode === 'sitemap') {
     const sitemapUrl = config.sitemapUrl || new URL('/sitemap.xml', startUrl).href
     const urls = await parseSitemap(sitemapUrl, config.maxPages * 2)
-    return filterUrls(urls, config.includePatterns, config.excludePatterns).slice(0, config.maxPages)
+    return ensureStartUrlInSeeds(
+      startUrl,
+      filterUrls(urls, config.includePatterns, config.excludePatterns).slice(0, config.maxPages)
+    )
   }
 
   return []
@@ -145,6 +171,7 @@ async function markScanCancelled(scanId: string, queueId: string, pagesCrawled: 
   await pb.collection('scans').update(scanId, {
     status: 'cancelled',
     pages_crawled: pagesCrawled,
+    crawl_finished_at: now,
     completed_at: now
   })
   try {
@@ -153,6 +180,43 @@ async function markScanCancelled(scanId: string, queueId: string, pagesCrawled: 
     console.warn(`Could not update queue ${queueId} to cancelled:`, err)
   }
   console.log(`Scan ${scanId} cancelled (${pagesCrawled} pages saved)`)
+}
+
+async function runPostScanHousekeeping(opts: {
+  pb: ReturnType<typeof getPocketBase>
+  siteId: string
+  scanId: string
+  trusted: boolean
+  qualityReason?: string
+  enqueuePdfs: boolean
+  queueValidation: boolean
+}): Promise<void> {
+  const historyDays = await resolveScanHistoryDaysForSite(opts.siteId).catch((err) => {
+    console.warn(`Could not resolve scan history days for site ${opts.siteId}:`, err)
+    return 0
+  })
+  if (opts.trusted && historyDays > 0) {
+    await pruneSiteScanRetention(opts.siteId, opts.scanId, historyDays).catch((err) => {
+      console.warn(`Scan retention prune failed for ${opts.scanId}:`, err)
+    })
+  } else if (!opts.trusted) {
+    console.log(
+      `Skipping page retention prune for untrusted scan ${opts.scanId}` +
+      (opts.qualityReason ? ` (${opts.qualityReason})` : '')
+    )
+  }
+
+  if (!opts.enqueuePdfs) return
+  try {
+    const pdfEnqueued = await enqueueCrawlPdfs(opts.pb, opts.siteId, opts.scanId, {
+      queueValidation: opts.queueValidation
+    })
+    if (pdfEnqueued > 0) {
+      console.log(`Enqueued ${pdfEnqueued} crawl PDF(s) for accessibility validation`)
+    }
+  } catch (err) {
+    console.warn('Failed to process crawl PDFs:', err)
+  }
 }
 
 async function processQueueItem(queueId: string) {
@@ -187,11 +251,16 @@ async function processQueueItem(queueId: string) {
     if (orgId) {
       try {
         const org = await pb.collection('organizations').getOne(orgId, { fields: 'plan' })
-        orgPlan = String(org.plan || 'free')
-        planMaxPages = Math.min(envMaxPages, getMaxPagesPerScanForPlan(org.plan))
+        orgPlan = effectiveOrgPlanForScan(org.plan)
+        planMaxPages = Math.min(envMaxPages, getMaxPagesPerScanForPlan(orgPlan))
       } catch (err) {
         console.warn(`Queue item ${queueId}: could not resolve org plan for maxPages — using env cap`, err)
+        orgPlan = effectiveOrgPlanForScan('free')
+        planMaxPages = Math.min(envMaxPages, getMaxPagesPerScanForPlan(orgPlan))
       }
+    } else if (isApplianceDeploymentMode()) {
+      orgPlan = effectiveOrgPlanForScan('free')
+      planMaxPages = Math.min(envMaxPages, getMaxPagesPerScanForPlan(orgPlan))
     }
 
     if (!rawConfig) {
@@ -226,11 +295,13 @@ async function processQueueItem(queueId: string) {
 
     const storedConfig = configForStorage(config)
 
+    const queuedAt = String(queueItem.created || new Date().toISOString())
     const scan = await pb.collection('scans').create({
       site: site.id,
       status: 'running',
       scan_type: scanType,
       pages_crawled: 0,
+      queued_at: queuedAt,
       started_at: new Date().toISOString(),
       wcag_version: '2.2',
       raw_config: storedConfig
@@ -255,9 +326,10 @@ async function processQueueItem(queueId: string) {
         console.warn('Spell checker unavailable, continuing without spelling checks:', err)
       }
 
-      const policies = planHasFeature(orgPlan, 'policies')
+      const policies = planHasFeature(orgPlan, 'policies') && siteSettings.runPolicies
         ? await loadPolicies(site.id)
         : []
+      const axeExcludeSelectors = axeExcludeSelectorsFromPolicies(policies)
     const robotsDisallows = config.respectRobots
       ? await loadRobotsDisallows(new URL(startUrl).origin)
       : []
@@ -268,8 +340,8 @@ async function processQueueItem(queueId: string) {
     if (config.mode === 'full' && !targetUrl && prebuiltUrls.length === 0) {
       const seeds = await trySitemapSeedUrls(startUrl, config)
       if (shouldUseSitemapSeeds(seeds.length)) {
-        console.log(`Full crawl: seeding ${seeds.length} URL(s) from sitemap`)
-        sitemapSeeds = seeds
+        sitemapSeeds = ensureStartUrlInSeeds(startUrl, seeds)
+        console.log(`Full crawl: seeding ${sitemapSeeds.length} URL(s) from sitemap`)
       }
     }
 
@@ -336,6 +408,7 @@ async function processQueueItem(queueId: string) {
       config: crawlConfig,
       scanType,
       seoSettings,
+      axeExcludeSelectors,
       initialUrls: crawlInitialUrls?.slice(0, crawlConfig.maxPages),
       robotsDisallows,
       sharedContext: context,
@@ -344,86 +417,171 @@ async function processQueueItem(queueId: string) {
       onPageComplete: async (pageResult) => {
         try {
           await pagePersistence.save(pageResult)
-          await logWriter.pageCrawled(pageResult.url, pageResult.title)
         } catch (err) {
           console.error(`Failed to persist page ${pageResult.url}:`, err)
           await logWriter.append({
             level: 'error',
             message: `Failed to save page: ${err instanceof Error ? err.message : String(err)}`,
             url: pageResult.url
-          })
+          }).catch(() => {})
+          throw err
         }
+        await logWriter.pageCrawled(pageResult.url, pageResult.title).catch(() => {})
       }
     }, async (crawled) => {
-      await pb.collection('scans').update(scan.id, { pages_crawled: crawled })
+      try {
+        await pb.collection('scans').update(scan.id, { pages_crawled: crawled })
+      } catch (err) {
+        console.warn(
+          `Failed to update pages_crawled for scan ${scan.id}:`,
+          err instanceof Error ? err.message : err
+        )
+      }
     })
 
+    const crawlFinishedAt = new Date().toISOString()
+    await pb.collection('scans').update(scan.id, { crawl_finished_at: crawlFinishedAt })
+
     await pagePersistence.flush()
+
+    if (persistInventory) {
+      console.log(`Consolidating inventory for scan ${scan.id}...`)
+      await consolidateScanInventory(pb, scan.id).catch((err) => {
+        console.warn(`Inventory consolidation failed for scan ${scan.id}:`, err)
+      })
+      await consolidateScanInventoryRefs(pb, scan.id).catch((err) => {
+        console.warn(`Inventory ref consolidation failed for scan ${scan.id}:`, err)
+      })
+      await patchInventoryFoundOnPageCounts(pb, scan.id).catch((err) => {
+        console.warn(`Inventory page counts failed for scan ${scan.id}:`, err)
+      })
+      await enrichScanInventorySizes(pb, scan.id).catch((err) => {
+        console.warn(`Inventory size enrichment failed for scan ${scan.id}:`, err)
+      })
+    }
 
     await logWriter.crawlSummary(diagnostics, pages.length, crawlConfig.maxPages)
 
     await context.close()
+    await browser.close()
+    browser = undefined
 
     if (await isScanCancelled(scan.id)) {
       await logWriter.append({ level: 'warn', message: 'Scan cancelled — partial results saved' })
       await markScanCancelled(scan.id, queueId, pages.length)
+      await recomputeDashboardRollupsForSite(pb, site.id).catch((err) => {
+        console.warn(`Rollup recompute skipped for cancelled scan ${scan.id}:`, err)
+      })
       return
     }
 
     const enteringBackground = unscannedUrls.length > 0
-
-    const finalized = await finalizeScan(pb, {
-      scanId: scan.id,
-      siteId: site.id,
-      startUrl,
-      pages,
-      inboundLinks: internalLinkGraph,
-      sitemapUrls: sitemapUrlSet,
-      siteSettings,
-      diffFromPrevious: siteSettings.diffFromPrevious && !enteringBackground,
-      runSitePass: !enteringBackground,
-      configSitemapUrl: crawlConfig.sitemapUrl
+    let previousTrustedPages: number | undefined
+    try {
+      const previous = await pb.collection('scans').getList(1, 20, {
+        filter: `site = "${site.id}" && (status = "complete" || status = "complete_with_errors") && id != "${scan.id}"`,
+        sort: '-completed_at',
+        fields: 'pages_crawled,scan_quality'
+      })
+      previousTrustedPages = previousTrustedPageCount(
+        previous.items as Array<{ pages_crawled?: number, scan_quality?: { trusted?: boolean } }>
+      )
+    } catch (err) {
+      console.warn(
+        `Could not load previous trusted page count for site ${site.id}:`,
+        err instanceof Error ? err.message : err
+      )
+    }
+    const quality = evaluateScanQuality(diagnostics, pages, {
+      mode: config.mode,
+      previousTrustedPages
     })
 
-    if (!enteringBackground && planHasFeature(orgPlan, 'inventory')) {
-      try {
-        const pdfEnqueued = await enqueueCrawlPdfs(pb, site.id, scan.id, {
-          queueValidation: planHasFeature(orgPlan, 'pdfAccessibility')
-        })
-        if (pdfEnqueued > 0) {
-          console.log(`Enqueued ${pdfEnqueued} crawl PDF(s) for accessibility validation`)
-        }
-      } catch (err) {
-        console.warn('Failed to process crawl PDFs:', err)
-      }
+    if (pages.length === 0 && !enteringBackground) {
+      await logWriter.append({
+        level: 'error',
+        message: quality.reason || 'Scan saved no pages — keeping the last trusted results'
+      })
+      await failScanAndQueue(
+        scan.id,
+        queueId,
+        quality.reason || 'Scan saved no pages',
+        crawlFinishedAt
+      )
+      await scheduleVerificationScan(pb, site.id)
+      return
     }
+
+    const trusted = quality.trusted || enteringBackground
+
+    console.log(`Finalizing scan ${scan.id} (${pages.length} page(s))...`)
+    const finalized = await withPocketBaseRetry(
+      () => finalizeScan(getPocketBase(), {
+        scanId: scan.id,
+        siteId: site.id,
+        startUrl,
+        pages,
+        inboundLinks: internalLinkGraph,
+        sitemapUrls: sitemapUrlSet,
+        siteSettings,
+        diffFromPrevious: siteSettings.diffFromPrevious && !enteringBackground && trusted,
+        runSitePass: !enteringBackground,
+        configSitemapUrl: crawlConfig.sitemapUrl,
+        updateCurrentA11y: trusted && !enteringBackground
+      }),
+      { label: `finalize scan ${scan.id}` }
+    )
+    console.log(`Finalize complete for scan ${scan.id}`)
 
     const scoreFields = finalized.scoreFields
     const diffSummary = finalized.diffSummary
 
-    await pb.collection('sites').update(site.id, {
-      score_denominators: scoreFields.score_denominators
-    })
+    if (trusted) {
+      await withPocketBaseRetry(
+        () => getPocketBase().collection('sites').update(site.id, {
+          score_denominators: scoreFields.score_denominators
+        }),
+        { label: `site score update ${site.id}` }
+      )
+    }
 
-    const historyDays = await resolveScanHistoryDaysForSite(site.id)
-    await pruneSiteScanRetention(site.id, scan.id, historyDays)
-    await pb.collection('scan_queue').update(queueId, { status: 'complete' })
+    await withPocketBaseRetry(
+      () => getPocketBase().collection('scan_queue').update(queueId, { status: 'complete' }),
+      { label: `queue complete ${queueId}` }
+    )
 
     if (unscannedUrls.length > 0) {
       await logWriter.append({
         level: 'warn',
         message: `Primary crawl finished — ${pages.length} page(s) saved; ${unscannedUrls.length} blocked URL(s) queued for background scan`
       })
-      await pb.collection('scans').update(scan.id, {
-        status: 'background_scan',
-        pages_crawled: pages.length,
-        unscanned_urls: unscannedUrls,
-        background_retry: { round: 1, index: 0, queue: [...unscannedUrls] },
-        ...scoreFields,
-        diff_summary: diffSummary,
-        open_issue_count: finalized.openIssueCount,
-        a11y_summary: finalized.a11ySummary,
-        error_message: ''
+      await withPocketBaseRetry(
+        () => getPocketBase().collection('scans').update(scan.id, {
+          status: 'background_scan',
+          pages_crawled: pages.length,
+          unscanned_urls: unscannedUrls,
+          background_retry: { round: 1, index: 0, queue: [...unscannedUrls] },
+          ...scoreFields,
+          diff_summary: diffSummary,
+          open_issue_count: finalized.openIssueCount,
+          broken_link_count: finalized.brokenLinkCount,
+          a11y_summary: finalized.a11ySummary,
+          scan_quality: quality,
+          error_message: ''
+        }),
+        { label: `background scan update ${scan.id}` }
+      )
+      await recomputeDashboardRollupsForSite(pb, site.id).catch((err) => {
+        console.warn(`Rollup recompute skipped for background scan ${scan.id}:`, err)
+      })
+      await runPostScanHousekeeping({
+        pb,
+        siteId: site.id,
+        scanId: scan.id,
+        trusted,
+        qualityReason: quality.reason,
+        enqueuePdfs: false,
+        queueValidation: false
       })
       console.log(
         `Scan ${scan.id} entering background retry for ${unscannedUrls.length} URL(s) ` +
@@ -432,28 +590,61 @@ async function processQueueItem(queueId: string) {
       return
     }
 
-    await logWriter.append({
-      level: 'success',
-      message: `Scan complete — ${pages.length} page(s) saved`
+    const status = trusted ? 'complete' : 'complete_with_errors'
+    if (!trusted) {
+      await logWriter.append({
+        level: 'warn',
+        message: `${quality.reason || 'Scan completed with errors'} — keeping last trusted site score`
+      })
+      await scheduleVerificationScan(pb, site.id)
+    } else {
+      await logWriter.append({
+        level: 'success',
+        message: `Scan complete — ${pages.length} page(s) saved`
+      })
+    }
+
+    await withPocketBaseRetry(
+      () => getPocketBase().collection('scans').update(scan.id, {
+        status,
+        pages_crawled: pages.length,
+        completed_at: new Date().toISOString(),
+        unscanned_urls: [],
+        background_retry: null,
+        ...scoreFields,
+        diff_summary: diffSummary,
+        open_issue_count: finalized.openIssueCount,
+        broken_link_count: finalized.brokenLinkCount,
+        a11y_summary: finalized.a11ySummary,
+        scan_quality: quality,
+        error_message: trusted ? '' : (quality.reason || 'Scan completed with errors')
+      }),
+      { label: `complete scan ${scan.id}` }
+    )
+    await recomputeDashboardRollupsForSite(pb, site.id).catch((err) => {
+      console.warn(`Rollup recompute skipped for complete scan ${scan.id}:`, err)
+    })
+    schedulePostScanReconcile(site.id, {
+      elementTotals: scoreFields.score_denominators?.elements,
+      updateCurrentA11y: trusted
     })
 
-    await pb.collection('scans').update(scan.id, {
-      status: 'complete',
-      pages_crawled: pages.length,
-      completed_at: new Date().toISOString(),
-      unscanned_urls: [],
-      background_retry: null,
-      ...scoreFields,
-      diff_summary: diffSummary,
-      open_issue_count: finalized.openIssueCount,
-      a11y_summary: finalized.a11ySummary,
-      error_message: ''
-    })
+    console.log(
+      `Scan complete for ${startUrl}: ${pages.length} page(s) saved ` +
+      `(see crawl diagnostics above; SCANNER_CRAWL_DEBUG=1 for per-URL detail)`
+    )
 
-      console.log(
-        `Scan complete for ${startUrl}: ${pages.length} page(s) saved ` +
-        `(see crawl diagnostics above; SCANNER_CRAWL_DEBUG=1 for per-URL detail)`
-      )
+    await runPostScanHousekeeping({
+      pb,
+      siteId: site.id,
+      scanId: scan.id,
+      trusted,
+      qualityReason: quality.reason,
+      enqueuePdfs: planHasFeature(orgPlan, 'inventory'),
+      queueValidation: planHasFeature(orgPlan, 'pdfAccessibility')
+    }).catch((err) => {
+      console.warn(`Post-scan housekeeping failed for ${scan.id}:`, err)
+    })
     } catch (err) {
       await failScanAndQueue(scanId, queueId, `Scan failed: ${err}`)
     } finally {
@@ -584,25 +775,109 @@ async function pollQueue() {
 }
 
 async function pollLoop() {
-  await pollQueue()
+  try {
+    await ensureAuthenticated()
+  } catch (err) {
+    console.warn('PocketBase auth recovery failed:', err)
+    pollFailures++
+    pollBackoffMs = Math.min(5000 * (2 ** Math.min(pollFailures - 1, 3)), 60000)
+    setTimeout(pollLoop, pollBackoffMs)
+    return
+  }
+
+  try {
+    await pollQueue()
+  } catch (err) {
+    if (isPocketBaseConnectionError(err)) {
+      console.warn('PocketBase connection lost during queue poll; resetting client')
+      resetPocketBaseClient()
+      pollFailures++
+      pollBackoffMs = Math.min(5000 * (2 ** Math.min(pollFailures - 1, 3)), 60000)
+      setTimeout(pollLoop, pollBackoffMs)
+      return
+    }
+  }
+
   try {
     await pollPdfValidationQueue(getPocketBase())
   } catch (err) {
-    console.warn('PDF validation poll error:', err)
+    if (isPocketBaseConnectionError(err)) {
+      console.warn('PocketBase connection lost during PDF poll; resetting client')
+      resetPocketBaseClient()
+    } else {
+      console.warn('PDF validation poll error:', err)
+    }
+  }
+
+  try {
+    await pollPdfRemediationQueue(getPocketBase())
+  } catch (err) {
+    if (isPocketBaseConnectionError(err)) {
+      console.warn('PocketBase connection lost during PDF remediation poll; resetting client')
+      resetPocketBaseClient()
+    } else {
+      console.warn('PDF remediation poll error:', err)
+    }
   }
   const delay = pollFailures > 0 ? pollBackoffMs : POLL_INTERVAL
   setTimeout(pollLoop, delay)
 }
 
 async function main() {
-  console.log('AccessIQ Scanner starting...')
+  console.log('SiteNook Scanner starting...')
   await authenticateAdmin()
   console.log('Authenticated with PocketBase')
+
+  if (isApplianceDeploymentMode()) {
+    const licence = await validateApplianceLicence()
+    console.log(
+      `Appliance licence: tier=${licence.tier} plan=${licence.plan} valid=${licence.licenceValid}`
+      + (licence.lastError ? ` (${licence.lastError})` : '')
+    )
+    const heartbeatMs = Number(process.env.SITENOOK_LICENCE_HEARTBEAT_MS || process.env.ACCESSIQ_LICENCE_HEARTBEAT_MS || 7 * 24 * 60 * 60 * 1000)
+    setInterval(() => {
+      heartbeatApplianceLicence().catch((err) => {
+        console.warn('Licence heartbeat failed:', err)
+      })
+    }, heartbeatMs)
+  }
+
   await recoverStaleJobs()
   const pb = getPocketBase()
+  if (isApplianceDeploymentMode()) {
+    try {
+      const plan = effectiveOrgPlanForScan('free')
+      const updated = await syncApplianceOrgPlans(pb, plan)
+      if (updated > 0) {
+        console.log(`Appliance: synced ${updated} organization(s) to plan=${plan}`)
+      }
+    } catch (err) {
+      console.warn('Appliance: could not sync organization plan from licence', err)
+    }
+  }
   await recoverStalePdfJobs(pb)
+  await recoverStaleRemediationJobs(pb)
   await reconcileSchedulesOnStartup(pb)
   startSchedulerLoop(pb)
+  startReportScheduleLoop(pb)
+  startReportJobLoop(pb)
+
+  const trialMs = Number(process.env.SCANNER_TRIAL_TICK_MS || 60 * 60 * 1000)
+  async function trialLoop() {
+    try {
+      const result = await processTeamTrialLifecycle(getPocketBase())
+      if (result.expired > 0 || result.nudged > 0) {
+        console.log(
+          `Trial lifecycle: expired=${result.expired} nudged=${result.nudged} errors=${result.errors}`
+        )
+      }
+    } catch (err) {
+      console.error('Trial lifecycle tick error:', err)
+    }
+    setTimeout(trialLoop, trialMs)
+  }
+  console.log(`Team trial lifecycle enabled (tick every ${trialMs}ms)`)
+  setTimeout(trialLoop, Math.min(trialMs, 60_000))
 
   if (isBullMqEnabled()) {
     await startBullMqScanWorker(runQueueJob)
@@ -612,7 +887,7 @@ async function main() {
     const purgeMs = Number(process.env.SCANNER_PURGE_TICK_MS || 24 * 60 * 60 * 1000)
     async function purgeLoop() {
       try {
-        const result = await purgeDueClosedOrganizations(pb)
+        const result = await purgeDueClosedOrganizations(getPocketBase())
         if (result.organizationsPurged > 0) {
           console.log(`Purge tick: removed ${result.organizationsPurged} closed organization(s)`)
         }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Organization } from '~/types/accessiq'
+import type { Organization } from '~/types/sitenook'
 import { isOrgAdmin, requireUserOrganizationId } from '~/utils/orgAccess'
 import { formatPbClientError } from '~/utils/pbClientError'
 

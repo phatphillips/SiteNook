@@ -1,6 +1,6 @@
 # SEO monitoring
 
-AccessIQ runs SEO checks during site crawls and surfaces results in the per-site **SEO** section of the dashboard. This complements accessibility and QA — same crawl pipeline, separate issue collection.
+SiteNook runs SEO checks during site crawls and surfaces results in the per-site **SEO** section of the dashboard. This complements accessibility and QA — same crawl pipeline, separate issue collection.
 
 ---
 

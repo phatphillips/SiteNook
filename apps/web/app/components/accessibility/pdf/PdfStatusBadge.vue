@@ -1,19 +1,25 @@
 <script setup lang="ts">
-import type { PdfDocument } from '~/types/accessiq'
-import { pdfValidationResultColor, pdfValidationResultLabel } from '~/utils/pdfStatus'
+import type { PdfDocument } from '~/types/sitenook'
+import { pdfValidationResultLabel, pdfValidationResultTextClass } from '~/utils/pdfStatus'
 
 const props = defineProps<{
   status?: PdfDocument['status']
   issueCount?: number
+  ignored?: boolean
 }>()
+
+const doc = computed(() => ({
+  status: props.status ?? 'pending' as const,
+  issue_count: props.issueCount,
+  ignored: props.ignored
+}))
 </script>
 
 <template>
-  <UBadge
-    :color="pdfValidationResultColor({ status: props.status ?? 'pending', issue_count: props.issueCount })"
-    variant="subtle"
-    size="sm"
+  <span
+    class="text-sm"
+    :class="pdfValidationResultTextClass(doc)"
   >
-    {{ pdfValidationResultLabel({ status: props.status ?? 'pending', issue_count: props.issueCount }) }}
-  </UBadge>
+    {{ pdfValidationResultLabel(doc) }}
+  </span>
 </template>

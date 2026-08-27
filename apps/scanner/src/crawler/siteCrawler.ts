@@ -7,6 +7,7 @@ import { checkLinksOnPage, extractLinkHrefsFromPage } from './linkChecker.js'
 import { checkSpelling } from '../qa/spellChecker.js'
 import { countWords, extractMainContentFromPage } from '../qa/extractMainContent.js'
 import { scoreReadability, scoreAllReadabilityMethods, parseStoredReadabilityScores } from '../qa/readability.js'
+import { truncateHtmlSnapshot } from '../utils/truncateHtmlSnapshot.js'
 import { filterUrls } from './urlPatterns.js'
 import { isDisallowedByRobots } from './robots.js'
 import { applyFormAuth } from './authHandler.js'
@@ -26,20 +27,36 @@ import {
   type SiteimproveScoreIssue,
   type WcagLevel
 } from '../accessibility/siteimproveScore.js'
+import { mergeA11yCheckStats, type A11yCheckStats } from '../accessibility/a11yCheckStats.js'
+import { FALLBACK_AXE_CATALOG } from '../accessibility/axeCheckCatalog.js'
+import { inventoryAssetFromUrl } from '../qa/inventoryUrl.js'
 import { isHttpUrl } from '../db/recordSanitize.js'
-import { CrawlDiagnostics, type CrawlStopReason } from './crawlDiagnostics.js'
+import { classifyCrawlError, CrawlDiagnostics, type CrawlStopReason } from './crawlDiagnostics.js'
+import { settlePageForAxe } from './settlePageForAxe.js'
+import {
+  challengeBlockLogMessage,
+  isWafBlockedStatus,
+  resolveNavigationChallenge,
+  responseHasSgCaptcha
+} from './challengePage.js'
 import { retryForbiddenWithBackoff } from './wafRetry.js'
 import type { ScanLogEventInput } from '../db/scanLogEvents.js'
 import { recordInternalLinks } from '../seo/linkGraph.js'
 import { runPageSeoChecks, shouldRunAccessibility, shouldRunQa, shouldRunSeo } from '../seo/scanSeo.js'
 import type { SeoSettings } from '../seo/types.js'
 import { DEFAULT_SEO_SETTINGS } from '../seo/types.js'
+import { captureSimulatorPreview, preparePageForPreviewCapture, waitForRenderedContent } from './captureSimulatorPreview.js'
+import { serializeRenderedPage, inlinePageAssetsForPreview } from './serializeRenderedHtml.js'
+import { renderedHtmlBufferFromSnapshot } from '../db/attachPageRenderedHtml.js'
+import { extractContentMarkdown } from '../content/extractContentMarkdown.js'
 
 export interface CrawlOptions {
   startUrl: string
   config: ParsedScanConfig
   scanType: string
   seoSettings?: SeoSettings
+  /** CSS selectors excluded from axe (from exclude_from_accessibility policies). */
+  axeExcludeSelectors?: string[]
   initialUrls?: string[]
   robotsDisallows?: string[]
   sharedContext?: BrowserContext
@@ -69,19 +86,37 @@ export interface PageResult {
   readabilityScores: import('../qa/readabilityMethods.js').ReadabilityScores
   crawlDepth: number
   htmlSnapshot: string
-  issues: Awaited<ReturnType<typeof runAxeOnPage>>
+  htmlSizeBytes: number
+  issues: import('../accessibility/axeRunner.js').AxeIssueRecord[]
+  checkStats?: import('../accessibility/a11yCheckStats.js').A11yCheckStats
   brokenLinks: Awaited<ReturnType<typeof checkLinksOnPage>>
   linkHrefs: string[]
   spelling: Awaited<ReturnType<typeof checkSpelling>>
   inventory: Array<{ url: string, content_type: string, mime_type: string, is_pdf: boolean, size_bytes: number }>
   seoSnapshot?: import('../seo/types.js').SeoSnapshot
   seoIssues?: import('../seo/types.js').SeoIssueDraft[]
+  /** Full-page JPEG for accessibility simulator (optional; best-effort). */
+  previewImage?: Buffer
+  /** Untruncated rendered HTML for same-origin content preview (optional; skipped if over 8MB). */
+  renderedHtml?: Buffer
+  /** Keyboard tab-order geometry matching the preview image. */
+  tabOrder?: import('./captureSimulatorPreview.js').SimulatorTabOrderPayload
+  /** Clean Markdown extracted from rendered HTML (pre-truncation). */
+  contentMarkdown?: string
+  /** True when axe threw; issues are empty and must not be treated as a clean scan. */
+  a11yFailed?: boolean
+}
+
+/** Drop large binary fields after they have been uploaded so the crawl result list stays small. */
+export function releasePageResultBinaries(page: PageResult): void {
+  page.renderedHtml = undefined
+  page.previewImage = undefined
 }
 
 export async function crawlSite(
   browser: Browser,
   options: CrawlOptions,
-  onProgress?: (crawled: number, total: number) => void
+  onProgress?: (crawled: number, total: number) => void | Promise<void>
 ): Promise<CrawlSiteResult> {
   const { config, startUrl } = options
   const origin = new URL(startUrl).origin
@@ -110,7 +145,9 @@ export async function crawlSite(
   // Full-site mode always follows links (including when seeded from a sitemap).
   const followLinks = config.mode === 'full'
   const ownsContext = !options.sharedContext
-  const context = options.sharedContext || await browser.newContext()
+  let context = options.sharedContext || await browser.newContext()
+  let crashRelaunched = false
+  const retried = new Set<string>()
 
   if (config.auth.type === 'form') {
     const authPage = await context.newPage()
@@ -132,6 +169,30 @@ export async function crawlSite(
   }
 
   let stopReason: CrawlStopReason = 'queue_empty'
+  /** Consecutive WAF/challenge blocks; after 3, skip further in-crawl 403 retries. */
+  let consecutiveWafBlocks = 0
+  let wafBlocked = false
+  let wafCircuitLogged = false
+
+  const noteWafBlock = async (url: string) => {
+    consecutiveWafBlocks++
+    if (consecutiveWafBlocks >= 3) {
+      wafBlocked = true
+      if (!wafCircuitLogged) {
+        wafCircuitLogged = true
+        await emitLog({
+          level: 'warn',
+          message:
+            'Host appears blocked by WAF — skipping further WAF retries for this crawl; remaining URLs queue for background scan'
+        })
+      }
+    }
+  }
+
+  const noteWafSuccess = () => {
+    consecutiveWafBlocks = 0
+    wafBlocked = false
+  }
 
   while (queue.length > 0 && results.length < maxPages) {
     if (await aborted()) {
@@ -168,9 +229,24 @@ export async function crawlSite(
     await Promise.all(batch.map(item => pQueue.add(async () => {
       if (await aborted()) return
 
-      diag.recordAttempt()
-      const page = await context.newPage()
+      if (!retried.has(item.url)) diag.recordAttempt()
+      let page: Page | undefined
       try {
+        try {
+          page = await context.newPage()
+        } catch (err) {
+          if (!crashRelaunched) {
+            crashRelaunched = true
+            console.warn('Playwright page create failed — relaunching browser context once:', err)
+            if (ownsContext) {
+              await context.close().catch(() => {})
+              context = await browser.newContext()
+            }
+            page = await context.newPage()
+          } else {
+            throw err
+          }
+        }
         await page.setViewportSize(viewport)
         let response = await page.goto(item.url, { waitUntil, timeout: timeoutMs }).catch(async (err) => {
           if (waitUntil === 'networkidle') {
@@ -186,14 +262,26 @@ export async function crawlSite(
         })
 
         let statusCode = response?.status() || 0
-        if (statusCode === 403) {
+        const initialSgCaptcha = responseHasSgCaptcha(response)
+        if (isWafBlockedStatus(statusCode) || initialSgCaptcha) {
+          if (wafBlocked) {
+            diag.recordHttpError(statusCode || 403, item.url)
+            if (statusCode !== 403 && statusCode !== 202) diag.recordUnscanned(item.url)
+            await noteWafBlock(item.url)
+            await emitLog({
+              level: 'warn',
+              message: 'Host still blocked by WAF/challenge — skipping retries, queuing for background scan',
+              url: item.url
+            })
+            return
+          }
           const wafResult = await retryForbiddenWithBackoff(page, item.url, {
             timeoutMs,
             onWafRetry: async ({ attempt, delayMs }) => {
               const sec = Math.round(delayMs / 1000)
               await emitLog({
                 level: 'warn',
-                message: `HTTP 403 (WAF) — retry ${attempt}/2 in ${sec}s`,
+                message: `HTTP ${statusCode || 403} (WAF) — retry ${attempt}/2 in ${sec}s`,
                 url: item.url
               })
             }
@@ -204,8 +292,38 @@ export async function crawlSite(
 
         if (postDelay > 0) await page.waitForTimeout(postDelay)
 
+        const challenge = await resolveNavigationChallenge(
+          page,
+          response,
+          wafBlocked ? { softWaitMs: 0, settleMs: 0 } : undefined
+        )
+        if (challenge.blocked && challenge.kind) {
+          diag.recordUnscanned(item.url)
+          await noteWafBlock(item.url)
+          await emitLog({
+            level: 'error',
+            message: challengeBlockLogMessage(challenge.kind),
+            url: item.url
+          })
+          return
+        }
+
+        if (statusCode >= 500 && !retried.has(item.url)) {
+          retried.add(item.url)
+          visited.delete(item.url)
+          queue.push(item)
+          diag.recordHttpError(statusCode, item.url)
+          await emitLog({
+            level: 'warn',
+            message: `HTTP ${statusCode} — retrying once`,
+            url: item.url
+          })
+          return
+        }
+
         if (statusCode >= 400) {
           diag.recordHttpError(statusCode, item.url)
+          if (isWafBlockedStatus(statusCode)) await noteWafBlock(item.url)
           await emitLog({
             level: 'error',
             message: `HTTP ${statusCode} — page not scanned`,
@@ -214,23 +332,50 @@ export async function crawlSite(
           return
         }
 
+        noteWafSuccess()
+
+        await settlePageForAxe(page)
+
+        let storedUrl = item.url
+        try {
+          const finalUrl = page.url()
+          if (finalUrl.startsWith('http')) {
+            storedUrl = normalizeUrl(finalUrl)
+            if (storedUrl !== item.url) visited.add(storedUrl)
+          }
+        } catch {
+          // keep queued URL
+        }
+
         const title = await page.title()
         const textContent = await extractMainContentFromPage(page)
         const wordCount = countWords(textContent)
         const readabilityScores = scoreAllReadabilityMethods(textContent)
         const readabilityScore = scoreReadability(textContent)
-        const htmlSnapshot = await page.content()
 
         let issues: PageResult['issues'] = []
+        let checkStats: PageResult['checkStats']
+        let a11yFailed = false
         let brokenLinks: PageResult['brokenLinks'] = []
         let linkHrefs: string[] = []
         let spelling: PageResult['spelling'] = []
 
         if (shouldRunAccessibility(options.scanType)) {
           try {
-            issues = await runAxeOnPage(page, DEFAULT_AXE_TAGS)
+            const axeResult = await runAxeOnPage(page, {
+              tags: DEFAULT_AXE_TAGS,
+              excludeSelectors: options.axeExcludeSelectors
+            })
+            issues = axeResult.issues
+            checkStats = axeResult.checkStats
           } catch (err) {
-            console.warn(`Axe scan failed for ${item.url}:`, err)
+            a11yFailed = true
+            console.warn(`Axe scan failed for ${storedUrl}:`, err)
+            await emitLog({
+              level: 'warn',
+              message: `Accessibility scan failed — page saved without issue results`,
+              url: storedUrl
+            })
           }
         }
 
@@ -240,29 +385,10 @@ export async function crawlSite(
           spelling = checkSpelling(textContent)
         }
 
-        let seoSnapshot: PageResult['seoSnapshot']
-        let seoIssues: PageResult['seoIssues']
-        if (shouldRunSeo(options.scanType, seoSettings)) {
-          const seo = runPageSeoChecks({
-            url: item.url,
-            title,
-            wordCount,
-            readabilityScore,
-            crawlDepth: item.depth,
-            htmlSnapshot,
-            startUrl,
-            axeRuleIds: issues.map(i => i.rule_id),
-            settings: seoSettings
-          })
-          seoSnapshot = seo.snapshot
-          seoIssues = seo.issues
-          recordInternalLinks(internalLinkGraph, item.url, seo.internalLinks, origin)
-        }
-
         if (followLinks && item.depth < config.maxDepth) {
           const links = await extractLinks(page, origin, config.stayOnDomain)
           if (!shouldRunSeo(options.scanType, seoSettings)) {
-            recordInternalLinks(internalLinkGraph, item.url, links, origin)
+            recordInternalLinks(internalLinkGraph, storedUrl, links, origin)
           }
           const filtered = filterUrls(links, config.includePatterns, config.excludePatterns)
           let enqueued = 0
@@ -281,30 +407,99 @@ export async function crawlSite(
           diag.recordLinksEnqueued(enqueued)
         }
 
+        let previewImage: Buffer | undefined
+        let tabOrder: PageResult['tabOrder']
+        try {
+          const preview = await captureSimulatorPreview(page)
+          previewImage = preview.previewImage
+          tabOrder = preview.tabOrder
+        } catch (err) {
+          console.warn(`Simulator preview capture failed for ${item.url}:`, err)
+          await preparePageForPreviewCapture(page).catch(() => {})
+        }
+
+        await waitForRenderedContent(page).catch(() => {})
+        const htmlSnapshot = await serializeRenderedPage(page).catch(async () => page.content())
+        const htmlSizeBytes = Buffer.byteLength(htmlSnapshot, 'utf8')
+        const previewHtml = await inlinePageAssetsForPreview(page, htmlSnapshot).catch(() => htmlSnapshot)
+        const contentMarkdown = extractContentMarkdown(htmlSnapshot, storedUrl) ?? undefined
+
+        let seoSnapshot: PageResult['seoSnapshot']
+        let seoIssues: PageResult['seoIssues']
+        if (shouldRunSeo(options.scanType, seoSettings)) {
+          const seo = runPageSeoChecks({
+            url: storedUrl,
+            title,
+            wordCount,
+            readabilityScore,
+            crawlDepth: item.depth,
+            htmlSnapshot,
+            startUrl,
+            axeRuleIds: issues.map(i => i.rule_id),
+            settings: seoSettings
+          })
+          seoSnapshot = seo.snapshot
+          seoIssues = seo.issues
+          recordInternalLinks(internalLinkGraph, storedUrl, seo.internalLinks, origin)
+        }
+
         const pageResult: PageResult = {
-          url: item.url,
+          url: storedUrl,
           title,
           statusCode,
           wordCount,
           readabilityScore,
           readabilityScores,
           crawlDepth: item.depth,
-          htmlSnapshot: htmlSnapshot.slice(0, 100000),
+          htmlSnapshot: truncateHtmlSnapshot(htmlSnapshot),
+          htmlSizeBytes,
+          renderedHtml: renderedHtmlBufferFromSnapshot(previewHtml),
           issues,
+          checkStats,
           brokenLinks,
           linkHrefs,
           spelling,
-          inventory: extractInventory(htmlSnapshot, item.url),
+          inventory: extractInventory(htmlSnapshot, storedUrl),
           seoSnapshot,
-          seoIssues
+          seoIssues,
+          previewImage,
+          tabOrder,
+          contentMarkdown,
+          a11yFailed
         }
 
+        try {
+          await options.onPageComplete?.(pageResult)
+        } catch (err) {
+          console.error(`Failed to persist page ${storedUrl}:`, err)
+          releasePageResultBinaries(pageResult)
+          return
+        }
+        releasePageResultBinaries(pageResult)
         results.push(pageResult)
         diag.recordSuccess()
-        await options.onPageComplete?.(pageResult)
 
-        onProgress?.(results.length, Math.min(queue.length + results.length, maxPages))
+        try {
+          await onProgress?.(results.length, Math.min(queue.length + results.length, maxPages))
+        } catch (err) {
+          console.warn(
+            'Crawl progress callback failed:',
+            err instanceof Error ? err.message : err
+          )
+        }
       } catch (err) {
+        const kind = classifyCrawlError(err)
+        if ((kind === 'timeout' || kind === 'network') && !retried.has(item.url)) {
+          retried.add(item.url)
+          visited.delete(item.url)
+          queue.push(item)
+          await emitLog({
+            level: 'warn',
+            message: `${kind} — retrying once`,
+            url: item.url
+          })
+          return
+        }
         diag.recordException(item.url, err)
         const reason = err instanceof Error ? err.message : String(err)
         await emitLog({
@@ -314,7 +509,7 @@ export async function crawlSite(
         })
         console.error(`Failed to crawl ${item.url}:`, err)
       } finally {
-        await page.close()
+        await page?.close()
       }
     })))
   }
@@ -345,43 +540,48 @@ async function extractLinks(page: Page, origin: string, stayOnDomain: boolean): 
   )
 
   return hrefs
-    .map((h) => {
-      try {
-        const u = new URL(h)
-        if (stayOnDomain && u.origin !== origin) return null
-        u.hash = ''
-        return u.toString()
-      } catch {
-        return null
-      }
-    })
+    .map(h => rewriteSameSiteLink(h, origin, stayOnDomain))
     .filter((u): u is string => !!u)
+}
+
+function hostnameKey(hostname: string): string {
+  return hostname.replace(/^www\./i, '').toLowerCase()
+}
+
+/**
+ * Keep crawls on the configured site. www and apex are treated as the same host
+ * so `href="/"` on a non-www sitemap page still queues the start-origin homepage.
+ */
+export function rewriteSameSiteLink(href: string, origin: string, stayOnDomain: boolean): string | null {
+  try {
+    const u = new URL(href)
+    if (stayOnDomain) {
+      const start = new URL(origin)
+      if (hostnameKey(u.hostname) !== hostnameKey(start.hostname)) return null
+      u.protocol = start.protocol
+      u.hostname = start.hostname
+    }
+    return normalizeUrl(u.toString())
+  } catch {
+    return null
+  }
 }
 
 function extractInventory(html: string, pageUrl: string) {
   const items: PageResult['inventory'] = []
+  const seen = new Set<string>()
   const regex = /(?:src|href)=["']([^"']+)["']/gi
   let match
   while ((match = regex.exec(html)) !== null) {
-    try {
-      const url = new URL(match[1], pageUrl).toString()
-      if (!isHttpUrl(url)) continue
-      const isPdf = url.toLowerCase().endsWith('.pdf')
-      items.push({
-        url,
-        content_type: isPdf ? 'pdf' : 'asset',
-        mime_type: isPdf ? 'application/pdf' : 'unknown',
-        is_pdf: isPdf,
-        size_bytes: 0
-      })
-    } catch {
-      // skip invalid URLs
-    }
+    const asset = inventoryAssetFromUrl(match[1], pageUrl)
+    if (!asset || !isHttpUrl(asset.url) || seen.has(asset.url)) continue
+    seen.add(asset.url)
+    items.push(asset)
   }
   return items
 }
 
-function normalizeUrl(url: string): string {
+export function normalizeUrl(url: string): string {
   const u = new URL(url)
   u.hash = ''
   if (u.pathname.endsWith('/') && u.pathname.length > 1) {
@@ -394,6 +594,7 @@ export interface AggregateScoresOptions {
   depthWeightedScoring?: boolean
   /** Cached denominators from an in-memory aggregate — avoids truncated HTML under-counting on re-aggregate. */
   cachedDenominators?: ScoreDenominators
+  checkStats?: A11yCheckStats
 }
 
 function parseElementTotals(raw: unknown): ElementTotals | undefined {
@@ -438,6 +639,7 @@ export interface AggregateScoresResult {
   score_best_practices: number
   score_qa: number
   score_denominators: ScoreDenominators
+  a11y_check_stats: A11yCheckStats
 }
 
 /** PocketBase scan fields for all scores — written together in one update. */
@@ -450,6 +652,7 @@ export type ScanScoreFields = Pick<
   | 'score_best_practices'
   | 'score_qa'
   | 'score_denominators'
+  | 'a11y_check_stats'
 >
 
 function normalizeWcagLevel(level: string | undefined): WcagLevel {
@@ -491,7 +694,8 @@ export function scanScoreFieldsFromAggregate(result: AggregateScoresResult): Sca
     score_aaa: finiteScore(result.score_aaa, 'score_aaa'),
     score_best_practices: finiteScore(result.score_best_practices, 'score_best_practices'),
     score_qa: finiteScore(result.score_qa, 'score_qa'),
-    score_denominators: result.score_denominators
+    score_denominators: result.score_denominators,
+    a11y_check_stats: result.a11y_check_stats
   }
 }
 
@@ -535,8 +739,18 @@ export function aggregateScores(
     : freshElements
   const allIssues = scoreIssuesFromPageResults(pages, scoringOptions)
   const elementTotals = resolveElementTotals(mergedFromHtml, allIssues)
-  const accessibility = calculateSiteimproveScores(allIssues, elementTotals)
-  const scoreBestPractices = scoreBestPracticeCategory(allIssues, elementTotals)
+  const mergedStats = options?.checkStats
+    ?? mergeA11yCheckStats(pages.map(page => page.checkStats))
+  const catalogById = new Map(FALLBACK_AXE_CATALOG.map(entry => [entry.rule_id, { ...entry }]))
+  for (const entry of mergedStats.catalog) {
+    if (entry?.rule_id) catalogById.set(entry.rule_id, entry)
+  }
+  const a11y_check_stats: A11yCheckStats = {
+    catalog: [...catalogById.values()],
+    rules: mergedStats.rules
+  }
+  const accessibility = calculateSiteimproveScores(allIssues, elementTotals, a11y_check_stats)
+  const scoreBestPractices = scoreBestPracticeCategory(allIssues, elementTotals, a11y_check_stats)
 
   const freshQa = countQaDenominatorsFromPages(pages, scoringOptions)
   const qaCounts = options?.cachedDenominators?.qa
@@ -570,7 +784,8 @@ export function aggregateScores(
     score_aaa: accessibility.levelAAA,
     score_best_practices: scoreBestPractices,
     score_qa: qaScore,
-    score_denominators
+    score_denominators,
+    a11y_check_stats
   }
 }
 
@@ -593,7 +808,7 @@ export async function rebuildPageResultsFromScan(
   pb: PocketBase,
   scanId: string
 ): Promise<PageResult[]> {
-  const pageFields = 'id,url,title,status_code,word_count,readability_score,readability_scores,crawl_depth,html_snapshot'
+  const pageFields = 'id,url,title,status_code,word_count,readability_score,readability_scores,crawl_depth,html_snapshot,html_size_bytes'
   const [pageRecords, issueRecords, linkRecords, spellRecords] = await Promise.all([
     pb.collection('pages').getFullList({ filter: `scan = "${scanId}"`, fields: pageFields }),
     pb.collection('accessibility_issues').getFullList({ filter: `scan = "${scanId}"` }),
@@ -614,6 +829,7 @@ export async function rebuildPageResultsFromScan(
     readabilityScores: parseStoredReadabilityScores(page.readability_scores, Number(page.readability_score) || 0),
     crawlDepth: Number(page.crawl_depth) || 0,
     htmlSnapshot: String(page.html_snapshot ?? ''),
+    htmlSizeBytes: Number(page.html_size_bytes) || Buffer.byteLength(String(page.html_snapshot ?? ''), 'utf8'),
     issues: (issuesByPage.get(page.id) ?? []).map(issue => ({
       rule_id: String(issue.rule_id ?? ''),
       wcag_level: String(issue.wcag_level ?? 'AA'),

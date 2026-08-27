@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'AccessIQ-SitemapPreview/1.0' }
+      headers: { 'User-Agent': 'SiteNook-SitemapPreview/1.0' }
     })
     if (!res.ok) {
       throw createError({ statusCode: 502, statusMessage: `Sitemap returned HTTP ${res.status}` })

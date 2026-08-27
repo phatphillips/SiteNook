@@ -1,19 +1,20 @@
 import type PocketBase from 'pocketbase'
 import { deriveScanTypeFromRaw } from '../config/scanConfig.js'
-import { planHasFeature } from '../config/planLimits.js'
 import { queuePriorityForPlan } from '../config/planQueuePriority.js'
+import { getPocketBase, isPocketBaseConnectionError, resetPocketBaseClient } from '../db/pocketbaseClient.js'
 import {
   computeScheduleNextRunAt,
   getScheduleTimeFromConfig,
   getScheduleTimezoneFromConfig,
-  getZonedParts,
   isSiteDue,
-  parseScheduleTime,
-  rawConfigForEnqueue,
-  zonedTimeToUtc
+  latestScanActivityMs,
+  MIN_SCAN_GAP_MS,
+  rawConfigForEnqueue
 } from './scheduleNextRun.js'
 
 const ACTIVE_ORG_SITE_FILTER = "crawl_schedule != 'manual' && crawl_schedule != '' && organization.status != 'closing' && organization.subscription_status != 'canceled'"
+
+export const VERIFICATION_DELAY_MS = 24 * 60 * 60 * 1000
 
 export interface ScheduledSiteRecord {
   id: string
@@ -31,15 +32,15 @@ export interface ScheduledSiteRecord {
 
 export async function isSiteBusy(pb: PocketBase, siteId: string): Promise<boolean> {
   try {
-    const [queueActive, runningScans] = await Promise.all([
+    const [queueActive, activeScans] = await Promise.all([
       pb.collection('scan_queue').getList(1, 1, {
         filter: `site = "${siteId}" && (status = 'pending' || status = 'processing')`
       }),
       pb.collection('scans').getList(1, 1, {
-        filter: `site = "${siteId}" && status = 'running'`
+        filter: `site = "${siteId}" && (status = 'running' || status = 'background_scan')`
       })
     ])
-    return queueActive.items.length > 0 || runningScans.items.length > 0
+    return queueActive.items.length > 0 || activeScans.items.length > 0
   } catch (err) {
     console.warn(`Could not check busy state for site ${siteId}:`, err)
     return true
@@ -113,6 +114,98 @@ export async function enqueueScheduledScan(
   // Queue creation is the source of truth for scheduled work. Even if schedule fields fail to update,
   // returning true prevents duplicate enqueue attempts on subsequent ticks.
   return true
+}
+
+/** Queue a one-off rescan without advancing the regular crawl schedule. */
+export async function enqueueOneOffScan(
+  pb: PocketBase,
+  site: ScheduledSiteRecord,
+  priority = 0
+): Promise<boolean> {
+  const rawConfig = {
+    ...rawConfigForEnqueue(site.default_scan_config),
+    verification: true
+  }
+  const scanType = deriveScanTypeFromRaw(rawConfig)
+
+  try {
+    await pb.collection('scan_queue').create({
+      site: site.id,
+      scan_type: scanType,
+      priority,
+      status: 'pending',
+      raw_config: rawConfig
+    })
+    return true
+  } catch (err) {
+    console.error(`Failed to enqueue verification scan for site ${site.id}:`, err)
+    return false
+  }
+}
+
+/**
+ * After a poor-quality crawl, schedule one verification in ~24h unless the
+ * regular schedule already fires sooner.
+ */
+export async function scheduleVerificationScan(
+  pb: PocketBase,
+  siteId: string,
+  now: Date = new Date()
+): Promise<void> {
+  try {
+    const site = await pb.collection('sites').getOne(siteId, {
+      fields: 'id,verification_due_at,schedule_next_run_at,crawl_schedule,default_scan_config'
+    }) as ScheduledSiteRecord & { verification_due_at?: string }
+
+    if (site.verification_due_at) return
+    if (await isSiteBusy(pb, siteId)) return
+
+    const dueMs = now.getTime() + VERIFICATION_DELAY_MS
+    const nextScheduled = site.schedule_next_run_at
+      ? Date.parse(site.schedule_next_run_at)
+      : NaN
+    if (
+      site.crawl_schedule
+      && site.crawl_schedule !== 'manual'
+      && Number.isFinite(nextScheduled)
+      && nextScheduled <= dueMs
+    ) {
+      return
+    }
+
+    await pb.collection('sites').update(siteId, {
+      verification_due_at: new Date(dueMs).toISOString()
+    })
+    console.log(`Verification scan scheduled for site ${siteId} at ${new Date(dueMs).toISOString()}`)
+  } catch (err) {
+    console.warn(`Could not schedule verification for site ${siteId}:`, err)
+  }
+}
+
+export async function tickVerificationScans(pb: PocketBase, now: Date = new Date()): Promise<void> {
+  let due: Array<ScheduledSiteRecord & { verification_due_at?: string }>
+  try {
+    due = await pb.collection('sites').getFullList({
+      filter: `verification_due_at != null && verification_due_at <= "${now.toISOString()}"`,
+      expand: 'organization'
+    }) as Array<ScheduledSiteRecord & { verification_due_at?: string }>
+  } catch (err) {
+    console.warn('Verification tick could not load sites:', err)
+    return
+  }
+
+  for (const site of due) {
+    if (await isSiteBusy(pb, site.id)) continue
+    const orgPlan = site.expand?.organization?.plan
+    const enqueued = await enqueueOneOffScan(pb, site, queuePriorityForPlan(orgPlan))
+    if (enqueued) {
+      try {
+        await pb.collection('sites').update(site.id, { verification_due_at: null })
+      } catch (err) {
+        console.warn(`Enqueued verification for ${site.id} but failed to clear verification_due_at:`, err)
+      }
+    }
+  }
 }
 
 /** Set schedule_next_run_at when missing so null is not treated as "due immediately". */
@@ -200,59 +293,41 @@ export async function reconcileSchedulesOnStartup(pb: PocketBase): Promise<void>
   }
 }
 
-/** Skip scheduled enqueue when a full scan already completed in the current calendar day (site TZ). */
-export async function hasFullScanCompletedToday(
-  pb: PocketBase,
-  siteId: string,
-  timeZone: string,
-  now: Date = new Date()
-): Promise<boolean> {
-  const parts = getZonedParts(now, timeZone)
-  const startOfDay = zonedTimeToUtc(parts.year, parts.month, parts.day, 0, 0, timeZone)
-  try {
-    const result = await pb.collection('scans').getList(1, 1, {
-      filter: [
-        `site = "${siteId}"`,
-        `scan_type = "full"`,
-        `(status = "complete" || status = "complete_with_errors")`,
-        `completed_at >= "${startOfDay.toISOString()}"`
-      ].join(' && ')
-    })
-    return result.items.length > 0
-  } catch (err) {
-    console.warn(`Could not check today's full scans for site ${siteId}:`, err)
-    return false
-  }
-}
-
-export async function skipScheduledRunIfFullScanAlreadyRan(
+/** Skip scheduled enqueue when a scan started or finished within the minimum gap window. */
+export async function skipScheduledRunIfWithinMinGap(
   pb: PocketBase,
   site: ScheduledSiteRecord,
   now: Date = new Date()
 ): Promise<ScheduledSiteRecord> {
   if (!site.crawl_schedule || site.crawl_schedule === 'manual') return site
-  if (site.crawl_schedule !== 'daily') return site
 
-  const timeZone = getScheduleTimezoneFromConfig(site.default_scan_config)
-  if (!(await hasFullScanCompletedToday(pb, site.id, timeZone, now))) return site
+  let latestScan: { started_at?: string, completed_at?: string, created?: string } | undefined
+  try {
+    const result = await pb.collection('scans').getList(1, 1, {
+      filter: `site = "${site.id}"`,
+      sort: '-started_at'
+    })
+    latestScan = result.items[0] as typeof latestScan
+  } catch (err) {
+    console.warn(`Could not load latest scan for site ${site.id}:`, err)
+    return site
+  }
 
-  const scheduleTime = getScheduleTimeFromConfig(site.default_scan_config)
-  const { hour, minute } = parseScheduleTime(scheduleTime)
-  const parts = getZonedParts(now, timeZone)
-  const todaySlot = zonedTimeToUtc(parts.year, parts.month, parts.day, hour, minute, timeZone)
-  const from = now < todaySlot ? todaySlot : now
-  const next = computeScheduleNextRunAt(site.crawl_schedule, {
-    scheduleTime,
-    from,
-    now,
-    timeZone
-  })
+  if (!latestScan) return site
+
+  const activityMs = latestScanActivityMs(latestScan)
+  if (!activityMs) return site
+
+  const gapEndMs = activityMs + MIN_SCAN_GAP_MS
+  if (now.getTime() >= gapEndMs) return site
+
+  const next = new Date(gapEndMs).toISOString()
   if (!next || next === site.schedule_next_run_at) return site
 
   try {
     await pb.collection('sites').update(site.id, { schedule_next_run_at: next })
     console.log(
-      `Skipped scheduled scan for site ${site.id}; full scan already ran today (next: ${next})`
+      `Skipped scheduled scan for site ${site.id}; last activity within ${MIN_SCAN_GAP_MS / 60000}m (next: ${next})`
     )
     return { ...site, schedule_next_run_at: next }
   } catch (err) {
@@ -263,6 +338,7 @@ export async function skipScheduledRunIfFullScanAlreadyRan(
 
 export async function tickScheduler(pb: PocketBase): Promise<void> {
   const now = new Date()
+  await tickVerificationScans(pb, now)
 
   let sites: ScheduledSiteRecord[]
   try {
@@ -277,25 +353,29 @@ export async function tickScheduler(pb: PocketBase): Promise<void> {
 
   for (const rawSite of sites) {
     const orgPlan = rawSite.expand?.organization?.plan
-    if (orgPlan && !planHasFeature(orgPlan, 'scheduledScans')) continue
 
     let site = await ensureSiteScheduleInitialized(pb, rawSite, now)
     if (!isSiteDue(site.crawl_schedule, site.schedule_next_run_at, now)) continue
-    site = await skipScheduledRunIfFullScanAlreadyRan(pb, site, now)
+    site = await skipScheduledRunIfWithinMinGap(pb, site, now)
     if (!isSiteDue(site.crawl_schedule, site.schedule_next_run_at, now)) continue
     if (await isSiteBusy(pb, site.id)) continue
     await enqueueScheduledScan(pb, site, now, queuePriorityForPlan(orgPlan))
   }
 }
 
-export function startSchedulerLoop(pb: PocketBase): void {
+export function startSchedulerLoop(_pb?: PocketBase): void {
   const tickMs = Number(process.env.SCHEDULER_TICK_MS || 60000)
 
   async function loop() {
     try {
-      await tickScheduler(pb)
+      await tickScheduler(getPocketBase())
     } catch (err) {
-      console.error('Scheduler tick error:', err)
+      if (isPocketBaseConnectionError(err)) {
+        resetPocketBaseClient()
+        console.warn('Scheduler tick: PocketBase connection lost')
+      } else {
+        console.error('Scheduler tick error:', err)
+      }
     }
     setTimeout(loop, tickMs)
   }

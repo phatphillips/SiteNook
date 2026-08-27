@@ -1,12 +1,6 @@
-import type { PdfDocument } from '~/types/accessiq'
+import type { PdfDocument } from '~/types/sitenook'
 import { format } from 'date-fns'
-
-function escapeCsv(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`
-  }
-  return value
-}
+import { buildCsv } from '~/utils/csvExport'
 
 export function buildPdfDocumentsCsv(documents: PdfDocument[]): string {
   const headers = [
@@ -36,18 +30,8 @@ export function buildPdfDocumentsCsv(documents: PdfDocument[]): string {
       String(doc.issue_count ?? 0),
       doc.status,
       doc.accessibility_score != null ? String(doc.accessibility_score) : ''
-    ].map(cell => escapeCsv(cell))
+    ]
   })
 
-  return [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
-}
-
-export function downloadCsv(filename: string, content: string): void {
-  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
+  return buildCsv(headers, rows.map(row => row.map(String)))
 }

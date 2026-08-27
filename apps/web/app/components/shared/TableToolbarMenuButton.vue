@@ -17,7 +17,10 @@ withDefaults(defineProps<{
     color="neutral"
     variant="outline"
     size="sm"
-    class="table-toolbar-menu-btn"
-    :ui="activeRing ? { base: 'h-8 ring-1 ring-primary/40' } : { base: 'h-8' }"
+    class="table-toolbar-menu-btn max-lg:aspect-square max-lg:!px-2"
+    :ui="{
+      base: activeRing ? 'h-8 ring-1 ring-primary/40' : 'h-8',
+      label: 'hidden lg:inline'
+    }"
   />
 </template>

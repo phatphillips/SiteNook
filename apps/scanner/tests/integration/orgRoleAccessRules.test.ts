@@ -2,10 +2,10 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import PocketBase, { ClientResponseError } from 'pocketbase'
 
 const PB_URL = process.env.PB_TEST_URL || 'http://localhost:8091'
-const ADMIN_EMAIL = process.env.PB_TEST_ADMIN_EMAIL || 'test-admin@accessiq.test'
+const ADMIN_EMAIL = process.env.PB_TEST_ADMIN_EMAIL || 'test-admin@sitenook.test'
 const ADMIN_PASSWORD = process.env.PB_TEST_ADMIN_PASSWORD || 'test-password-123'
 
-const VIEWER_EMAIL = 'viewer-org-read@accessiq.test'
+const VIEWER_EMAIL = 'viewer-org-read@sitenook.test'
 const VIEWER_PASSWORD = 'viewer-org-read-password'
 
 function isUpdateDenied(error: unknown): boolean {
@@ -109,7 +109,7 @@ describe('org role access rules (integration)', () => {
   it('allows an org admin to update the site and enqueue scans', async () => {
     const appAdminPb = new PocketBase(PB_URL)
     await appAdminPb.collection('users').authWithPassword(
-      process.env.PB_TEST_USER_EMAIL || 'test-user@accessiq.test',
+      process.env.PB_TEST_USER_EMAIL || 'test-user@sitenook.test',
       process.env.PB_TEST_USER_PASSWORD || 'test-user-password-123'
     )
 

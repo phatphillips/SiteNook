@@ -2,9 +2,13 @@ export type CrawlSchedule =
   | 'manual'
   | 'hourly'
   | 'every_6h'
+  | 'every_5d'
   | 'daily'
   | 'weekly'
   | 'monthly'
+
+export const CRAWL_SCHEDULE_AUTO = 'every_5d'
+export const MIN_SCAN_GAP_MS = 60 * 60 * 1000
 
 export interface ScheduleConfig {
   time?: string
@@ -15,7 +19,8 @@ const FALLBACK_TIMEZONE = 'UTC'
 
 const INTERVAL_MS: Record<string, number> = {
   hourly: 60 * 60 * 1000,
-  every_6h: 6 * 60 * 60 * 1000
+  every_6h: 6 * 60 * 60 * 1000,
+  every_5d: 5 * 24 * 60 * 60 * 1000
 }
 
 const CALENDAR_SCHEDULES = new Set(['daily', 'weekly', 'monthly'])
@@ -247,6 +252,36 @@ export function computeScheduleNextRunAfterManualFullScan(
   }
 
   return computeScheduleNextRunAt(crawlSchedule, { ...options, from: now, now, timeZone, scheduleTime })
+}
+
+export function formatCrawlScheduleLabel(crawlSchedule: string | undefined): string {
+  if (!crawlSchedule || crawlSchedule === 'manual') return 'Manual'
+  if (crawlSchedule === 'every_5d') return 'Every 5 days'
+  return crawlSchedule.replace(/_/g, ' ')
+}
+
+export function latestScanActivityMs(scan: {
+  started_at?: string
+  completed_at?: string
+  created?: string
+}): number {
+  const times = [scan.started_at, scan.completed_at, scan.created]
+    .map(t => (t ? Date.parse(t) : NaN))
+    .filter(Number.isFinite)
+  return times.length ? Math.max(...times) : 0
+}
+
+export function computeScheduleNextRunWithMinGap(
+  crawlSchedule: string,
+  options: ComputeNextRunOptions = {},
+  minGapFrom?: Date | string | null
+): string | null {
+  const base = computeScheduleNextRunAt(crawlSchedule, options)
+  if (!base || !minGapFrom) return base
+  const gapEndMs = new Date(minGapFrom).getTime() + MIN_SCAN_GAP_MS
+  const baseMs = new Date(base).getTime()
+  if (baseMs >= gapEndMs) return base
+  return new Date(gapEndMs).toISOString()
 }
 
 export function formatNextScanLabel(

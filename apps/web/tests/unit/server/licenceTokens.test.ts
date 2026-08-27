@@ -37,6 +37,22 @@ describe('licenceTokens', () => {
     })
   })
 
+  it('round-trips selfhost and community tiers in signed tokens', () => {
+    withLicenceSecret(() => {
+      for (const tier of ['community', 'selfhost', 'enterprise']) {
+        const payload = buildLicenceTokenPayload({
+          key: `lic-${tier}`,
+          tier,
+          domain: 'local.sitenook.test',
+          fingerprint: 'fp-1',
+          expires_at: '2027-06-01T00:00:00.000Z'
+        })
+        const verified = verifyLicenceToken(signLicenceToken(payload))
+        expect(verified.tier).toBe(tier)
+      }
+    })
+  })
+
   it('hashes instance fingerprints deterministically', () => {
     const a = hashInstanceFingerprint('Example.COM', 'machine-1')
     const b = hashInstanceFingerprint('example.com', 'machine-1')

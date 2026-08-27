@@ -1,5 +1,5 @@
 import type PocketBase from 'pocketbase'
-import type { Site } from '~/types/accessiq'
+import type { Site } from '~/types/sitenook'
 import type { OrganizationPlanUsage } from '~/utils/planEligibility'
 import { parseScanConfig } from '~/utils/scanConfig'
 import { parseSiteSettings } from '~/utils/siteSettings'

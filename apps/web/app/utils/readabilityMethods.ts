@@ -172,6 +172,20 @@ export function formatReadabilityScore(value: number | null | undefined): string
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
 }
 
+/** Human-readable score label, e.g. "Grade 8.2 · Easy" or "64 · Easy". */
+export function formatReadabilityScoreDisplay(
+  methodId: ReadabilityMethodId,
+  score: number | null | undefined
+): string {
+  const raw = formatReadabilityScore(score)
+  if (raw === '—') return raw
+  const status = getReadabilityScoreStatus(methodId, score)
+  const difficulty = status === 'good' ? 'Easy' : status === 'warning' ? 'Moderate' : status === 'bad' ? 'Hard' : null
+  if (!difficulty) return raw
+  if (methodId === 'flesch_reading_ease') return `${raw} · ${difficulty}`
+  return `Grade ${raw} · ${difficulty}`
+}
+
 export function buildReadabilityColumnLabels(enabledMethods: ReadabilityMethodId[]): Record<string, string> {
   const labels: Record<string, string> = {
     url: 'Page URL',
@@ -179,7 +193,7 @@ export function buildReadabilityColumnLabels(enabledMethods: ReadabilityMethodId
     word_count: 'Words'
   }
   for (const id of enabledMethods) {
-    labels[id] = getReadabilityMethod(id).badge
+    labels[id] = getReadabilityMethod(id).shortLabel
   }
   return labels
 }

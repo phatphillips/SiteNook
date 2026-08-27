@@ -22,6 +22,8 @@ export interface StripeServerConfig {
   starterAnnualPriceIdAud: string
   teamAnnualPriceIdAud: string
   businessAnnualPriceIdAud: string
+  selfhostPriceId: string
+  selfhostAnnualPriceId: string
   publishableKey: string
   devBypassToken: string
 }
@@ -42,6 +44,8 @@ export function readStripeServerConfig(config: {
   stripeStarterAnnualPriceIdAud?: string
   stripeTeamAnnualPriceIdAud?: string
   stripeBusinessAnnualPriceIdAud?: string
+  stripeSelfhostPriceId?: string
+  stripeSelfhostAnnualPriceId?: string
   stripeDevBypassToken?: string
   public?: { stripePublishableKey?: string }
 }): StripeServerConfig {
@@ -64,6 +68,8 @@ export function readStripeServerConfig(config: {
     starterAnnualPriceIdAud: config.stripeStarterAnnualPriceIdAud?.trim() || '',
     teamAnnualPriceIdAud: config.stripeTeamAnnualPriceIdAud?.trim() || '',
     businessAnnualPriceIdAud: config.stripeBusinessAnnualPriceIdAud?.trim() || '',
+    selfhostPriceId: config.stripeSelfhostPriceId?.trim() || '',
+    selfhostAnnualPriceId: config.stripeSelfhostAnnualPriceId?.trim() || '',
     publishableKey: config.public?.stripePublishableKey?.trim() || '',
     devBypassToken: config.stripeDevBypassToken?.trim() || STRIPE_CHECKOUT_DEV_BYPASS
   }
@@ -175,6 +181,44 @@ export function validateCheckoutPlanPrice(
   if (!priceId) {
     return `${envName} is not configured.`
   }
+  return validateStripePriceId(priceId, envName)
+}
+
+export function isStripeSelfHostCheckoutConfigured(stripeConfig: StripeServerConfig): boolean {
+  return Boolean(
+    stripeConfig.secretKey
+    && stripeConfig.selfhostPriceId
+    && validateStripePriceId(stripeConfig.selfhostPriceId) === null
+  )
+}
+
+export function resolveSelfHostStripePriceId(
+  stripeConfig: StripeServerConfig,
+  interval: BillingInterval
+): string {
+  if (interval === 'annual') return stripeConfig.selfhostAnnualPriceId
+  return stripeConfig.selfhostPriceId
+}
+
+export function isSelfHostStripePriceId(
+  stripeConfig: StripeServerConfig,
+  priceId: string | null | undefined
+): boolean {
+  const normalized = priceId?.trim()
+  if (!normalized) return false
+  return normalized === stripeConfig.selfhostPriceId
+    || normalized === stripeConfig.selfhostAnnualPriceId
+}
+
+export function validateSelfHostCheckoutPrice(
+  stripeConfig: StripeServerConfig,
+  interval: BillingInterval
+): string | null {
+  const priceId = resolveSelfHostStripePriceId(stripeConfig, interval)
+  const envName = interval === 'annual'
+    ? 'NUXT_STRIPE_SELFHOST_ANNUAL_PRICE_ID'
+    : 'NUXT_STRIPE_SELFHOST_PRICE_ID'
+  if (!priceId) return `${envName} is not configured.`
   return validateStripePriceId(priceId, envName)
 }
 

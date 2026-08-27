@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { formatDistanceToNow } from 'date-fns'
-import type { Scan } from '~/types/accessiq'
+import type { Scan } from '~/types/sitenook'
 import { formatScanRunSummary } from '~/utils/scanLog'
 import { formatScanTypeLabel } from '~/utils/scanDetail'
 import { compareTimestampsDesc } from '~/utils/sortTimestamps'

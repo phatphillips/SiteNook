@@ -1,5 +1,5 @@
 import type { WcagConformanceTarget, WcagVersionTarget } from './siteTargetTypes.js'
-import { isBestPracticeRule } from './siteimproveScore.js'
+import { isAriaRule, isBestPracticeRule } from './siteimproveScore.js'
 
 export type { WcagConformanceTarget, WcagVersionTarget } from './siteTargetTypes.js'
 
@@ -46,8 +46,8 @@ export function classifyIssueCategory(issue: {
   wcag_sc?: string
   element_type?: string
 }): 'wcag' | 'aria' | 'best_practice' {
-  if (issue.wcag_sc) return 'wcag'
-  if (issue.rule_id.startsWith('aria-') || issue.element_type === 'aria') return 'aria'
+  // Align with score pools: only axe best-practice aria-* → aria; WCAG aria-* stay wcag.
+  if (isAriaRule(issue.rule_id) && isBestPracticeRule(issue.rule_id)) return 'aria'
   if (isBestPracticeRule(issue.rule_id)) return 'best_practice'
   return 'wcag'
 }

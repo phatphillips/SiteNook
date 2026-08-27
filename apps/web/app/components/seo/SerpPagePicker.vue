@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PageRecord } from '~/types/accessiq'
+import type { PageRecord } from '~/types/sitenook'
 
 const props = defineProps<{
   pages: PageRecord[]

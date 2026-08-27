@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import PocketBase, { ClientResponseError } from 'pocketbase'
 
 const PB_URL = process.env.PB_TEST_URL || 'http://localhost:8091'
-const ADMIN_EMAIL = process.env.PB_TEST_USER_EMAIL || 'test-user@accessiq.test'
+const ADMIN_EMAIL = process.env.PB_TEST_USER_EMAIL || 'test-user@sitenook.test'
 const ADMIN_PASSWORD = process.env.PB_TEST_USER_PASSWORD || 'test-user-password-123'
 
 describe('team member create rules (integration)', () => {
@@ -12,13 +12,13 @@ describe('team member create rules (integration)', () => {
   let organizationId: string
   let createdUserId: string | undefined
   let viewerUserId: string | undefined
-  const createdEmail = `team-create-${Date.now()}@accessiq.test`
-  const viewerEmail = `team-viewer-${Date.now()}@accessiq.test`
+  const createdEmail = `team-create-${Date.now()}@sitenook.test`
+  const viewerEmail = `team-viewer-${Date.now()}@sitenook.test`
 
   beforeAll(async () => {
     const superPb = new PocketBase(PB_URL)
     await superPb.collection('_superusers').authWithPassword(
-      process.env.PB_TEST_ADMIN_EMAIL || 'test-admin@accessiq.test',
+      process.env.PB_TEST_ADMIN_EMAIL || 'test-admin@sitenook.test',
       process.env.PB_TEST_ADMIN_PASSWORD || 'test-password-123'
     )
 
@@ -62,7 +62,7 @@ describe('team member create rules (integration)', () => {
     const superPb = new PocketBase(PB_URL)
     try {
       await superPb.collection('_superusers').authWithPassword(
-        process.env.PB_TEST_ADMIN_EMAIL || 'test-admin@accessiq.test',
+        process.env.PB_TEST_ADMIN_EMAIL || 'test-admin@sitenook.test',
         process.env.PB_TEST_ADMIN_PASSWORD || 'test-password-123'
       )
       if (createdUserId) {
@@ -98,7 +98,7 @@ describe('team member create rules (integration)', () => {
   })
 
   it('allows creating admin and viewer roles only', async () => {
-    const adminEmail = `team-admin-create-${Date.now()}@accessiq.test`
+    const adminEmail = `team-admin-create-${Date.now()}@sitenook.test`
     const createdAdmin = await adminPb.collection('users').create({
       email: adminEmail,
       password: 'new-member-password',
@@ -112,7 +112,7 @@ describe('team member create rules (integration)', () => {
 
     const superPb = new PocketBase(PB_URL)
     await superPb.collection('_superusers').authWithPassword(
-      process.env.PB_TEST_ADMIN_EMAIL || 'test-admin@accessiq.test',
+      process.env.PB_TEST_ADMIN_EMAIL || 'test-admin@sitenook.test',
       process.env.PB_TEST_ADMIN_PASSWORD || 'test-password-123'
     )
     await superPb.collection('users').delete(createdAdmin.id)
@@ -122,7 +122,7 @@ describe('team member create rules (integration)', () => {
   it('rejects legacy owner and analyst roles on create', async () => {
     await expect(
       adminPb.collection('users').create({
-        email: `team-owner-${Date.now()}@accessiq.test`,
+        email: `team-owner-${Date.now()}@sitenook.test`,
         password: 'new-member-password',
         passwordConfirm: 'new-member-password',
         name: 'Blocked Owner',
@@ -136,7 +136,7 @@ describe('team member create rules (integration)', () => {
 
     await expect(
       adminPb.collection('users').create({
-        email: `team-analyst-${Date.now()}@accessiq.test`,
+        email: `team-analyst-${Date.now()}@sitenook.test`,
         password: 'new-member-password',
         passwordConfirm: 'new-member-password',
         name: 'Blocked Analyst',
@@ -153,7 +153,7 @@ describe('team member create rules (integration)', () => {
     const anonPb = new PocketBase(PB_URL)
     await expect(
       anonPb.collection('users').create({
-        email: `anon-${Date.now()}@accessiq.test`,
+        email: `anon-${Date.now()}@sitenook.test`,
         password: 'new-member-password',
         passwordConfirm: 'new-member-password',
         name: 'Anonymous Signup',
@@ -169,7 +169,7 @@ describe('team member create rules (integration)', () => {
   it('denies a non-admin org user from creating users', async () => {
     await expect(
       viewerPb.collection('users').create({
-        email: `blocked-${Date.now()}@accessiq.test`,
+        email: `blocked-${Date.now()}@sitenook.test`,
         password: 'new-member-password',
         passwordConfirm: 'new-member-password',
         name: 'Blocked Member',

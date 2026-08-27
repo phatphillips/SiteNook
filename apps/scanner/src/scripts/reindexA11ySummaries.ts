@@ -29,12 +29,13 @@ async function reindexSite(siteId: string, siteName: string): Promise<{ scans: n
   const pb = getPocketBase()
   const scans = await pb.collection('scans').getFullList({
     filter: `site = "${siteId}" && (status = 'complete' || status = 'complete_with_errors')`,
-    fields: 'id,site,pages_crawled,score_denominators'
+    fields: 'id,site,pages_crawled,score_denominators,a11y_check_stats'
   }) as Array<{
     id: string
     site: string
     pages_crawled?: number
     score_denominators?: { elements?: Record<string, number> }
+    a11y_check_stats?: import('../accessibility/a11yCheckStats.js').A11yCheckStats
   }>
 
   for (const scan of scans) {

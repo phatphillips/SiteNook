@@ -6,7 +6,7 @@ import type {
   Scan,
   ScanQueueItem,
   Site
-} from '~/types/accessiq'
+} from '~/types/sitenook'
 import { pbOr, pbRelation, pbSelect } from '~/utils/pbFilter'
 import { compareTimestampsDesc } from '~/utils/sortTimestamps'
 import { deriveScanType, parseScanConfig, serializeScanConfig } from '~/utils/scanConfig'
@@ -446,13 +446,18 @@ function _useScans() {
     await awaitAuthReady()
     syncAuth()
     try {
-      const items = await pb.collection('scans').getList(1, 500)
+      const items = await pb.collection('scans').getList(1, 200, {
+        fields: 'id,site,status,pages_crawled,started_at,completed_at,created,scan_type,score_overall,scan_quality',
+        skipTotal: true
+      })
       latestScansRaw.value = (items.items as unknown as Scan[]).slice().sort((a, b) =>
         compareTimestampsDesc(scanTimestamp(a), scanTimestamp(b))
       )
     } catch (e: unknown) {
+      const message = pocketBaseErrorMessage(e)
+      if (/autocancelled|timed out|TimeoutError/i.test(message)) return
       logQueryError('fetchLatestScansSummary', e)
-      error.value = pocketBaseErrorMessage(e) || 'Could not load latest scans summary'
+      error.value = message || 'Could not load latest scans summary'
     }
   }
 

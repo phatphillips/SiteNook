@@ -1,24 +1,31 @@
 services:
+  # Bind IPv4 only — Docker Desktop on Windows often hangs on [::1]/localhost IPv6 publishes.
+  nginx:
+    ports: !override
+      - "127.0.0.1:80:80"
+
   web:
     build:
       context: ./apps/web
       target: development
-    command: npm run dev -- --host 0.0.0.0
+    command: sh -c "CI=true pnpm install --no-frozen-lockfile --dangerously-allow-all-builds && exec pnpm exec nuxi dev --host 0.0.0.0 --port 3000"
     volumes:
       - ./apps/web:/app
       - /app/node_modules
       # Keep Nuxt build caches inside the container — host .nuxt/.output from Windows breaks vite-node IPC in Linux.
       - /app/.nuxt
       - /app/.output
-    ports:
-      - "3000:3000"
+    ports: !override
+      - "127.0.0.1:3500:3000"
     environment:
       NUXT_PUBLIC_POCKETBASE_URL: http://localhost:8090
-      NUXT_PUBLIC_APP_URL: http://localhost:3000
+      NUXT_PUBLIC_APP_URL: http://localhost:3500
       NUXT_PUBLIC_APP_DOMAIN: localhost
+      NUXT_DEV_HMR_CLIENT_PORT: "3500"
       NUXT_POCKETBASE_URL: http://pocketbase:8090
       NUXT_PB_ADMIN_EMAIL: ${PB_ADMIN_EMAIL}
       NUXT_PB_ADMIN_PASSWORD: ${PB_ADMIN_PASSWORD}
+      NUXT_PREVIEW_SIGNING_SECRET: ${NUXT_PREVIEW_SIGNING_SECRET:-${PB_ADMIN_PASSWORD}}
       NUXT_PROVISION_API_KEY: ${NUXT_PROVISION_API_KEY:-}
       NUXT_PUBLIC_SUPPORT_EMAIL: ${NUXT_PUBLIC_SUPPORT_EMAIL:-contact@your-org.com}
       NUXT_PUBLIC_MARKETING_SITE: ${NUXT_PUBLIC_MARKETING_SITE:-false}
@@ -38,6 +45,10 @@ services:
       NUXT_STRIPE_WEBHOOK_SECRET: ${NUXT_STRIPE_WEBHOOK_SECRET:-}
       NUXT_PUBLIC_STRIPE_DEV_BYPASS: ${NUXT_PUBLIC_STRIPE_DEV_BYPASS:-false}
       NUXT_STRIPE_DEV_BYPASS_TOKEN: ${NUXT_STRIPE_DEV_BYPASS_TOKEN:-}
+      ANALYTICS_CREDENTIALS_ENCRYPTION_KEY: ${ANALYTICS_CREDENTIALS_ENCRYPTION_KEY:-}
+      GA4_OAUTH_CLIENT_ID: ${GA4_OAUTH_CLIENT_ID:-}
+      GA4_OAUTH_CLIENT_SECRET: ${GA4_OAUTH_CLIENT_SECRET:-}
+      ANALYTICS_SYNC_ENABLED: ${ANALYTICS_SYNC_ENABLED:-1}
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
       TYPESENSE_URL: ${TYPESENSE_URL:-http://typesense:8108}
@@ -51,7 +62,7 @@ services:
     build:
       context: ./apps/scanner
       target: development
-    command: sh -c "npm install && npm run dev"
+    command: sh -c "npm install && npm run dev:supervised"
     volumes:
       - ./apps/scanner:/app
       - scanner_node_modules:/app/node_modules
@@ -59,16 +70,19 @@ services:
       TYPESENSE_URL: ${TYPESENSE_URL:-http://typesense:8108}
       TYPESENSE_API_KEY: ${TYPESENSE_API_KEY:-dev-typesense-key-local-only}
       TYPESENSE_ENABLED: ${TYPESENSE_ENABLED:-1}
+      # Opportunistic crawl-PDF file backfill hammers SQLite during scans; disable locally.
+      SCANNER_PDF_STORE_BACKFILL: ${SCANNER_PDF_STORE_BACKFILL:-0}
+      NODE_OPTIONS: ${NODE_OPTIONS:---max-old-space-size=4096}
 
   typesense:
-    ports:
-      - "8108:8108"
+    ports: !override
+      - "127.0.0.1:8108:8108"
 
   pocketbase:
-    ports:
-      - "8090:8090"
+    ports: !override
+      - "127.0.0.1:8090:8090"
     environment:
-      APP_DASHBOARD_URL: ${APP_DASHBOARD_URL:-http://localhost:3000}
+      APP_DASHBOARD_URL: ${APP_DASHBOARD_URL:-http://localhost:3500}
       APP_PUBLIC_DOMAIN: ${NUXT_PUBLIC_APP_DOMAIN:-localhost}
 
 volumes:

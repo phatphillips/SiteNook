@@ -1,18 +1,18 @@
 # Multi-tenancy — subdomain routing (Phase B)
 
-AccessIQ serves many customer organizations from one Nuxt + PocketBase stack. Each organization has a unique **`subdomain`** slug on the `organizations` collection. Users reach their tenant at:
+SiteNook serves many customer organizations from one Nuxt + PocketBase stack. Each organization has a unique **`subdomain`** slug on the `organizations` collection. Users reach their tenant at:
 
 ```text
 {subdomain}.{app-domain}
 ```
 
-Example: `agency-name.accessiq.com` → Default Organization slug `default` in dev → `default.localhost:3000`.
+Example: `agency-name.sitenook.com` → Default Organization slug `default` in dev → `default.localhost:3000`.
 
 ---
 
 ## How host → organization resolution works
 
-1. The browser requests a page (e.g. `agency.accessiq.com/login`).
+1. The browser requests a page (e.g. `agency.sitenook.com/login`).
 2. Nginx forwards the original `Host` header to the Nuxt server.
 3. Nitro route **`GET /api/org-context`** parses the host with `NUXT_PUBLIC_APP_DOMAIN` and looks up the matching `organizations` record (server-side, using PocketBase superuser credentials).
 4. The **`tenant` plugin** loads that context into `useTenantOrg()` (`useState('tenant-context')`).
@@ -29,13 +29,13 @@ Data isolation still comes from PocketBase JWT rules (`@request.auth.organizatio
 
 | Host | Mode | Login | Data |
 |------|------|-------|------|
-| **Apex** (`accessiq.com`, `localhost:3000`) | `apex` | Any org member when `TENANT_ONLY=false`; prod apex → `/sign-in` when `TENANT_ONLY=true` | User's org from JWT |
-| **Tenant** (`agency.accessiq.com`) | `tenant` | Only users in that org | Same org via JWT |
+| **Apex** (`sitenook.com`, `localhost:3000`) | `apex` | Any org member when `TENANT_ONLY=false`; prod apex → `/sign-in` when `TENANT_ONLY=true` | User's org from JWT |
+| **Tenant** (`agency.sitenook.com`) | `tenant` | Only users in that org | Same org via JWT |
 | **Unknown subdomain** | `unknown` | Blocked — `/account-not-found` | N/A |
 
 **Dev (`localhost`)** — apex dashboard and login always work, even with `NUXT_PUBLIC_TENANT_ONLY=true`. Local testing uses `default.localhost:3000` for tenant flows.
 
-**Production apex** — set `NUXT_PUBLIC_TENANT_ONLY=true` on the web service. The apex host (`accessiq.com`) shows `/sign-in` instead of the login form or dashboard. Users enter their email on `/sign-in` and are redirected to `{subdomain}.{app-domain}/login`. Allowed apex paths: `/sign-in`, `/signup`, `/start`, `/account-not-found`, `/reset-password`, `/pricing`. Legacy `/find-account` redirects to `/sign-in`.
+**Production apex** — set `NUXT_PUBLIC_TENANT_ONLY=true` on the web service. The apex host (`sitenook.com`) shows `/sign-in` instead of the login form or dashboard. Users enter their email on `/sign-in` and are redirected to `{subdomain}.{app-domain}/login`. Allowed apex paths: `/sign-in`, `/signup`, `/start`, `/account-not-found`, `/reset-password`, `/pricing`. Legacy `/find-account` redirects to `/sign-in`.
 
 See [go-live.md](../operations/go-live.md) for the full production checklist.
 
@@ -45,8 +45,8 @@ See [go-live.md](../operations/go-live.md) for the full production checklist.
 
 | Variable | Example (Docker prod) | Purpose |
 |----------|----------------------|---------|
-| `NUXT_PUBLIC_APP_DOMAIN` | `accessiq.com` (prod) / `localhost` (dev) | Base domain for subdomain parsing |
-| `NUXT_PUBLIC_APP_URL` | `https://accessiq.com` | Apex link on account-not-found page |
+| `NUXT_PUBLIC_APP_DOMAIN` | `sitenook.com` (prod) / `localhost` (dev) | Base domain for subdomain parsing |
+| `NUXT_PUBLIC_APP_URL` | `https://sitenook.com` | Apex link on account-not-found page |
 | `NUXT_PUBLIC_TENANT_ONLY` | `true` (prod) / `false` (dev) | Apex → `/sign-in`; localhost apex exempt |
 | `NUXT_POCKETBASE_URL` | `http://pocketbase:8090` | Server-side PB URL (not browser `/api`) |
 | `NUXT_PB_ADMIN_EMAIL` | Same as `PB_ADMIN_EMAIL` | Superuser lookup for org resolution |
@@ -69,7 +69,7 @@ Chrome resolves `*.localhost` to `127.0.0.1` automatically. Set admin credential
 # apps/web/.env or docker-compose.override.yml
 NUXT_PUBLIC_APP_DOMAIN=localhost
 NUXT_POCKETBASE_URL=http://localhost:8090   # or http://pocketbase:8090 in Docker
-NUXT_PB_ADMIN_EMAIL=admin@accessiq.local
+NUXT_PB_ADMIN_EMAIL=admin@sitenook.local
 NUXT_PB_ADMIN_PASSWORD=your-admin-password
 ```
 
@@ -85,20 +85,20 @@ docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --forc
 
 Configure these on your DNS provider — **not in this repo**:
 
-1. **Apex** `accessiq.com` → your load balancer / Cloudflare Tunnel / server IP.
-2. **Wildcard** `*.accessiq.com` → same target (all tenant subdomains hit one Nuxt stack).
-3. **Cloudflare Tunnel** (if used): one public hostname route for `accessiq.com` and `*.accessiq.com` → nginx or web upstream.
-4. Set `NUXT_PUBLIC_APP_DOMAIN=accessiq.com` on the web service.
+1. **Apex** `sitenook.com` → your load balancer / Cloudflare Tunnel / server IP.
+2. **Wildcard** `*.sitenook.com` → same target (all tenant subdomains hit one Nuxt stack).
+3. **Cloudflare Tunnel** (if used): one public hostname route for `sitenook.com` and `*.sitenook.com` → nginx or web upstream.
+4. Set `NUXT_PUBLIC_APP_DOMAIN=sitenook.com` on the web service.
 5. Ensure nginx passes `Host` through (already configured in `nginx/nginx.conf`).
 
-TLS: use Cloudflare Universal SSL or a wildcard certificate for `*.accessiq.com`.
+TLS: use Cloudflare Universal SSL or a wildcard certificate for `*.sitenook.com`.
 
 ---
 
 ## Verifying two tenants
 
 1. In PocketBase admin, create a second organization (`subdomain: org-b`) and a user assigned to it.
-2. Visit `org-b.localhost:3000` (or `org-b.accessiq.com` in prod).
+2. Visit `org-b.localhost:3000` (or `org-b.sitenook.com` in prod).
 3. Log in as org B user → see only org B sites.
 4. Log in as default org user on that host → rejected at login.
 5. Visit `unknown.localhost:3000` → `/account-not-found`.

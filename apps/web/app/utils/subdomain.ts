@@ -20,9 +20,9 @@ function isValidTenantSubdomain(subdomain: string): boolean {
 /**
  * Extract a tenant subdomain from the request Host header.
  *
- * Examples (appDomain = accessiq.com):
- * - agency.accessiq.com → agency
- * - accessiq.com / www.accessiq.com → apex (null)
+ * Examples (appDomain = sitenook.com):
+ * - agency.sitenook.com → agency
+ * - sitenook.com / www.sitenook.com → apex (null)
  *
  * Dev (appDomain = localhost):
  * - default.localhost → default

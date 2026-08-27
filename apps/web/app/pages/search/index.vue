@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { SearchContentType, SearchMode } from '~/types/globalSearch'
+import type { GlobalSearchResultItem } from '~/types/globalSearch'
 import { MIN_QUERY_LENGTH } from '~/utils/globalSearch'
 import GlobalSearchResultsTable from '~/components/search/GlobalSearchResultsTable.vue'
+import { buildSearchResultsCsv } from '~/utils/export/searchExport'
 
 /** USelectMenu cannot use empty string as a value — use a sentinel for “all sites”. */
 const ALL_SITES = '__all__'
@@ -108,6 +110,45 @@ watch(query, () => {
   if (query.value.trim().length >= MIN_QUERY_LENGTH) {
     queryTooShort.value = false
   }
+})
+
+const searchPerPage = computed(() => results.value?.perPage ?? 20)
+const searchRows = computed(() => results.value?.items ?? [])
+
+const scopeLabel = computed(() => resolvedSiteId() ?? 'org')
+
+const {
+  exportModalOpen,
+  exportConfig,
+  exporting,
+  progressMessage,
+  runExport
+} = useSimpleTableCsvExport({
+  total: computed(() => results.value?.totalItems ?? 0),
+  page,
+  pageSize: searchPerPage,
+  currentRows: searchRows,
+  feature: 'search',
+  scopeLabel,
+  fetchAllRows: async (onProgress) => {
+    if (!results.value || !canSearch.value) return []
+    const all: GlobalSearchResultItem[] = []
+    const totalPages = Math.max(1, results.value.totalPages)
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      onProgress(`Fetching page ${pageNum} of ${totalPages}…`)
+      const response = await search({
+        q: query.value.trim(),
+        mode: mode.value,
+        type: contentType.value,
+        siteId: resolvedSiteId(),
+        page: pageNum,
+        perPage: results.value.perPage
+      })
+      if (response?.items) all.push(...response.items)
+    }
+    return all
+  },
+  buildCsv: rows => buildSearchResultsCsv(rows, { showSiteColumn: showSiteColumn.value })
 })
 </script>
 
@@ -259,8 +300,24 @@ watch(query, () => {
                   aria-label="Toggle column visibility"
                 />
               </UDropdownMenu>
+              <UButton
+                icon="i-lucide-download"
+                label="Export to CSV"
+                color="neutral"
+                variant="outline"
+                :disabled="!results?.totalItems"
+                @click="exportModalOpen = true"
+              />
             </template>
           </DataTableToolbar>
+
+          <TableExportModal
+            v-model:open="exportModalOpen"
+            :config="exportConfig"
+            :exporting="exporting"
+            :progress-message="progressMessage"
+            @export="runExport"
+          />
 
           <p
             v-if="contentType === 'pdfs' && results && results.totalItems === 0 && !loading"

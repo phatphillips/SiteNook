@@ -7,7 +7,7 @@ import {
   openIssueIdsForRule,
   pageDisplayTitle
 } from '~/utils/affectedPages'
-import type { AccessibilityIssue } from '~/types/accessiq'
+import type { AccessibilityIssue } from '~/types/sitenook'
 
 function issue(partial: Partial<AccessibilityIssue> & { id: string, rule_id: string }): AccessibilityIssue {
   return {

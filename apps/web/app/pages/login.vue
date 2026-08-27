@@ -43,7 +43,7 @@ async function submit() {
 
 <template>
   <AuthPageShell
-    title="AccessIQ"
+    title="SiteNook"
     icon="i-lucide-log-in"
     :subtitle="isTenantHost && organization ? `Sign in to ${organization.name}` : 'Sign in to your account'"
   >

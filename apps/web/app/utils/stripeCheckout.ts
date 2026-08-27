@@ -1,4 +1,4 @@
-import type { OrganizationPlan } from '~/types/accessiq'
+import type { OrganizationPlan } from '~/types/sitenook'
 import { isPaidCheckoutPlan, ORGANIZATION_PLANS } from '~/utils/planLimits'
 
 /** Query token for local dev when Stripe keys are not configured (G0 decision #6). */

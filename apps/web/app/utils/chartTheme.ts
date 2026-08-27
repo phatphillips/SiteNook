@@ -42,6 +42,85 @@ export function chartLineRgb(variant: ChartThemeVariant): string {
 
 
 
+/** Theme-aware neutral series: white in dark mode, near-black in light. */
+export function chartNeutralLineColor(variant: ChartThemeVariant): string {
+  if (variant === 'dark') return '#ffffff'
+  if (variant === 'solarized-light') return '#073642'
+  return '#111827'
+}
+
+export function chartNeutralLineRgb(variant: ChartThemeVariant): string {
+  if (variant === 'dark') return '255, 255, 255'
+  if (variant === 'solarized-light') return '7, 54, 66'
+  return '17, 24, 39'
+}
+
+/** Plausible-style purple series. */
+export const CHART_PURPLE_COLOR = '#6366f1'
+export const CHART_PURPLE_RGB = '99, 102, 241'
+
+/**
+ * Neutral gray fills for a11y org bars / score chips (Plausible-style).
+ * Hover uses chart purple; progress chip text is white on gray, black on purple.
+ */
+export const A11Y_BAR_FILL = '#2d2d32'
+export const A11Y_BAR_FILL_HOVER = CHART_PURPLE_COLOR
+/** Darker track behind the progress fill in All sites score chips / row hover. */
+export const A11Y_BAR_TRACK = '#111114'
+/** Score chip label on default (dark gray) fill. */
+export const A11Y_BAR_TEXT = '#ffffff'
+/** Score chip label on purple hover fill — black for contrast on #6366f1. */
+export const A11Y_BAR_TEXT_ON_HOVER = '#000000'
+
+/** @deprecated Use A11Y_BAR_FILL */
+export const A11Y_PURPLE_GRAY_FILL = A11Y_BAR_FILL
+/** @deprecated Use A11Y_BAR_FILL_HOVER */
+export const A11Y_PURPLE_GRAY_FILL_HOVER = A11Y_BAR_FILL_HOVER
+/** @deprecated Use A11Y_BAR_TRACK */
+export const A11Y_PURPLE_GRAY_TRACK = A11Y_BAR_TRACK
+
+export function chartPurpleLineColor(_variant?: ChartThemeVariant): string {
+  return CHART_PURPLE_COLOR
+}
+
+export function chartPurpleLineRgb(_variant?: ChartThemeVariant): string {
+  return CHART_PURPLE_RGB
+}
+
+/**
+ * Distinct colors for multi-series score trend overlays (Overall + WCAG levels).
+ * Fixed hues so legend checkboxes stay stable across themes.
+ */
+export const SCORE_TREND_SERIES_COLORS = {
+  overall: CHART_PURPLE_COLOR,
+  a: '#0ea5e9',
+  aa: '#10b981',
+  aaa: '#f59e0b',
+  bestPractices: '#ec4899'
+} as const
+
+export type ChartSeriesTone = 'accent' | 'neutral' | 'purple'
+
+export function chartSeriesColor(
+  variant: ChartThemeVariant,
+  tone: ChartSeriesTone = 'accent'
+): string {
+  if (tone === 'neutral') return chartNeutralLineColor(variant)
+  if (tone === 'purple') return chartPurpleLineColor(variant)
+  return chartLineColor(variant)
+}
+
+export function chartSeriesRgb(
+  variant: ChartThemeVariant,
+  tone: ChartSeriesTone = 'accent'
+): string {
+  if (tone === 'neutral') return chartNeutralLineRgb(variant)
+  if (tone === 'purple') return chartPurpleLineRgb(variant)
+  return chartLineRgb(variant)
+}
+
+
+
 export function chartAreaFill(
 
   ctx: CanvasRenderingContext2D,
@@ -142,6 +221,20 @@ export function chartTooltipPalette(variant: ChartThemeVariant): ChartTooltipPal
 
 }
 
+/** Solid fill behind Chart.js PNG exports (canvas is otherwise transparent). */
+export function chartExportBackgroundColor(variant: ChartThemeVariant): string {
+  if (variant === 'dark') return 'rgb(19, 20, 24)' // --ui-bg dark
+  if (variant === 'solarized-light') return '#fdf6e3' // --solarized-base3 / --ui-bg
+  return '#ffffff'
+}
+
+/** Flat leading segment before first real data point (overview MetricTrendCard style). */
+export function chartPlaceholderLineColor(variant: ChartThemeVariant): string {
+  if (variant === 'dark') return 'rgba(148, 163, 184, 0.5)'
+  if (variant === 'solarized-light') return 'rgba(88, 110, 117, 0.55)'
+  return 'rgba(107, 114, 128, 0.5)'
+}
+
 
 
 export function chartAxisTickColor(variant: ChartThemeVariant): string {
@@ -166,6 +259,13 @@ export function chartPointBorderColor(variant: ChartThemeVariant): string {
 
 }
 
+/** Subtle plot-area grid lines for timeline charts. */
+export function chartGridColor(variant: ChartThemeVariant): string {
+  if (variant === 'dark') return 'rgba(255, 255, 255, 0.055)'
+  if (variant === 'solarized-light') return 'rgba(7, 54, 66, 0.08)'
+  return 'rgba(0, 0, 0, 0.055)'
+}
+
 
 
 type TooltipCallbackCtx = {
@@ -188,13 +288,22 @@ export function buildChartTooltipOptions(opts: {
 
   enabled?: boolean
 
+  /** Override series swatch color (defaults to accent green). */
+  seriesColor?: string
+
+  /**
+   * Tooltip vertical alignment relative to the caret.
+   * Chart.js: `'bottom'` places the tooltip above the point.
+   */
+  yAlign?: 'top' | 'center' | 'bottom'
+
 }) {
 
   const palette = chartTooltipPalette(opts.variant)
 
   const formatValue = opts.formatValue ?? ((v: number) => String(v))
 
-  const lineColor = chartLineColor(opts.variant)
+  const lineColor = opts.seriesColor ?? chartLineColor(opts.variant)
 
 
 
@@ -231,6 +340,8 @@ export function buildChartTooltipOptions(opts: {
     boxPadding: 6,
 
     usePointStyle: true,
+
+    ...(opts.yAlign ? { yAlign: opts.yAlign } : {}),
 
     callbacks: {
 

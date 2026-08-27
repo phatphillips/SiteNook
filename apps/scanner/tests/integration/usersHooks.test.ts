@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import PocketBase, { ClientResponseError } from 'pocketbase'
 
 const PB_URL = process.env.PB_TEST_URL || 'http://localhost:8091'
-const ADMIN_EMAIL = process.env.PB_TEST_USER_EMAIL || 'test-user@accessiq.test'
+const ADMIN_EMAIL = process.env.PB_TEST_USER_EMAIL || 'test-user@sitenook.test'
 const ADMIN_PASSWORD = process.env.PB_TEST_USER_PASSWORD || 'test-user-password-123'
 
 function expectRejected(error: unknown) {
@@ -11,7 +11,7 @@ function expectRejected(error: unknown) {
 
 async function authSuperuser(pb: PocketBase) {
   await pb.collection('_superusers').authWithPassword(
-    process.env.PB_TEST_ADMIN_EMAIL || 'test-admin@accessiq.test',
+    process.env.PB_TEST_ADMIN_EMAIL || 'test-admin@sitenook.test',
     process.env.PB_TEST_ADMIN_PASSWORD || 'test-password-123'
   )
 }
@@ -41,7 +41,7 @@ describe('users collection security hooks (integration)', () => {
 
   let organizationId: string
   let viewerUserId: string | undefined
-  const viewerEmail = `users-hook-viewer-${Date.now()}@accessiq.test`
+  const viewerEmail = `users-hook-viewer-${Date.now()}@sitenook.test`
 
   beforeAll(async () => {
     const superPb = new PocketBase(PB_URL)
@@ -143,7 +143,7 @@ describe('users collection security hooks (integration)', () => {
     const adminId = adminPb.authStore.record?.id
     if (!adminId) throw new Error('missing admin user')
 
-    const peerEmail = `users-hook-peer-${Date.now()}@accessiq.test`
+    const peerEmail = `users-hook-peer-${Date.now()}@sitenook.test`
     const peerAdmin = await superPb.collection('users').create({
       email: peerEmail,
       password: 'peer-password-123',
@@ -174,7 +174,7 @@ describe('users collection security hooks (integration)', () => {
     const adminId = adminPb.authStore.record?.id
     if (!adminId) throw new Error('missing admin user')
 
-    const peerEmail = `users-hook-billing-${Date.now()}@accessiq.test`
+    const peerEmail = `users-hook-billing-${Date.now()}@sitenook.test`
     const peerAdmin = await superPb.collection('users').create({
       email: peerEmail,
       password: 'peer-password-123',
@@ -209,7 +209,7 @@ describe('users collection security hooks (integration)', () => {
     const superPb = new PocketBase(PB_URL)
     await authSuperuser(superPb)
 
-    const peerEmail = `users-hook-demote-${Date.now()}@accessiq.test`
+    const peerEmail = `users-hook-demote-${Date.now()}@sitenook.test`
     const peerAdmin = await superPb.collection('users').create({
       email: peerEmail,
       password: 'peer-password-123',
@@ -234,7 +234,7 @@ describe('users collection security hooks (integration)', () => {
     const superPb = new PocketBase(PB_URL)
     await authSuperuser(superPb)
 
-    const email = `users-hook-activity-${Date.now()}@accessiq.test`
+    const email = `users-hook-activity-${Date.now()}@sitenook.test`
     const created = await adminPb.collection('users').create({
       email,
       password: 'activity-password-123',

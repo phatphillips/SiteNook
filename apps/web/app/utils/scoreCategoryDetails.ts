@@ -1,4 +1,4 @@
-import type { AccessibilityIssue } from '~/types/accessiq'
+import type { AccessibilityIssue } from '~/types/sitenook'
 import {
   calculateAccessibilityScores,
   calculatePointsToGain,
@@ -7,12 +7,11 @@ import {
 import {
   buildUrlsByRule,
   countOpenOccurrences,
-  sortOpenByPointsToGain,
   uniqueByRule
 } from '~/utils/accessibilityIssues'
 import type { AccessibilityScoreCategoryId, AccessibilityScoreDetailRow } from '~/utils/siteSettings'
-import { classifyIssueCategory } from '~/utils/siteSettings'
-import type { ElementTotals } from '~/utils/siteimproveScore'
+import { isAriaRule, isBestPracticeRule, type ElementTotals } from '~/utils/siteimproveScore'
+import type { A11yCheckStats } from '~/utils/a11yCheckStats'
 
 export const SCORE_DETAILS_DEFAULT_SUMMARY =
   'Per-category progress toward 100% for each WCAG level and practice included in your site target. Hover or click a conformance level to see its score, what it covers, and the fixes that would help most.'
@@ -25,15 +24,22 @@ export const SCORE_CATEGORY_DESCRIPTIONS: Record<AccessibilityScoreCategoryId, s
   best_practice: 'Beyond strict WCAG requirements. Best-practice checks catch common accessibility problems recommended for fixing.'
 }
 
+/**
+ * Match issues to conformance rows using the same pools as category scores
+ * (WCAG levels exclude best-practice rules; ARIA = BP aria-* rules).
+ */
 export function issueMatchesScoreCategory(
   issue: Pick<AccessibilityIssue, 'rule_id' | 'wcag_level' | 'wcag_sc' | 'element_type'>,
   categoryId: AccessibilityScoreCategoryId
 ): boolean {
-  if (categoryId === 'A' || categoryId === 'AA' || categoryId === 'AAA') {
-    return classifyIssueCategory(issue) === 'wcag' && issue.wcag_level === categoryId
+  if (categoryId === 'aria') {
+    return isAriaRule(issue.rule_id) && isBestPracticeRule(issue.rule_id)
   }
-  if (categoryId === 'aria') return classifyIssueCategory(issue) === 'aria'
-  return classifyIssueCategory(issue) === 'best_practice'
+  if (categoryId === 'best_practice') {
+    return isBestPracticeRule(issue.rule_id) && !isAriaRule(issue.rule_id)
+  }
+  // Level A / AA / AAA — non-best-practice issues at that level
+  return !isBestPracticeRule(issue.rule_id) && issue.wcag_level === categoryId
 }
 
 export function openIssuesInCategory(
@@ -47,18 +53,19 @@ export function openIssuesInCategory(
 export function categoryScoreImpact(
   categoryId: AccessibilityScoreCategoryId,
   scoringIssues: AccessibilityIssue[],
-  elementTotals?: ElementTotals | null
+  elementTotals?: ElementTotals | null,
+  checkStats?: A11yCheckStats | null
 ): number {
   const scoreable = scoringIssues.filter(i => i.status !== 'fixed')
   if (!scoreable.length) return 0
 
-  const before = calculateAccessibilityScores(scoreable, elementTotals ?? undefined).overall
+  const before = calculateAccessibilityScores(scoreable, elementTotals ?? undefined, checkStats).overall
   const afterIssues = scoreable.filter((issue) => {
     if (issue.status === 'dismissed') return true
     if (issue.status === 'open' && issueMatchesScoreCategory(issue, categoryId)) return false
     return true
   })
-  const after = calculateAccessibilityScores(afterIssues, elementTotals ?? undefined).overall
+  const after = calculateAccessibilityScores(afterIssues, elementTotals ?? undefined, checkStats).overall
   return Math.max(0, Math.round((after - before) * 10) / 10)
 }
 
@@ -90,19 +97,34 @@ export function topFixRulesForCategory(
   scoringIssues: AccessibilityIssue[],
   categoryId: AccessibilityScoreCategoryId,
   elementTotals?: ElementTotals | null,
-  limit = 3
+  limit = 3,
+  options?: { requirePositivePoints?: boolean, checkStats?: A11yCheckStats | null }
 ): TopFixRule[] {
+  // BP / ARIA buckets are small; rounding can yield 0 points while failures still matter.
+  const requirePositivePoints = options?.requirePositivePoints ?? false
   const open = openIssuesInCategory(issues, categoryId)
   const unique = uniqueByRule(open)
-  const sorted = sortOpenByPointsToGain(unique, scoringIssues)
-  return sorted.slice(0, limit).map((issue) => {
-    const points = calculatePointsToGain(scoringIssues, issue.rule_id, elementTotals ?? undefined)
-    return {
-      ruleId: issue.rule_id,
-      ruleName: issue.description,
-      points
-    }
-  }).filter(r => r.points > 0)
+  const ranked = unique
+    .map((issue) => {
+      const points = calculatePointsToGain(
+        scoringIssues,
+        issue.rule_id,
+        elementTotals ?? undefined,
+        options?.checkStats
+      )
+      return {
+        ruleId: issue.rule_id,
+        ruleName: issue.description,
+        points
+      }
+    })
+    .sort((a, b) => b.points - a.points)
+
+  const filtered = requirePositivePoints
+    ? ranked.filter(r => r.points > 0)
+    : ranked
+
+  return filtered.slice(0, limit)
 }
 
 export function issuesLinkForCategory(
@@ -129,14 +151,15 @@ export function formatScoreImpact(points: number): string {
 /** Points open issues are dragging the overall score down (if all open issues were fixed). */
 export function overallScoreImpact(
   scoringIssues: AccessibilityIssue[],
-  elementTotals?: ElementTotals | null
+  elementTotals?: ElementTotals | null,
+  checkStats?: A11yCheckStats | null
 ): number {
   const scoreable = scoringIssues.filter(i => i.status !== 'fixed')
   if (!scoreable.length) return 0
 
-  const before = calculateAccessibilityScores(scoreable, elementTotals ?? undefined).overall
+  const before = calculateAccessibilityScores(scoreable, elementTotals ?? undefined, checkStats).overall
   const afterIssues = scoreable.filter(i => i.status !== 'open')
-  const after = calculateAccessibilityScores(afterIssues, elementTotals ?? undefined).overall
+  const after = calculateAccessibilityScores(afterIssues, elementTotals ?? undefined, checkStats).overall
   return Math.max(0, Math.round((after - before) * 10) / 10)
 }
 
@@ -145,9 +168,10 @@ export function potentialOverallScoreForCategory(
   categoryId: AccessibilityScoreCategoryId,
   currentOverall: number,
   scoringIssues: AccessibilityIssue[],
-  elementTotals?: ElementTotals | null
+  elementTotals?: ElementTotals | null,
+  checkStats?: A11yCheckStats | null
 ): number {
-  const impact = categoryScoreImpact(categoryId, scoringIssues, elementTotals)
+  const impact = categoryScoreImpact(categoryId, scoringIssues, elementTotals, checkStats)
   if (impact <= 0) return currentOverall
   return Math.min(100, Math.round((currentOverall + impact) * 10) / 10)
 }
@@ -172,17 +196,31 @@ export function topFixRulesOverall(
   issues: AccessibilityIssue[],
   scoringIssues: AccessibilityIssue[],
   elementTotals?: ElementTotals | null,
-  limit = 2
+  limit = 2,
+  options?: { requirePositivePoints?: boolean, checkStats?: A11yCheckStats | null }
 ): TopFixRule[] {
+  const requirePositivePoints = options?.requirePositivePoints ?? true
   const open = issues.filter(i => i.status === 'open')
   const unique = uniqueByRule(open)
-  const sorted = sortOpenByPointsToGain(unique, scoringIssues)
-  return sorted.slice(0, limit).map((issue) => {
-    const points = calculatePointsToGain(scoringIssues, issue.rule_id, elementTotals ?? undefined)
-    return {
-      ruleId: issue.rule_id,
-      ruleName: issue.description,
-      points
-    }
-  }).filter(r => r.points > 0)
+  const ranked = unique
+    .map((issue) => {
+      const points = calculatePointsToGain(
+        scoringIssues,
+        issue.rule_id,
+        elementTotals ?? undefined,
+        options?.checkStats
+      )
+      return {
+        ruleId: issue.rule_id,
+        ruleName: issue.description,
+        points
+      }
+    })
+    .sort((a, b) => b.points - a.points)
+
+  const filtered = requirePositivePoints
+    ? ranked.filter(r => r.points > 0)
+    : ranked
+
+  return filtered.slice(0, limit)
 }

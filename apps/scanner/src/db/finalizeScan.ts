@@ -1,6 +1,6 @@
 import type PocketBase from 'pocketbase'
-import { batchCreate } from './pocketbaseClient.js'
-import { diffScans } from '../accessibility/diffEngine.js'
+import { batchCreate, getPocketBase, withPocketBaseRetry } from './pocketbaseClient.js'
+import { diffScans, type IssueFingerprint } from '../accessibility/diffEngine.js'
 import type { PageResult } from '../crawler/siteCrawler.js'
 import {
   aggregateScoresForScan,
@@ -8,6 +8,7 @@ import {
   scanScoreFieldsFromAggregate,
   type ScanScoreFields
 } from '../crawler/siteCrawler.js'
+import type { ElementTotals } from '../accessibility/siteimproveScore.js'
 import { parseSiteSettings, type SiteSettings } from '../config/siteSettings.js'
 import { DEFAULT_SEO_SETTINGS, type SeoIssueDraft, type SeoSettings } from '../seo/types.js'
 import { runSeoSitePass } from '../seo/runSeoSitePass.js'
@@ -31,6 +32,8 @@ export interface FinalizeScanOptions {
   /** Run duplicate/orphan/sitemap site-level SEO checks (skip during background_scan handoff). */
   runSitePass?: boolean
   configSitemapUrl?: string
+  /** When false, skip overwriting sites.current_a11y (untrusted / incomplete crawls). */
+  updateCurrentA11y?: boolean
 }
 
 export function seoSettingsFromSite(siteSettings: SiteSettings): SeoSettings {
@@ -47,16 +50,17 @@ export function seoSettingsFromSite(siteSettings: SiteSettings): SeoSettings {
   }
 }
 
-/** Blend accessibility, QA, and SEO into a single overall score when SEO is enabled. */
+/**
+ * @deprecated Accessibility overview uses score_overall as a11y-only.
+ * QA and SEO stay on score_qa / score_seo.
+ */
 export function blendOverallScore(
   accessibility: number,
-  qa: number,
-  seo: number | undefined,
-  checkSeo: boolean
+  _qa: number,
+  _seo: number | undefined,
+  _checkSeo: boolean
 ): number {
-  if (!checkSeo || seo == null) return accessibility
-  const blended = (accessibility + qa + seo) / 3
-  return Math.round(blended * 10) / 10
+  return accessibility
 }
 
 export interface FinalizeScanResult {
@@ -69,6 +73,7 @@ export interface FinalizeScanResult {
   }
   diffSummary: ReturnType<typeof diffScans> | null
   openIssueCount: number
+  brokenLinkCount: number
   seoIssueCount: number
   a11ySummary: ReturnType<typeof buildA11ySummary>
 }
@@ -85,6 +90,73 @@ async function loadUrlToPageId(pb: PocketBase, scanId: string): Promise<Map<stri
     map.set(normalizeSeoUrl(url), id)
   }
   return map
+}
+
+function openIssueCountFromPages(pages: PageResult[]): number {
+  return pages.reduce(
+    (count, page) => count + page.issues.filter(issue => (issue.status || 'open') === 'open').length,
+    0
+  )
+}
+
+function currentIssueFingerprints(pages: PageResult[]): IssueFingerprint[] {
+  return pages.flatMap(page => page.issues.map(issue => ({
+    rule_id: issue.rule_id,
+    css_selector: issue.css_selector,
+    page_url: page.url
+  })))
+}
+
+async function loadScanIssueFingerprints(
+  pb: PocketBase,
+  scanId: string
+): Promise<Array<IssueFingerprint & { id: string }>> {
+  const pages = await pb.collection('pages').getFullList({
+    filter: `scan = "${scanId}"`,
+    fields: 'id,url'
+  }) as Array<{ id: string, url?: string }>
+  const urlById = new Map(pages.map(page => [page.id, String(page.url ?? '')]))
+  const issues = await pb.collection('accessibility_issues').getFullList({
+    filter: `scan = "${scanId}"`,
+    fields: 'id,rule_id,css_selector,page'
+  }) as Array<{ id: string, rule_id?: string, css_selector?: string, page?: string }>
+  return issues.map(issue => ({
+    id: issue.id,
+    rule_id: String(issue.rule_id ?? ''),
+    css_selector: String(issue.css_selector ?? ''),
+    page_url: urlById.get(String(issue.page ?? '')) || ''
+  }))
+}
+
+async function persistSiteSeoIssues(
+  pb: PocketBase,
+  scanId: string,
+  siteId: string,
+  siteIssues: SeoIssueDraft[]
+): Promise<void> {
+  if (!siteIssues.length) return
+  const existing = await withPocketBaseRetry(
+    () => pb.collection('seo_issues').getList(1, 1, {
+      filter: `scan = "${scanId}"`,
+      fields: 'id'
+    }),
+    { label: 'existing seo issues', resetClient: false }
+  )
+  if (existing.totalItems > 0) return
+
+  const urlToPageId = await withPocketBaseRetry(
+    () => loadUrlToPageId(pb, scanId),
+    { label: 'page id map', resetClient: false }
+  )
+  const siteRecords = siteIssues
+    .map(d => draftToRecord(d, scanId, siteId, urlToPageId))
+    .filter(r => !r.page || typeof r.page === 'string')
+  if (siteRecords.length) {
+    await withPocketBaseRetry(
+      () => batchCreate('seo_issues', siteRecords),
+      { label: 'seo issue create', resetClient: false }
+    )
+  }
 }
 
 function draftToRecord(
@@ -157,22 +229,9 @@ export async function finalizeScan(
     )
     siteIssues.push(...passIssues)
 
-    const urlToPageId = await loadUrlToPageId(pb, options.scanId)
-    const siteRecords = siteIssues
-      .map(d => draftToRecord(d, options.scanId, options.siteId, urlToPageId))
-      .filter(r => !r.page || typeof r.page === 'string')
-
-    if (siteRecords.length) {
-      await batchCreate('seo_issues', siteRecords)
-    }
+    await persistSiteSeoIssues(pb, options.scanId, options.siteId, siteIssues)
   } else if (siteIssues.length) {
-    const urlToPageId = await loadUrlToPageId(pb, options.scanId)
-    const siteRecords = siteIssues
-      .map(d => draftToRecord(d, options.scanId, options.siteId, urlToPageId))
-      .filter(r => !r.page || typeof r.page === 'string')
-    if (siteRecords.length) {
-      await batchCreate('seo_issues', siteRecords)
-    }
+    await persistSiteSeoIssues(pb, options.scanId, options.siteId, siteIssues)
   }
 
   const allSeoIssues: SeoIssueDraft[] = [
@@ -188,15 +247,10 @@ export async function finalizeScan(
   const scoreFields = {
     ...baseFields,
     ...seoScores,
-    ...(crawlAudit ? { seo_crawl_audit: crawlAudit } : {}),
-    score_overall: blendOverallScore(
-      baseFields.score_overall,
-      baseFields.score_qa,
-      seoScores.score_seo,
-      seoSettings.checkSeo
-    )
+    ...(crawlAudit ? { seo_crawl_audit: crawlAudit } : {})
   }
   logScoreFieldsBeforePbWrite(options.scanId, scoreFields)
+  console.log(`Finalize: scores ready for scan ${options.scanId}`)
 
   const a11ySummary = buildA11ySummary(
     issuesFromPageResults(
@@ -213,61 +267,61 @@ export async function finalizeScan(
     ),
     {
       pageCount: options.pages.length,
-      elementTotals: baseFields.score_denominators?.elements
+      elementTotals: baseFields.score_denominators?.elements,
+      checkStats: baseFields.a11y_check_stats
     }
   )
 
   let diffSummary: ReturnType<typeof diffScans> | null = null
   if (options.diffFromPrevious) {
-    const previousScans = await pb.collection('scans').getList(1, 1, {
-      filter: `site = "${options.siteId}" && (status = 'complete' || status = 'complete_with_errors') && id != "${options.scanId}"`,
-      sort: '-completed_at'
-    })
+    const previousScans = await withPocketBaseRetry(
+      () => pb.collection('scans').getList(1, 1, {
+        filter: `site = "${options.siteId}" && (status = 'complete' || status = 'complete_with_errors') && id != "${options.scanId}"`,
+        sort: '-completed_at'
+      }),
+      { label: 'previous scan lookup', resetClient: false }
+    )
 
     if (previousScans.items.length > 0) {
       const prevScanId = previousScans.items[0].id
-      const [currentIssues, previousIssues] = await Promise.all([
-        pb.collection('accessibility_issues').getFullList({ filter: `scan = "${options.scanId}"`, expand: 'page' }),
-        pb.collection('accessibility_issues').getFullList({ filter: `scan = "${prevScanId}"`, expand: 'page' })
-      ])
-
-      diffSummary = diffScans(
-        currentIssues.map(i => ({
-          id: i.id,
-          rule_id: String((i as { rule_id?: string }).rule_id ?? ''),
-          css_selector: String((i as { css_selector?: string }).css_selector ?? ''),
-          page_url: String((i.expand as { page?: { url: string } })?.page?.url ?? '')
-        })),
-        previousIssues.map(i => ({
-          id: i.id,
-          rule_id: String((i as { rule_id?: string }).rule_id ?? ''),
-          css_selector: String((i as { css_selector?: string }).css_selector ?? ''),
-          page_url: String((i.expand as { page?: { url: string } })?.page?.url ?? '')
-        }))
+      const previousIssues = await withPocketBaseRetry(
+        () => loadScanIssueFingerprints(pb, prevScanId),
+        { label: 'previous issue fingerprints', resetClient: false }
       )
+      diffSummary = diffScans(currentIssueFingerprints(options.pages), previousIssues)
     }
   }
 
-  const openIssues = await pb.collection('accessibility_issues').getFullList({
-    filter: `scan = "${options.scanId}" && status = 'open'`,
-    fields: 'id'
-  })
-
-  void reconcileSiteWebpageSearchIndex(options.siteId).catch(err => {
-    console.warn(`Search reconcile failed for site ${options.siteId}:`, err instanceof Error ? err.message : err)
-  })
-
-  void reconcileSiteCurrentA11y(pb, options.siteId, baseFields.score_denominators?.elements).catch(err => {
-    console.warn(`A11y summary reconcile failed for site ${options.siteId}:`, err instanceof Error ? err.message : err)
-  })
+  const brokenLinks = await withPocketBaseRetry(
+    () => pb.collection('qa_broken_links').getList(1, 1, {
+      filter: `scan = "${options.scanId}" && status != "dismissed"`,
+      fields: 'id'
+    }),
+    { label: 'broken link count', resetClient: false }
+  )
 
   return {
     scoreFields,
     diffSummary,
-    openIssueCount: openIssues.length,
+    openIssueCount: openIssueCountFromPages(options.pages),
+    brokenLinkCount: brokenLinks.totalItems,
     seoIssueCount: allSeoIssues.length,
     a11ySummary
   }
+}
+
+/** Run after the scan row is marked complete so a crash here cannot leave the scan running. */
+export function schedulePostScanReconcile(
+  siteId: string,
+  options?: { elementTotals?: ElementTotals, updateCurrentA11y?: boolean }
+): void {
+  void reconcileSiteWebpageSearchIndex(siteId).catch(err => {
+    console.warn(`Search reconcile failed for site ${siteId}:`, err instanceof Error ? err.message : err)
+  })
+  if (options?.updateCurrentA11y === false) return
+  void reconcileSiteCurrentA11y(getPocketBase(), siteId, options?.elementTotals).catch(err => {
+    console.warn(`A11y summary reconcile failed for site ${siteId}:`, err instanceof Error ? err.message : err)
+  })
 }
 
 export { parseSiteSettings }

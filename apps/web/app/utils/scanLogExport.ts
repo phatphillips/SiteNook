@@ -1,5 +1,5 @@
 import type PocketBase from 'pocketbase'
-import type { ScanLogEvent } from '~/types/accessiq'
+import type { ScanLogEvent } from '~/types/sitenook'
 import { pbRelation } from '~/utils/pbFilter'
 import {
   eventToLine,
@@ -26,7 +26,7 @@ export async function buildFullScanLogDownload(
 ): Promise<string> {
   const lines = await fetchFullScanLogLines(pb, scanId)
   const header = [
-    '# AccessIQ crawl log',
+    '# SiteNook crawl log',
     `# scan_id: ${scanId}`,
     meta?.siteName ? `# site: ${meta.siteName}` : '',
     `# exported: ${new Date().toISOString()}`,

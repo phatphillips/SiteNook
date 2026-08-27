@@ -33,21 +33,18 @@ export default defineNuxtRouteMiddleware(async (to) => {
     && !isTenantHost.value
     && !loadError.value
 
-  const needsContextReload = !ready.value || hostMismatch
-
-  if (needsContextReload) {
-    try {
-      await withTimeout(
-        loadTenantContext(hostMismatch),
-        TENANT_CONTEXT_TIMEOUT_MS,
-        'Tenant context'
-      )
-    } catch {
-      if (import.meta.client && hostLooksLikeUnknownTenant() && !TENANT_BYPASS_PATHS.has(to.path)) {
-        return navigateTo('/account-not-found', { replace: true })
-      }
-      return
+  // Always resolve (or refresh) tenant context — loadTenantContext no-ops when host is unchanged.
+  try {
+    await withTimeout(
+      loadTenantContext(hostMismatch || !ready.value),
+      TENANT_CONTEXT_TIMEOUT_MS,
+      'Tenant context'
+    )
+  } catch {
+    if (import.meta.client && hostLooksLikeUnknownTenant() && !TENANT_BYPASS_PATHS.has(to.path)) {
+      return navigateTo('/account-not-found', { replace: true })
     }
+    // Continue for apex / known hosts so public marketing pages still render.
   }
 
   if (isUnknownTenant.value && !TENANT_BYPASS_PATHS.has(to.path)) {

@@ -11,12 +11,19 @@ import {
 } from './savePageResult.js'
 import { indexWebpageFromPage } from '../search/searchIndexer.js'
 import { extractHrefUrlsFromHtml, mergeOutboundLinkUrls } from '../search/outboundLinks.js'
+import { buildInventoryRefsForPage } from '../qa/inventoryRefs.js'
+import { truncateHtmlSnapshot } from '../utils/truncateHtmlSnapshot.js'
+import { attachPageSimulatorPreview } from './attachPageSimulatorPreview.js'
+import { attachPageRenderedHtml } from './attachPageRenderedHtml.js'
+import { persistContentObservation } from '../content/persistContentObservation.js'
+import { createPageRecord } from './createPageRecord.js'
 
 type ChildCollection
   = | 'accessibility_issues'
     | 'qa_broken_links'
     | 'qa_spelling'
     | 'qa_inventory'
+    | 'qa_inventory_refs'
     | 'seo_issues'
     | 'policy_matches'
 
@@ -71,7 +78,7 @@ class BufferedPageResultPersistence implements PageResultPersistence {
     const pb = getPocketBase()
     const pageUrl = requireHttpUrl(pageResult.url, this.ctx.startUrl)
 
-    const pageRecord = await pb.collection('pages').create({
+    const pageRecord = await createPageRecord(pb, {
       scan: this.ctx.scanId,
       site: this.ctx.siteId,
       url: pageUrl,
@@ -81,9 +88,39 @@ class BufferedPageResultPersistence implements PageResultPersistence {
       readability_score: pageResult.readabilityScore,
       readability_scores: pageResult.readabilityScores,
       crawl_depth: pageResult.crawlDepth,
-      html_snapshot: pageResult.htmlSnapshot.slice(0, 200000),
+      html_snapshot: truncateHtmlSnapshot(pageResult.htmlSnapshot),
+      html_size_bytes: pageResult.htmlSizeBytes,
+      ...(pageResult.tabOrder ? { tab_order: pageResult.tabOrder } : {}),
       ...(pageResult.seoSnapshot ? { seo_snapshot: pageResult.seoSnapshot } : {})
     })
+
+    await attachPageSimulatorPreview(pb, pageRecord.id, pageResult.previewImage)
+    await attachPageRenderedHtml(pb, pageRecord.id, pageResult.renderedHtml)
+
+    if (pageResult.contentMarkdown?.trim()) {
+      try {
+        const content = await persistContentObservation(pb, {
+          scanId: this.ctx.scanId,
+          siteId: this.ctx.siteId,
+          pageId: pageRecord.id,
+          pageUrl,
+          title: pageResult.title,
+          markdown: pageResult.contentMarkdown
+        })
+        if (content) {
+          await pb.collection('pages').update(pageRecord.id, {
+            content_blob: content.blobId,
+            content_hash: content.contentHash,
+            content_unchanged: content.unchanged
+          })
+        }
+      } catch (err) {
+        console.warn(
+          `Content observation failed for page ${pageRecord.id}:`,
+          err instanceof Error ? err.message : err
+        )
+      }
+    }
 
     this.pushChild('accessibility_issues', pageResult.issues.map(issue =>
       sanitizeAxeIssue({
@@ -121,6 +158,10 @@ class BufferedPageResultPersistence implements PageResultPersistence {
         .map(item => sanitizeInventoryRecord({ ...item, scan: this.ctx.scanId }))
         .filter((item): item is NonNullable<typeof item> => item !== null)
       this.pushChild('qa_inventory', inventory)
+      this.pushChild(
+        'qa_inventory_refs',
+        buildInventoryRefsForPage(this.ctx.scanId, pageRecord.id, inventory)
+      )
     }
 
     if (pageResult.seoIssues?.length) {

@@ -51,10 +51,17 @@ export class CrawlDiagnostics {
     this.succeeded++
   }
 
+  /** Queue a URL for background scan (403 / 202 / security challenge). */
+  recordUnscanned(url: string): void {
+    if (!this.unscannedUrls.includes(url)) {
+      this.unscannedUrls.push(url)
+    }
+  }
+
   recordHttpError(status: number, url: string): void {
     this.httpErrors.set(status, (this.httpErrors.get(status) || 0) + 1)
-    if (status === 403 && !this.unscannedUrls.includes(url)) {
-      this.unscannedUrls.push(url)
+    if (status === 403 || status === 202) {
+      this.recordUnscanned(url)
     }
     if (this.enabled) {
       console.debug(`[crawl] HTTP ${status} ${url}`)
@@ -139,14 +146,25 @@ export function classifyCrawlError(err: unknown): string {
 }
 
 export function buildCrawlTip(diag: CrawlDiagnostics): string | null {
+  if (
+    diag.succeeded === 0 &&
+    diag.dequeueSkippedRobots > 0 &&
+    diag.attempted === 0
+  ) {
+    return (
+      'Tip: The start URL was blocked by robots.txt (wildcard User-agent: * rules only). ' +
+      'Turn off "Respect robots.txt" in the scan config if you have permission to crawl this site, or adjust the site robots.txt.'
+    )
+  }
+
   const failedAttempts = diag.attempted - diag.succeeded
   if (failedAttempts <= 0) return null
 
-  const forbidden = diag.httpErrors.get(403) || 0
-  if (forbidden >= failedAttempts * 0.5) {
+  const forbidden = (diag.httpErrors.get(403) || 0) + (diag.httpErrors.get(202) || 0)
+  if (forbidden >= failedAttempts * 0.5 || diag.unscannedUrls.length >= failedAttempts * 0.5) {
     return (
-      'Tip: Most failures are HTTP 403 (WAF / rate limit). The scanner retries after 5s and 10s; use wait strategy "Delay 10s", concurrency 1, ' +
-      'or request WAF allowlisting for your scanner IP. SCANNER_CRAWL_DEBUG=1 logs each URL.'
+      'Tip: Most failures are HTTP 403/202 security challenges (WAF / SiteGround SG-Captcha). Retries use 5s then 10s with jitter; persistent blocks are queued for background scan. ' +
+      'Use wait strategy "Delay 10s", concurrency 1, or request WAF allowlisting for your scanner IP. SCANNER_CRAWL_DEBUG=1 logs each URL.'
     )
   }
 

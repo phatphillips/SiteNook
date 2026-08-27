@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" fill="none">
+  <rect width="960" height="540" fill="#0F172A"/>
+  <rect x="70" y="70" width="820" height="400" rx="24" fill="#1E293B"/>
+  <text x="480" y="160" text-anchor="middle" fill="#F8FAFC" font-family="system-ui,sans-serif" font-size="36" font-weight="700">30-day Team trial</text>
+  <text x="480" y="200" text-anchor="middle" fill="#94A3B8" font-family="system-ui,sans-serif" font-size="18">Scheduled scans � SEO � Readability � Up to 10 members</text>
+  <rect x="300" y="250" width="360" height="56" rx="12" fill="#38BDF8"/>
+  <text x="480" y="285" text-anchor="middle" fill="#0F172A" font-family="system-ui,sans-serif" font-size="18" font-weight="700">Start free trial</text>
+  <rect x="180" y="350" width="160" height="60" rx="12" fill="#334155"/>
+  <rect x="400" y="350" width="160" height="60" rx="12" fill="#334155"/>
+  <rect x="620" y="350" width="160" height="60" rx="12" fill="#334155"/>
+  <text x="260" y="386" text-anchor="middle" fill="#CBD5E1" font-family="system-ui,sans-serif" font-size="14">Accessibility</text>
+  <text x="480" y="386" text-anchor="middle" fill="#CBD5E1" font-family="system-ui,sans-serif" font-size="14">QA</text>
+  <text x="700" y="386" text-anchor="middle" fill="#CBD5E1" font-family="system-ui,sans-serif" font-size="14">SEO</text>
+</svg>

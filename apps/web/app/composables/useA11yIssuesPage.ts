@@ -1,7 +1,10 @@
-import type { AccessibilityIssue, IssueFilters, Scan, WcagLevelFilter } from '~/types/accessiq'
+import type { AccessibilityIssue, IssueFilters, Scan, WcagLevelFilter } from '~/types/sitenook'
 import type { A11ySummary } from '~/utils/a11ySummary'
 import type { ElementTotals } from '~/utils/siteimproveScore'
 import type { AffectedPageSummary } from '~/utils/affectedPages'
+import { watchDebounced } from '@vueuse/core'
+
+const AFFECTED_PAGES_FAILURE_TTL_MS = 15_000
 
 export interface A11yRuleStats {
   pages: number
@@ -70,40 +73,81 @@ export function useA11yIssuesPage(siteId: Ref<string> | string) {
   const tableSearch = ref('')
   const affectedPagesCache = ref<Map<string, AffectedPageSummary[]>>(new Map())
   const affectedPagesLoading = ref<Set<string>>(new Set())
+  const affectedPagesInFlight = new Map<string, Promise<AffectedPageSummary[]>>()
+  const affectedPagesFailureUntil = new Map<string, number>()
+
+  let fetchGeneration = 0
+  let skipPageWatch = false
 
   const pointsToGainMap = computed(() => pointsToGainByRule.value)
 
-  function getAffectedPagesForRule(ruleId: string) {
+  function getAffectedPagesForRule(ruleId: string, _siteId?: string) {
     return affectedPagesCache.value.get(ruleId) ?? []
   }
 
-  async function loadAffectedPagesForRule(ruleId: string): Promise<AffectedPageSummary[]> {
+  async function loadAffectedPagesForRule(ruleId: string, _siteId?: string): Promise<AffectedPageSummary[]> {
     if (!import.meta.client || !id.value || !ruleId) return []
     const cached = affectedPagesCache.value.get(ruleId)
     if (cached) return cached
-    if (affectedPagesLoading.value.has(ruleId)) return []
 
-    await awaitAuthReady()
-    const token = pb?.authStore.token
-    if (!token) return []
+    const failureUntil = affectedPagesFailureUntil.get(ruleId) ?? 0
+    if (failureUntil > Date.now()) return []
 
-    affectedPagesLoading.value.add(ruleId)
-    try {
-      const response = await $fetch<{ pages: AffectedPageSummary[] }>(
-        `/api/sites/${id.value}/accessibility/issues/${encodeURIComponent(ruleId)}/pages`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 60_000
-        }
-      )
-      const pages = response.pages ?? []
-      affectedPagesCache.value = new Map(affectedPagesCache.value).set(ruleId, pages)
-      return pages
-    } catch {
-      return []
-    } finally {
-      affectedPagesLoading.value.delete(ruleId)
-    }
+    const inFlight = affectedPagesInFlight.get(ruleId)
+    if (inFlight) return inFlight
+
+    const promise = (async (): Promise<AffectedPageSummary[]> => {
+      await awaitAuthReady()
+      const token = pb?.authStore.token
+      if (!token) return []
+
+      affectedPagesLoading.value = new Set(affectedPagesLoading.value).add(ruleId)
+      try {
+        const response = await $fetch<{ pages: AffectedPageSummary[] }>(
+          `/api/sites/${id.value}/accessibility/issues/${encodeURIComponent(ruleId)}/pages`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 60_000
+          }
+        )
+        const pages = response.pages ?? []
+        affectedPagesCache.value = new Map(affectedPagesCache.value).set(ruleId, pages)
+        affectedPagesFailureUntil.delete(ruleId)
+        return pages
+      } catch {
+        affectedPagesFailureUntil.set(ruleId, Date.now() + AFFECTED_PAGES_FAILURE_TTL_MS)
+        return []
+      } finally {
+        const next = new Set(affectedPagesLoading.value)
+        next.delete(ruleId)
+        affectedPagesLoading.value = next
+        affectedPagesInFlight.delete(ruleId)
+      }
+    })()
+
+    affectedPagesInFlight.set(ruleId, promise)
+    return promise
+  }
+
+  function isAffectedPagesLoading(ruleId: string, _siteId?: string) {
+    return affectedPagesLoading.value.has(ruleId)
+  }
+
+  function invalidateAffectedPagesForRule(ruleId: string) {
+    const next = new Map(affectedPagesCache.value)
+    next.delete(ruleId)
+    affectedPagesCache.value = next
+    affectedPagesFailureUntil.delete(ruleId)
+    affectedPagesInFlight.delete(ruleId)
+  }
+
+  /** Optimistically drop one page from a rule's cached affected-pages list. */
+  function removeAffectedPageFromCache(ruleId: string, pageUrl: string): number {
+    const pages = affectedPagesCache.value.get(ruleId)
+    if (!pages?.length) return -1
+    const remaining = pages.filter(page => page.url !== pageUrl)
+    affectedPagesCache.value = new Map(affectedPagesCache.value).set(ruleId, remaining)
+    return remaining.length
   }
 
   function buildQueryParams() {
@@ -126,8 +170,6 @@ export function useA11yIssuesPage(siteId: Ref<string> | string) {
       statuses: filters.value.statuses.length ? filters.value.statuses.join(',') : undefined
     }
   }
-
-  let fetchGeneration = 0
 
   async function fetchIssues(options?: { silent?: boolean }) {
     if (!import.meta.client || !id.value) return
@@ -166,7 +208,10 @@ export function useA11yIssuesPage(siteId: Ref<string> | string) {
       pointsToGainByRule.value = new Map(Object.entries(response.pointsToGainByRule))
       ruleStats.value = new Map(Object.entries(response.ruleStats ?? {}))
       currentA11y.value = response.currentA11y ?? null
-      affectedPagesCache.value = new Map()
+      // Keep expanded-page caches on silent refresh so dismiss/fix doesn't blank nested tables.
+      if (!options?.silent) {
+        affectedPagesCache.value = new Map()
+      }
 
       if (import.meta.dev) {
         console.info(
@@ -218,23 +263,41 @@ export function useA11yIssuesPage(siteId: Ref<string> | string) {
     ])
   }
 
+  function resetPageAndFetch() {
+    if (page.value !== 1) {
+      skipPageWatch = true
+      page.value = 1
+      skipPageWatch = false
+    }
+    fetchIssues().catch(() => {})
+  }
+
   watch([page, perPage], () => {
-    fetchIssues({ silent: true }).catch(() => {})
+    if (skipPageWatch) return
+    fetchIssues().catch(() => {})
   })
 
   watch(filters, () => {
-    page.value = 1
-    fetchIssues().catch(() => {})
+    resetPageAndFetch()
   }, { deep: true })
 
   watch(wcagLevel, () => {
-    page.value = 1
-    fetchIssues().catch(() => {})
+    resetPageAndFetch()
   })
 
+  watchDebounced(tableSearch, () => {
+    resetPageAndFetch()
+  }, { debounce: 300 })
+
   watch(id, () => {
-    page.value = 1
+    if (page.value !== 1) {
+      skipPageWatch = true
+      page.value = 1
+      skipPageWatch = false
+    }
     affectedPagesCache.value = new Map()
+    affectedPagesFailureUntil.clear()
+    affectedPagesInFlight.clear()
     refreshAll().catch(() => {})
   }, { immediate: true })
 
@@ -258,8 +321,12 @@ export function useA11yIssuesPage(siteId: Ref<string> | string) {
     scans,
     getAffectedPagesForRule,
     loadAffectedPagesForRule,
+    isAffectedPagesLoading,
+    invalidateAffectedPagesForRule,
+    removeAffectedPageFromCache,
     fetchIssues,
-    refreshAll
+    refreshAll,
+    buildQueryParams
   }
 }
 

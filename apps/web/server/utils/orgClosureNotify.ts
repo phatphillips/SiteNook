@@ -14,7 +14,7 @@ export async function notifyOrgChurnEmails(
     }
 
     const pbUrl = resolveServerPbUrl(event)
-    const response = await fetch(`${pbUrl}/api/accessiq/notify-org-churn`, {
+    const response = await fetch(`${pbUrl}/api/sitenook/notify-org-churn`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -53,7 +53,7 @@ export async function notifyOrgClosureEmails(
     }
 
     const pbUrl = resolveServerPbUrl(event)
-    const response = await fetch(`${pbUrl}/api/accessiq/notify-org-closure`, {
+    const response = await fetch(`${pbUrl}/api/sitenook/notify-org-closure`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,

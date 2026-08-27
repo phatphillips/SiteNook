@@ -1,6 +1,6 @@
 # Stripe setup (Phase G)
 
-AccessIQ uses **Stripe Checkout** (hosted, test mode first) for **Starter**, **Team**, and **Business** subscriptions. **Free** skips Stripe; **Enterprise** stays sales-led (mailto).
+SiteNook uses **Stripe Checkout** (hosted, test mode first) for **Starter**, **Team**, and **Business** subscriptions. **Free** skips Stripe; **Enterprise** stays sales-led (mailto).
 
 This guide covers Stripe setup through the full paid signup funnel (Phases G3–G9). Checkout API, webhook, `/start` gating, and plan on org are implemented in the app.
 
@@ -9,7 +9,7 @@ This guide covers Stripe setup through the full paid signup funnel (Phases G3–
 ## Prerequisites
 
 - Stripe account in **Test mode** ([dashboard.stripe.com/test](https://dashboard.stripe.com/test))
-- AccessIQ marketing + self-service flags for local funnel testing:
+- SiteNook marketing + self-service flags for local funnel testing:
 
 ```bash
 NUXT_PUBLIC_MARKETING_SITE=true
@@ -25,9 +25,9 @@ In Stripe Dashboard → **Product catalog**, create three recurring monthly prod
 
 | Product | Monthly price | Env var |
 |---------|---------------|---------|
-| `AccessIQ Starter` | **USD $39** | `NUXT_STRIPE_STARTER_PRICE_ID` |
-| `AccessIQ Team` | **USD $99** | `NUXT_STRIPE_TEAM_PRICE_ID` |
-| `AccessIQ Business` | **USD $249** | `NUXT_STRIPE_BUSINESS_PRICE_ID` |
+| `SiteNook Starter` | **USD $39** | `NUXT_STRIPE_STARTER_PRICE_ID` |
+| `SiteNook Team` | **USD $99** | `NUXT_STRIPE_TEAM_PRICE_ID` |
+| `SiteNook Business` | **USD $249** | `NUXT_STRIPE_BUSINESS_PRICE_ID` |
 
 Optional annual prices (~15% discount) for the pricing-page toggle:
 
@@ -47,9 +47,19 @@ Optional metadata (recommended):
 
 | Object | Key | Value |
 |--------|-----|--------|
-| Product or Price | `accessiq_plan` | `starter`, `team`, or `business` |
+| Product or Price | `sitenook_plan` | `starter`, `team`, or `business` |
 
-**Enterprise** is not sold via Stripe — customers contact support from `/pricing`.
+**Enterprise** hosted org plans are not sold via Stripe — customers contact support from `/pricing`.
+
+**Self-host licence** (appliance unlock) is a separate Stripe product:
+
+| Product | Env vars | Checkout |
+|---------|----------|----------|
+| SiteNook Self-host | `NUXT_STRIPE_SELFHOST_PRICE_ID`, `NUXT_STRIPE_SELFHOST_ANNUAL_PRICE_ID` | `POST /api/stripe/create-selfhost-checkout-session` from `/download` |
+
+Metadata: `sitenook_product=selfhost`. Webhook creates a `licences` row (`tier=selfhost`) and emails the key.
+
+See [public-sku-sheet.md](./public-sku-sheet.md) and [self-host-operator-setup.md](./self-host-operator-setup.md).
 
 ---
 
@@ -72,6 +82,9 @@ NUXT_STRIPE_TEAM_PRICE_ID=price_...
 NUXT_STRIPE_BUSINESS_PRICE_ID=price_...
 # Optional annual prices:
 # NUXT_STRIPE_TEAM_ANNUAL_PRICE_ID=price_...
+# Self-host appliance licence:
+# NUXT_STRIPE_SELFHOST_PRICE_ID=price_...
+# NUXT_STRIPE_SELFHOST_ANNUAL_PRICE_ID=price_...
 ```
 
 When `NUXT_STRIPE_SECRET_KEY` and at least `NUXT_STRIPE_TEAM_PRICE_ID` (or legacy `NUXT_STRIPE_STANDARD_PRICE_ID`) are set, `/pricing` shows active **Subscribe** buttons (`POST /api/stripe/create-checkout-session` with `{ plan, interval }`).
@@ -135,7 +148,9 @@ Then `/pricing` → **Subscribe (dev bypass)** → `/start?checkout=dev_bypass&p
 | Token | Default `dev_bypass` — override with `NUXT_STRIPE_DEV_BYPASS_TOKEN` |
 | Production | **Blocked** — bypass never works in production builds |
 
-Free tier always uses `/start?plan=free` (no checkout token).
+Free tier always uses `/start?plan=free` (no checkout token). Free includes **1 site / 20 pages per scan**.
+
+**Team trial (no card):** `/start?plan=team&trial=1` provisions `plan=team`, `subscription_status=trialing`, and `trial_ends_at` (+30 days). The scanner lifecycle tick downgrades expired app-managed trials to Free and sends day-7/3/1 nudge emails via PocketBase hooks.
 
 ---
 

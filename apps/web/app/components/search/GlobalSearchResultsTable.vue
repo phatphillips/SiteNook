@@ -82,6 +82,7 @@ const columns = computed<TableColumn<GlobalSearchResultItem>[]>(() => {
     {
       id: 'url',
       accessorKey: 'url',
+      enableHiding: false,
       header: 'URL',
       cell: ({ row }) => linkCell(row.original.url)
     },

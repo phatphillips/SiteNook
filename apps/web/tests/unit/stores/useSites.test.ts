@@ -117,4 +117,18 @@ describe('useSites', () => {
 
     expect(sites.value[0]?.site_settings).toEqual(settings)
   })
+
+  it('keeps all-sites mode after fetchSites when explicitly selected', async () => {
+    mockGetFullList.mockResolvedValue([
+      { id: 'site-1', name: 'Example', url: 'https://example.com' },
+      { id: 'site-2', name: 'Other', url: 'https://other.com' }
+    ])
+
+    const { activeSiteId, isAllSites, fetchSites, selectAllSites } = useSites()
+    selectAllSites()
+    await fetchSites()
+
+    expect(isAllSites.value).toBe(true)
+    expect(activeSiteId.value).toBeNull()
+  })
 })

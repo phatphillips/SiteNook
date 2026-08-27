@@ -56,4 +56,31 @@ describe('pbAuthInterceptors', () => {
     expect(onSessionExpired).toHaveBeenCalledTimes(1)
     expect(originalSend).toHaveBeenCalledTimes(1)
   })
+
+  it('refreshes session when tab becomes visible again', async () => {
+    vi.stubGlobal('document', {
+      visibilityState: 'visible',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    })
+
+    const { startVisibilityAuthRefresh } = await import('~/utils/pbAuthInterceptors')
+    const refreshAuthToken = vi.fn().mockResolvedValue(true)
+    const onSessionExpired = vi.fn()
+    const pb = {
+      authStore: { isValid: true }
+    } as never
+
+    startVisibilityAuthRefresh(pb, refreshAuthToken, onSessionExpired)
+
+    const handler = vi.mocked(document.addEventListener).mock.calls.find(
+      call => call[0] === 'visibilitychange'
+    )?.[1] as () => void
+
+    handler()
+    await Promise.resolve()
+
+    expect(refreshAuthToken).toHaveBeenCalledTimes(1)
+    expect(onSessionExpired).not.toHaveBeenCalled()
+  })
 })

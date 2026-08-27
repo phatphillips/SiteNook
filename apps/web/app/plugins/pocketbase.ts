@@ -1,10 +1,12 @@
 import PocketBase from 'pocketbase'
 import { GUEST_AUTH_PATHS, resolveLoginRedirectPath, syncPbAuthState } from '~/utils/pbAuth'
+import { isAnonymousMarketingPath } from '~/utils/marketingSite'
 import { attachPocketBaseFetchTimeout, PB_FETCH_TIMEOUT_MS } from '~/utils/fetchTimeout'
 import {
   attachPb401Retry,
   createRefreshAuthToken,
-  startPeriodicAuthRefresh
+  startPeriodicAuthRefresh,
+  startVisibilityAuthRefresh
 } from '~/utils/pbAuthInterceptors'
 
 export default defineNuxtPlugin({
@@ -24,14 +26,7 @@ export default defineNuxtPlugin({
   const pb = new PocketBase(config.public.pocketbaseUrl)
   pb.autoCancellation(false)
 
-  let navigationAbort = new AbortController()
-  const router = useRouter()
-  router.beforeEach(() => {
-    navigationAbort.abort()
-    navigationAbort = new AbortController()
-  })
-
-  attachPocketBaseFetchTimeout(pb, PB_FETCH_TIMEOUT_MS, () => navigationAbort.signal)
+  attachPocketBaseFetchTimeout(pb, PB_FETCH_TIMEOUT_MS)
 
   nuxtApp.provide('pb', pb)
 
@@ -56,6 +51,8 @@ export default defineNuxtPlugin({
 
     const path = window.location.pathname
     if (GUEST_AUTH_PATHS.has(path)) return
+    // Marketing landing/pricing must remain public even when a stale token expires.
+    if (isAnonymousMarketingPath(path, config.public.marketingSite)) return
 
     const redirect = resolveLoginRedirectPath(path + window.location.search, '/')
     void navigateTo({ path: '/login', query: { redirect }, replace: true })
@@ -69,10 +66,12 @@ export default defineNuxtPlugin({
   })
 
   const stopPeriodicRefresh = startPeriodicAuthRefresh(pb, refreshAuthToken)
+  const stopVisibilityRefresh = startVisibilityAuthRefresh(pb, refreshAuthToken, handleSessionExpired)
 
   if (import.meta.hot) {
     import.meta.hot.dispose(() => {
       stopPeriodicRefresh()
+      stopVisibilityRefresh()
     })
   }
 

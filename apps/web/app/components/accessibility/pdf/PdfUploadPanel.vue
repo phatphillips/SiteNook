@@ -3,16 +3,27 @@ const props = defineProps<{
   uploading?: boolean
   maxFiles?: number
   maxFileSizeMb?: number
+  /** When set, show a site picker for org-scoped upload. */
+  siteOptions?: Array<{ label: string, value: string }>
+  requireSite?: boolean
 }>()
 
 const emit = defineEmits<{
   upload: [files: File[]]
 }>()
 
+const siteId = defineModel<string>('siteId', { default: '' })
+
 const fileInput = ref<HTMLInputElement | null>(null)
 const dragOver = ref(false)
 
+const maxFiles = computed(() => props.maxFiles ?? 10)
+const maxFileSizeMb = computed(() => props.maxFileSizeMb ?? 20)
+const showSiteSelect = computed(() => (props.siteOptions?.length ?? 0) > 0)
+const canUpload = computed(() => !props.requireSite || !!siteId.value)
+
 function onBrowse() {
+  if (!canUpload.value) return
   fileInput.value?.click()
 }
 
@@ -25,22 +36,37 @@ function onInputChange(event: Event) {
 
 function onDrop(event: DragEvent) {
   dragOver.value = false
+  if (!canUpload.value) return
   const files = [...(event.dataTransfer?.files ?? [])]
   if (files.length) emit('upload', files)
 }
-
-const maxFiles = computed(() => props.maxFiles ?? 10)
-const maxFileSizeMb = computed(() => props.maxFileSizeMb ?? 20)
 </script>
 
 <template>
-  <div class="rounded-xl border border-default bg-elevated p-5 space-y-2">
-    <h2 class="text-base font-semibold text-highlighted">
-      Upload PDFs
-    </h2>
+  <div class="rounded-lg border border-default bg-elevated/25 p-4 sm:p-5 space-y-3">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <h2 class="text-base font-semibold text-highlighted">
+        Upload PDFs
+      </h2>
+      <div
+        v-if="showSiteSelect"
+        class="min-w-[14rem]"
+      >
+        <label class="mb-1 block text-xs font-medium text-muted">
+          Upload to site
+        </label>
+        <USelectMenu
+          v-model="siteId"
+          value-key="value"
+          :items="siteOptions"
+          placeholder="Select a site…"
+          :search-input="{ placeholder: 'Search sites…' }"
+        />
+      </div>
+    </div>
     <div
-      class="rounded-lg border-2 border-dashed p-10 text-center transition-colors"
-      :class="dragOver ? 'border-primary bg-primary/5' : 'border-primary/40'"
+      class="rounded-lg border-2 border-dashed p-6 text-center transition-colors sm:p-8"
+      :class="dragOver && canUpload ? 'border-primary bg-primary/5' : 'border-default'"
       @dragover.prevent="dragOver = true"
       @dragleave.prevent="dragOver = false"
       @drop.prevent="onDrop"
@@ -55,11 +81,18 @@ const maxFileSizeMb = computed(() => props.maxFileSizeMb ?? 20)
       <p class="mt-1 text-sm text-muted">
         Upload up to {{ maxFiles }} files, maximum file size: {{ maxFileSizeMb }}MB
       </p>
+      <p
+        v-if="requireSite && !siteId"
+        class="mt-2 text-sm text-warning"
+      >
+        Choose a site before uploading.
+      </p>
       <UButton
         class="mt-4"
         color="neutral"
         variant="outline"
         :loading="uploading"
+        :disabled="!canUpload"
         @click="onBrowse"
       >
         Browse files

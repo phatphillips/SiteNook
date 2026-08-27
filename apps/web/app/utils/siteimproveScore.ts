@@ -9,7 +9,11 @@
  * - Logarithmic curve: fixing issues near 100% is worth more per occurrence
  * - Element denominators: e.g. image-alt vs total images on the site
  * - Dismissed issues count toward totals (resolved) but not failures
+ * - Check catalog: passing axe rules still occupy pool weight so one fail cannot consume a level
  */
+
+import type { A11yCheckStats } from './a11yCheckStats'
+import { FALLBACK_AXE_CATALOG } from './axeCheckCatalog'
 
 export type WcagLevel = 'A' | 'AA' | 'AAA'
 
@@ -112,29 +116,37 @@ const ELEMENT_DENOMINATOR_RULES: Record<string, keyof ElementTotals> = {
 }
 
 const BEST_PRACTICE_RULE_IDS = new Set([
+  // Keep in sync with axe-core "best-practice" tagged rules (axe-core 4.11.x).
   'accesskeys',
-  'aria-allowed-attr',
-  'aria-hidden-body',
-  'aria-hidden-focus',
-  'aria-required-attr',
-  'aria-required-children',
-  'aria-required-parent',
-  'aria-roles',
-  'aria-valid-attr',
-  'aria-valid-attr-value',
+  'aria-allowed-role',
+  'aria-dialog-name',
+  'aria-text',
+  'aria-treeitem-name',
+  'empty-heading',
+  'empty-table-header',
+  'focus-order-semantics',
+  'frame-tested',
+  'heading-order',
+  'hidden-content',
+  'image-redundant-alt',
+  'label-title-only',
   'landmark-banner-is-top-level',
   'landmark-complementary-is-top-level',
   'landmark-contentinfo-is-top-level',
   'landmark-main-is-top-level',
   'landmark-no-duplicate-banner',
   'landmark-no-duplicate-contentinfo',
+  'landmark-no-duplicate-main',
   'landmark-one-main',
   'landmark-unique',
-  'meta-viewport',
+  'meta-viewport-large',
+  'page-has-heading-one',
+  'presentation-role-conflict',
   'region',
   'scope-attr-valid',
   'skip-link',
-  'tabindex'
+  'tabindex',
+  'table-duplicate-name'
 ])
 
 export function isBestPracticeRule(ruleId: string, explicit?: boolean): boolean {
@@ -287,14 +299,18 @@ function estimateTotalOccurrences(
   failed: number,
   dismissed: number,
   elementType: string | undefined,
-  elementTotals: ElementTotals | null | undefined
+  elementTotals: ElementTotals | null | undefined,
+  passed = 0
 ): number {
   const totals = elementTotals ?? emptyElementTotals()
+  const passedCount = Math.max(0, passed)
+  const observed = failed + dismissed + passedCount
   const key = elementKeyForRule(ruleId, elementType)
   if (key) {
     const siteTotal = totals[key]
-    return Math.max(failed + dismissed, siteTotal, 1)
+    return Math.max(observed, siteTotal, 1)
   }
+  if (passedCount > 0) return Math.max(observed, 1)
   return Math.max(failed + dismissed + 1, 1)
 }
 
@@ -313,7 +329,8 @@ function issueWeight(issue: SiteimproveScoreIssue): number {
 
 function buildCheckStates(
   scoreIssues: SiteimproveScoreIssue[],
-  elementTotals: ElementTotals
+  elementTotals: ElementTotals,
+  checkStats?: A11yCheckStats | null
 ): CheckState[] {
   const byRule = new Map<string, { issue: SiteimproveScoreIssue, failed: number, dismissed: number }>()
 
@@ -336,20 +353,41 @@ function buildCheckStates(
     }
   }
 
+  const fallbackCatalog = FALLBACK_AXE_CATALOG
+  const catalogById = new Map(fallbackCatalog.map(entry => [entry.rule_id, entry]))
+  // Always union scan catalog onto the full axe catalog so a short
+  // pass/fail snapshot cannot collapse a WCAG level to one rule.
+  for (const entry of checkStats?.catalog ?? []) {
+    if (entry?.rule_id) catalogById.set(entry.rule_id, entry)
+  }
+  const ruleIds = new Set<string>([...catalogById.keys(), ...byRule.keys()])
+
   const checks: CheckState[] = []
-  for (const [ruleId, { issue, failed, dismissed }] of byRule) {
-    const isBp = isBestPracticeRule(ruleId, issue.is_best_practice)
+  for (const ruleId of ruleIds) {
+    const fromIssues = byRule.get(ruleId)
+    const fromCatalog = catalogById.get(ruleId)
+    const passed = checkStats?.rules?.[ruleId]?.passed ?? 0
+    const failed = fromIssues?.failed ?? 0
+    const dismissed = fromIssues?.dismissed ?? 0
+    const wcagLevel = fromIssues?.issue.wcag_level
+      ?? fromCatalog?.wcag_level
+      ?? 'AA'
+    const isBp = isBestPracticeRule(
+      ruleId,
+      fromIssues?.issue.is_best_practice ?? fromCatalog?.is_best_practice
+    )
     const total = estimateTotalOccurrences(
       ruleId,
       failed,
       dismissed,
-      issue.element_type,
-      elementTotals
+      fromIssues?.issue.element_type,
+      elementTotals,
+      passed
     )
-    const weight = isBp ? BP_WEIGHT : LEVEL_WEIGHT[issue.wcag_level] ?? 1
+    const weight = isBp ? BP_WEIGHT : LEVEL_WEIGHT[wcagLevel] ?? 1
     checks.push({
       ruleId,
-      wcagLevel: issue.wcag_level,
+      wcagLevel,
       isBestPractice: isBp,
       failed,
       total,
@@ -430,7 +468,8 @@ export interface TargetCategoryScores {
 
 export function calculateTargetCategoryScores(
   scoreIssues: SiteimproveScoreIssue[],
-  elementTotals: ElementTotals | null | undefined
+  elementTotals: ElementTotals | null | undefined,
+  checkStats?: A11yCheckStats | null
 ): TargetCategoryScores {
   const totals = elementTotals ?? emptyElementTotals()
   const active = scoreIssues.filter(i => i.status !== 'fixed')
@@ -438,7 +477,7 @@ export function calculateTargetCategoryScores(
     return { levelA: 100, levelAA: 100, levelAAA: 100, aria: 100, bestPractice: 100 }
   }
 
-  const checks = buildCheckStates(active, totals)
+  const checks = buildCheckStates(active, totals, checkStats)
   if (!checks.length) {
     return { levelA: 100, levelAA: 100, levelAAA: 100, aria: 100, bestPractice: 100 }
   }
@@ -475,12 +514,13 @@ function wcagEarnedFromLevels(checks: CheckState[]): number {
 
 export function overallScoreBreakdown(
   scoreIssues: SiteimproveScoreIssue[],
-  elementTotals: ElementTotals
+  elementTotals: ElementTotals,
+  checkStats?: A11yCheckStats | null
 ): OverallScoreBreakdown | null {
   const active = scoreIssues.filter(i => i.status !== 'fixed')
   if (!active.length) return null
 
-  const checks = buildCheckStates(active, elementTotals)
+  const checks = buildCheckStates(active, elementTotals, checkStats)
   if (!checks.length) return null
 
   const { levels, wcagEarned, totalLevelWeight } = wcagEarnedBreakdownFromChecks(checks)
@@ -536,6 +576,23 @@ export function scoreRingColor(score: number): string {
   return '#ef4444'
 }
 
+/** Very dark backdrop matching scoreRingColor — keeps score text readable. */
+export function scoreTextBackdrop(score: number): string {
+  if (score >= 75) return '#052e16'
+  if (score >= 50) return '#451a03'
+  return '#450a0a'
+}
+
+/**
+ * Solid fill for score chips on hover — darkened so white text stays WCAG AA.
+ * Thresholds match scoreRingColor (green / amber / red).
+ */
+export function scoreHoverFill(score: number): string {
+  if (score >= 75) return '#15803d' // green-700
+  if (score >= 50) return '#b45309' // amber-700
+  return '#b91c1c' // red-700
+}
+
 export interface WcagLevelEarnedDetail {
   level: WcagLevel
   levelWeight: number
@@ -584,14 +641,15 @@ function wcagEarnedBreakdownFromChecks(checks: CheckState[]): {
 
 export function calculateSiteimproveScores(
   scoreIssues: SiteimproveScoreIssue[],
-  elementTotals: ElementTotals
+  elementTotals: ElementTotals,
+  checkStats?: A11yCheckStats | null
 ): SiteimproveScores {
   const active = scoreIssues.filter(i => i.status !== 'fixed')
   if (!active.length) {
     return { overall: 100, levelA: 100, levelAA: 100, levelAAA: 100 }
   }
 
-  const checks = buildCheckStates(active, elementTotals)
+  const checks = buildCheckStates(active, elementTotals, checkStats)
   if (!checks.length) {
     return { overall: 100, levelA: 100, levelAA: 100, levelAAA: 100 }
   }
@@ -658,12 +716,13 @@ function scoreableIssues(issues: SiteimproveScoreIssue[]): SiteimproveScoreIssue
 export function pointsToGainForRule(
   scoreIssues: SiteimproveScoreIssue[],
   elementTotals: ElementTotals,
-  ruleId: string
+  ruleId: string,
+  checkStats?: A11yCheckStats | null
 ): number {
   const active = scoreableIssues(scoreIssues)
   if (!active.some(i => i.rule_id === ruleId && i.status !== 'dismissed')) return 0
 
-  const before = calculateSiteimproveScores(active, elementTotals).overall
+  const before = calculateSiteimproveScores(active, elementTotals, checkStats).overall
 
   const afterIssues = [...active]
   let removed = false
@@ -677,7 +736,7 @@ export function pointsToGainForRule(
   }
   if (!removed) return 0
 
-  const after = calculateSiteimproveScores(afterIssues, elementTotals).overall
+  const after = calculateSiteimproveScores(afterIssues, elementTotals, checkStats).overall
   return Math.max(0, roundScore(after - before))
 }
 
@@ -685,13 +744,14 @@ export function pointsToGainForRule(
 export function pointsToGainIfAllResolvedForRule(
   scoreIssues: SiteimproveScoreIssue[],
   elementTotals: ElementTotals,
-  ruleId: string
+  ruleId: string,
+  checkStats?: A11yCheckStats | null
 ): number {
   const active = scoreableIssues(scoreIssues)
   if (!active.some(i => i.rule_id === ruleId && i.status !== 'dismissed')) return 0
 
-  const before = calculateSiteimproveScores(active, elementTotals).overall
+  const before = calculateSiteimproveScores(active, elementTotals, checkStats).overall
   const afterIssues = active.filter(i => !(i.rule_id === ruleId && i.status !== 'dismissed'))
-  const after = calculateSiteimproveScores(afterIssues, elementTotals).overall
+  const after = calculateSiteimproveScores(afterIssues, elementTotals, checkStats).overall
   return Math.max(0, roundScore(after - before))
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { OrganizationPlan } from '~/types/accessiq'
+import type { OrganizationPlan } from '~/types/sitenook'
 import {
   formatOrganizationUrl
 } from '~/utils/selfServiceSignup'
@@ -12,6 +12,7 @@ const props = defineProps<{
   turnstileSiteKey?: string
   plan?: OrganizationPlan
   checkoutSessionId?: string
+  teamTrial?: boolean
   initialOwnerEmail?: string
 }>()
 
@@ -212,7 +213,8 @@ async function submitSignup() {
         acceptTerms: true,
         turnstileToken: turnstileToken.value || undefined,
         plan: props.plan,
-        checkoutSessionId: props.checkoutSessionId
+        checkoutSessionId: props.checkoutSessionId,
+        trial: props.teamTrial === true ? 1 : undefined
       }
     })
 
@@ -404,7 +406,7 @@ declare global {
           </a>.
         </template>
         <template v-else #description>
-          By creating an organization you agree to use AccessIQ responsibly.
+          By creating an organization you agree to use SiteNook responsibly.
         </template>
       </UCheckbox>
 

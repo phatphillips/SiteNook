@@ -25,7 +25,7 @@ describe('readabilityMethods utils', () => {
 
   it('builds column labels for enabled methods', () => {
     const labels = buildReadabilityColumnLabels(['flesch_kincaid_grade'])
-    expect(labels.flesch_kincaid_grade).toBe('FK-GL')
+    expect(labels.flesch_kincaid_grade).toBe('Flesch-Kincaid Grade')
     expect(labels.url).toBe('Page URL')
   })
 

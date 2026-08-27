@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildPdfDocumentsCsv } from '~/utils/pdfExport'
 import { pdfValidationResultLabel } from '~/utils/pdfStatus'
-import type { PdfDocument } from '~/types/accessiq'
+import type { PdfDocument } from '~/types/sitenook'
 
 describe('pdfExport', () => {
   it('builds CSV with headers and escaped values', () => {
@@ -32,6 +32,7 @@ describe('pdfStatus', () => {
   it('labels validation results for Siteimprove-style status pills', () => {
     expect(pdfValidationResultLabel({ status: 'complete', issue_count: 4 })).toBe('Issues found')
     expect(pdfValidationResultLabel({ status: 'complete', issue_count: 0 })).toBe('No issues')
-    expect(pdfValidationResultLabel({ status: 'processing', issue_count: 0 })).toBe('Validating…')
+    expect(pdfValidationResultLabel({ status: 'processing', issue_count: 0 })).toBe('Scanning…')
+    expect(pdfValidationResultLabel({ status: 'complete', issue_count: 4, ignored: true })).toBe('Ignored')
   })
 })

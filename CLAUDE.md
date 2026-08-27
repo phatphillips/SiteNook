@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-AccessIQ is a self-hosted web accessibility and QA monitoring platform (an open-source SiteImprove-style replacement). It crawls registered sites with Playwright and axe-core, stores results in PocketBase, and exposes a Nuxt dashboard for WCAG issues, broken links, spelling, policies, and scan management.
+SiteNook is a self-hosted web accessibility and QA monitoring platform (an open-source SiteImprove-style replacement). It crawls registered sites with Playwright and axe-core, stores results in PocketBase, and exposes a Nuxt dashboard for WCAG issues, broken links, spelling, policies, and scan management.
 
 ## Stack
 
@@ -82,7 +82,7 @@ No project-level test scripts in `apps/web` or `apps/scanner` package.json. Root
 cd apps/web && npm run lint && npm run typecheck
 ```
 
-Otherwise: **no automated test suite found** for the AccessIQ apps.
+Otherwise: **no automated test suite found** for the SiteNook apps.
 
 ## PocketBase Notes
 
@@ -140,8 +140,8 @@ npm run test:integration
 ### Test environment rules
 - Test PocketBase: port 8091 (Docker profile: test), uses same build as prod
 - Dev PocketBase: port 8090 — NEVER point tests at this
-- Test admin credentials: test-admin@accessiq.test / test-password-123
-- Test user credentials: test-user@accessiq.test / test-user-password-123
+- Test admin credentials: test-admin@sitenook.test / test-password-123
+- Test user credentials: test-user@sitenook.test / test-user-password-123
 - Fixtures live in: tests/fixtures/pb_data/
 - Test results: apps/web/tests/results/ (gitignored)
 

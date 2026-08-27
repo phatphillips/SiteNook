@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { AccessibilityIssue } from '~/types/accessiq'
+import type { AccessibilityIssue } from '~/types/sitenook'
+import {
+  issueTargetCategory,
+  issueTargetCategoryLabel,
+  issueWcagLevelDisplay
+} from '~/utils/issueLabels'
 
 const props = defineProps<{
   issue: AccessibilityIssue
@@ -8,11 +13,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{ open: [] }>()
 
-const ruleLabel = computed(() =>
-  props.issue.rule_id
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase())
-)
+const category = computed(() => issueTargetCategory(props.issue))
+const wcagLevel = computed(() => issueWcagLevelDisplay(props.issue))
 
 const severityLabel = computed(() => {
   const impact = props.issue.impact
@@ -55,14 +57,20 @@ function onKeydown(event: KeyboardEvent) {
     @click="openDrawer"
     @keydown="onKeydown"
   >
-    <div class="flex items-center gap-2 mb-2">
-      <UBadge
-        :color="issue.wcag_level === 'AAA' ? 'warning' : issue.wcag_level === 'AA' ? 'warning' : 'error'"
-        variant="subtle"
-      >
-        {{ issue.wcag_level }}
+    <div class="flex items-center gap-2 mb-2 min-w-0">
+      <UBadge variant="subtle" class="shrink-0">
+        {{ issueTargetCategoryLabel(category) }}
       </UBadge>
-      <span class="text-sm font-medium text-default">{{ ruleLabel }}</span>
+      <UBadge
+        v-if="wcagLevel"
+        variant="subtle"
+        class="shrink-0"
+      >
+        {{ wcagLevel }}
+      </UBadge>
+      <code class="text-xs text-muted truncate font-mono min-w-0 flex-1" :title="issue.rule_id">
+        {{ issue.rule_id }}
+      </code>
       <UIcon
         name="i-lucide-chevron-right"
         class="size-4 text-muted ml-auto shrink-0"

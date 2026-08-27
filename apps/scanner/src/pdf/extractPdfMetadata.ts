@@ -2,6 +2,37 @@ import { PDFParse } from 'pdf-parse'
 
 export const TEXT_CONTENT_MAX = 500_000
 
+/** Leave headroom: PocketBase text `maxSize` is in bytes, not JS string length. */
+export const TEXT_CONTENT_STORE_BYTES = 490_000
+
+function extractTimeoutMs(): number {
+  const raw = Number(process.env.SCANNER_PDF_EXTRACT_TIMEOUT_MS)
+  if (Number.isFinite(raw) && raw > 0) return Math.max(5_000, raw)
+  return 30_000
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+      })
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
+/** Strip NULs and cap UTF-8 bytes so PocketBase text field updates cannot 400. */
+export function sanitizePocketBaseText(value: string, maxBytes = TEXT_CONTENT_STORE_BYTES): string {
+  const cleaned = value.replace(/\u0000/g, '')
+  const buf = Buffer.from(cleaned, 'utf8')
+  if (buf.byteLength <= maxBytes) return cleaned
+  return buf.subarray(0, maxBytes).toString('utf8').replace(/\uFFFD+$/g, '')
+}
+
 export interface PdfPageDimension {
   width: number
   height: number
@@ -109,12 +140,18 @@ export async function extractPdfMetadata(
 
   const parser = new PDFParse({ data: buffer })
   try {
-    const infoResult = await parser.getInfo()
-    pageCount = infoResult.total || undefined
-    info = (infoResult.info ?? {}) as Record<string, unknown>
-
-    const textResult = await parser.getText()
-    textContent = (textResult.text || '').slice(0, TEXT_CONTENT_MAX)
+    const parsed = await withTimeout((async () => {
+      const infoResult = await parser.getInfo()
+      const textResult = await parser.getText()
+      return {
+        pageCount: infoResult.total || undefined,
+        info: (infoResult.info ?? {}) as Record<string, unknown>,
+        textContent: textResult.text || ''
+      }
+    })(), extractTimeoutMs(), 'PDF text extraction')
+    pageCount = parsed.pageCount
+    info = parsed.info
+    textContent = sanitizePocketBaseText(parsed.textContent)
   } catch (err) {
     console.warn('PDF text/metadata extraction failed:', err instanceof Error ? err.message : err)
     pageCount = undefined

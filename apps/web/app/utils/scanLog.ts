@@ -1,4 +1,4 @@
-import type { Scan } from '~/types/accessiq'
+import type { Scan } from '~/types/sitenook'
 
 /** One-line scan log summary for the Scans page (Siteimprove-style). */
 export function formatScanLogLine(scan: Scan): string {

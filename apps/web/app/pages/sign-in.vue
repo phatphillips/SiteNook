@@ -101,7 +101,7 @@ function readFetchErrorMessage(err: unknown, fallback: string): string {
 
       <div class="space-y-3 text-center text-sm text-muted">
         <p v-if="selfServiceEnabled">
-          New to AccessIQ?
+          New to SiteNook?
           <NuxtLink to="/pricing" class="text-primary hover:underline">
             Create an organization
           </NuxtLink>

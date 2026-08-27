@@ -29,6 +29,10 @@ flowchart LR
 
 ---
 
+## Community / Self-host distribution
+
+For the public Community compose stack, Typesense is **not** enabled by default and is pulled only as the official `typesense/typesense` image under the optional Compose `search` profile. SiteNook application images do not vendor Typesense binaries — see [public-sku-sheet.md](../platform/public-sku-sheet.md) and `deploy/community/`.
+
 ## Infrastructure
 
 Typesense runs as a Docker Compose service (`typesense/typesense:27.1`, volume `typesense_data`).

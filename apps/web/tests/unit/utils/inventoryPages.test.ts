@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { mergeInventoryPages, pickBaselineCompleteScan } from '~/utils/inventoryPages'
-import type { InventoryPageRow, Scan } from '~/types/accessiq'
+import {
+  dedupeInventoryRowsByUrl,
+  formatInventoryFileSize,
+  mergeInventoryPages,
+  pickBaselineCompleteScan
+} from '~/utils/inventoryPages'
+import type { InventoryPageRow, Scan } from '~/types/sitenook'
 
 function page(partial: Partial<InventoryPageRow> & { id: string, url: string }): InventoryPageRow {
   return {
@@ -25,6 +30,14 @@ describe('pickBaselineCompleteScan', () => {
       scan({ id: 'running', status: 'running', started_at: '2026-06-02T00:00:00.000Z' })
     ])
     expect(result?.id).toBe('new')
+  })
+
+  it('prefers a newer complete_with_errors scan over an older complete scan', () => {
+    const result = pickBaselineCompleteScan([
+      scan({ id: 'full', status: 'complete', completed_at: '2026-08-21T01:20:41.405Z' }),
+      scan({ id: 'home', status: 'complete_with_errors', completed_at: '2026-08-21T02:02:49.468Z' })
+    ])
+    expect(result?.id).toBe('home')
   })
 })
 
@@ -56,5 +69,35 @@ describe('mergeInventoryPages', () => {
     expect(byUrl['https://example.com/new']).toBe('new')
     expect(byUrl['https://example.com/pending']).toBe('pending')
     expect(merged.find(row => row.inventoryBadge === 'updated')?.id).toBe('p3')
+  })
+})
+
+describe('formatInventoryFileSize', () => {
+  it('formats bytes as KB or MB', () => {
+    expect(formatInventoryFileSize(512)).toBe('0.5 KB')
+    expect(formatInventoryFileSize(2 * 1024 * 1024)).toBe('2.0 MB')
+    expect(formatInventoryFileSize(0)).toBe('—')
+  })
+})
+
+describe('dedupeInventoryRowsByUrl', () => {
+  it('keeps one row per URL and prefers larger size', () => {
+    const rows = dedupeInventoryRowsByUrl([
+      { url: 'https://example.com/a/', size_bytes: 100 },
+      { url: 'https://example.com/a', size_bytes: 500 },
+      { url: 'https://example.com/b', size_bytes: 50 }
+    ])
+    expect(rows).toHaveLength(2)
+    expect(rows.find(row => row.url.includes('/a'))?.size_bytes).toBe(500)
+  })
+
+  it('merges query-string variants of the same URL', () => {
+    const rows = dedupeInventoryRowsByUrl([
+      { url: 'https://example.com/a?x=1', size_bytes: 100 },
+      { url: 'https://example.com/a?y=2', size_bytes: 500 }
+    ])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.url).toBe('https://example.com/a')
+    expect(rows[0]?.size_bytes).toBe(500)
   })
 })

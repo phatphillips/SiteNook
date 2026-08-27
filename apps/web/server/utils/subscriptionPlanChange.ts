@@ -45,8 +45,8 @@ export async function changeActiveSubscriptionPlan(
     items: [{ id: itemId, price: priceId }],
     proration_behavior: 'create_prorations',
     metadata: {
-      accessiq_plan: targetPlan,
-      accessiq_interval: interval
+      sitenook_plan: targetPlan,
+      sitenook_interval: interval
     }
   })
 

@@ -1,5 +1,5 @@
 import type Stripe from 'stripe'
-import type { OrganizationPlan } from '~/types/accessiq'
+import type { OrganizationPlan } from '~/types/sitenook'
 import { normalizeOrganizationPlan } from '~/utils/planLimits'
 
 export type StripeCheckoutSessionStatus = 'paid' | 'consumed' | 'expired'
@@ -36,7 +36,7 @@ export function resolveCheckoutOrganizationId(session: Stripe.Checkout.Session):
 }
 
 export function resolveCheckoutPlanFromSession(session: Stripe.Checkout.Session): OrganizationPlan {
-  const metadataPlan = session.metadata?.accessiq_plan
+  const metadataPlan = session.metadata?.sitenook_plan
   if (typeof metadataPlan === 'string' && metadataPlan.trim()) {
     return normalizeOrganizationPlan(metadataPlan)
   }

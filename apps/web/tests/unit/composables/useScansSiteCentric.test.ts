@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildLatestScanMap } from '~/composables/useScans'
-import type { Scan } from '~/types/accessiq'
+import type { Scan } from '~/types/sitenook'
 
 function scan(partial: Partial<Scan> & { id: string, site: string }): Scan {
   return {

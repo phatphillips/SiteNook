@@ -1,4 +1,4 @@
-import type { Scan } from '~/types/accessiq'
+import type { Scan } from '~/types/sitenook'
 
 export interface ScoreDelta {
   before: number

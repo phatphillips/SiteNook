@@ -3,17 +3,21 @@ import type PocketBase from 'pocketbase'
 import { parseRawConfig } from '../config/scanConfig.js'
 import { parseSiteSettings } from '../config/siteSettings.js'
 import {
-  rebuildPageResultsFromScan
+  rebuildPageResultsFromScan,
+  releasePageResultBinaries
 } from './siteCrawler.js'
 import { createAuthenticatedContext } from './authHandler.js'
 import { CHROMIUM_LAUNCH_ARGS } from './browserProfile.js'
 import { scanOnePage } from './scanPage.js'
 import { loadPolicies, saveSinglePageResult } from '../db/savePageResult.js'
-import { finalizeScan, seoSettingsFromSite } from '../db/finalizeScan.js'
+import { axeExcludeSelectorsFromPolicies } from '../qa/policyEngine.js'
+import { finalizeScan, schedulePostScanReconcile, seoSettingsFromSite } from '../db/finalizeScan.js'
 import { planHasFeature } from '../config/planLimits.js'
+import { effectiveOrgPlanForScan } from '../licence/applianceLicence.js'
 import { enqueueCrawlPdfs } from '../pdf/enqueueCrawlPdfs.js'
 import { rebuildInternalLinkGraph } from '../seo/linkGraph.js'
 import { ScanLogWriter, type ScanLogEventInput } from '../db/scanLogEvents.js'
+import { recomputeDashboardRollupsForSite } from '../dashboard/rollupWriter.js'
 
 export const BACKGROUND_SCAN_ROUNDS = 3
 export const BACKGROUND_URL_INTERVAL_MS = 20_000
@@ -182,6 +186,25 @@ export async function processBackgroundScanStep(pb: PocketBase): Promise<boolean
     })
     const page = await context.newPage()
     try {
+      const siteSettings = parseSiteSettings(site.site_settings, site.default_scan_config)
+      let orgPlan: string = 'free'
+      const orgId = typeof site.organization === 'string' ? site.organization.trim() : ''
+      if (orgId) {
+        try {
+          const org = await pb.collection('organizations').getOne(orgId, { fields: 'plan' })
+          orgPlan = effectiveOrgPlanForScan(org.plan)
+        } catch (err) {
+          console.warn(`Background scan ${record.id}: could not resolve org plan for policies`, err)
+          orgPlan = effectiveOrgPlanForScan('free')
+        }
+      } else {
+        orgPlan = effectiveOrgPlanForScan('free')
+      }
+      const policies = planHasFeature(orgPlan, 'policies') && siteSettings.runPolicies
+        ? await loadPolicies(record.site)
+        : []
+      const axeExcludeSelectors = axeExcludeSelectorsFromPolicies(policies)
+
       const outcome = await scanOnePage(page, {
         url,
         depth: 0,
@@ -189,13 +212,14 @@ export async function processBackgroundScanStep(pb: PocketBase): Promise<boolean
         scanType,
         origin,
         startUrl,
-        seoSettings: seoSettingsFromSite(parseSiteSettings(site.site_settings, site.default_scan_config)),
+        seoSettings: seoSettingsFromSite(siteSettings),
+        axeExcludeSelectors,
         onCrawlLog
       })
 
       if (outcome.ok) {
-        const policies = await loadPolicies(record.site)
         await saveSinglePageResult(outcome.page, record.id, record.site, startUrl, config, policies)
+        releasePageResultBinaries(outcome.page)
         unscanned = unscanned.filter(u => u !== url)
         const pagesCrawled = (record.pages_crawled ?? 0) + 1
         await pb.collection('scans').update(record.id, { pages_crawled: pagesCrawled })
@@ -279,7 +303,7 @@ async function finalizeBackgroundScan(
   if (orgId) {
     try {
       const org = await pb.collection('organizations').getOne(orgId, { fields: 'plan' })
-      const orgPlan = String(org.plan || 'free')
+      const orgPlan = effectiveOrgPlanForScan(org.plan)
       if (planHasFeature(orgPlan, 'inventory')) {
         const pdfEnqueued = await enqueueCrawlPdfs(pb, site.id, scanId, {
           queueValidation: planHasFeature(orgPlan, 'pdfAccessibility')
@@ -304,11 +328,19 @@ async function finalizeBackgroundScan(
     completed_at: new Date().toISOString(),
     pages_crawled: pagesCrawled,
     open_issue_count: finalized.openIssueCount,
+    broken_link_count: finalized.brokenLinkCount,
     a11y_summary: finalized.a11ySummary,
     ...scoreFields,
     error_message: hasErrors
       ? `${unscanned.length} page(s) could not be scanned after ${BACKGROUND_SCAN_ROUNDS} background rounds`
       : ''
+  })
+  await recomputeDashboardRollupsForSite(pb, site.id).catch((err) => {
+    console.warn(`Rollup recompute skipped for background finalize ${scanId}:`, err)
+  })
+  schedulePostScanReconcile(site.id, {
+    elementTotals: scoreFields.score_denominators?.elements,
+    updateCurrentA11y: !hasErrors
   })
 }
 

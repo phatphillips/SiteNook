@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Site } from '~/types/accessiq'
+import type { Site } from '~/types/sitenook'
 import {
   type SiteSettings,
   accessibilityTargetSummary,

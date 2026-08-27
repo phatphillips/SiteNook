@@ -76,6 +76,19 @@ export interface A11ySummary {
 
 
 
+/** Prefer live issues when the stored summary predates the latest completed scan. */
+export function isA11ySummaryFresh(
+  summary: Pick<A11ySummary, 'generated_at' | 'by_rule'> | null | undefined,
+  latestScanCompletedAt?: string | null
+): boolean {
+  if (!summary?.by_rule?.length) return false
+  if (!latestScanCompletedAt) return true
+  const summaryMs = Date.parse(summary.generated_at)
+  const scanMs = Date.parse(latestScanCompletedAt)
+  if (!Number.isFinite(summaryMs) || !Number.isFinite(scanMs)) return true
+  return summaryMs + 2000 >= scanMs
+}
+
 export function emptyA11ySummary(): A11ySummary {
 
   return {

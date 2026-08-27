@@ -15,6 +15,10 @@ describe('planLimits', () => {
     expect(getPlanLimits('unknown').maxSites).toBe(1)
   })
 
+  it('caps free pages per scan at 20', () => {
+    expect(getPlanLimits('free').maxPagesPerScan).toBe(20)
+  })
+
   it('gates scheduled scans to team and above', () => {
     expect(planHasFeature('free', 'scheduledScans')).toBe(false)
     expect(planHasFeature('starter', 'scheduledScans')).toBe(false)

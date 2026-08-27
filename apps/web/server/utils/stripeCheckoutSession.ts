@@ -1,5 +1,5 @@
 import type Stripe from 'stripe'
-import type { OrganizationPlan } from '~/types/accessiq'
+import type { OrganizationPlan } from '~/types/sitenook'
 import type { BillingInterval } from '~/utils/stripeCheckout'
 
 export interface CheckoutSessionOptions {
@@ -16,8 +16,8 @@ export function buildCheckoutSessionParams(
   options: CheckoutSessionOptions
 ): Stripe.Checkout.SessionCreateParams {
   const metadata: Record<string, string> = {
-    accessiq_plan: options.plan,
-    accessiq_interval: options.interval ?? 'monthly'
+    sitenook_plan: options.plan,
+    sitenook_interval: options.interval ?? 'monthly'
   }
   if (options.organizationId?.trim()) {
     metadata.organization_id = options.organizationId.trim()

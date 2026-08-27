@@ -1,8 +1,9 @@
-import type { InventoryPageRow, Scan } from '~/types/accessiq'
+import type { InventoryPageRow, Scan } from '~/types/sitenook'
 import { mergeInventoryPages, pickBaselineCompleteScan } from '~/utils/inventoryPages'
 import { pbRelation } from '~/utils/pbFilter'
 import { createDebouncedReload } from '~/utils/reloadScheduler'
 import { buildDisplayScansFilter, isScanRunning, pickDisplayScan, sortScansForDisplay } from '~/utils/scanDisplay'
+import { FullListGuardError, safeGetFullList } from '~/utils/pbCollectionCount'
 
 type ReloadPart = 'scans' | 'pages' | 'inventory'
 
@@ -28,6 +29,19 @@ export function useInventory(siteId: Ref<string> | string) {
   const error = ref('')
 
   const pendingParts = new Set<ReloadPart>()
+  let fetchGeneration = 0
+
+  const INVENTORY_PAGE_FIELDS =
+    'id,url,title,status_code,word_count,readability_score,crawl_depth,created,scan'
+
+  function clearInventoryData() {
+    sitePages.value = []
+    inventoryPages.value = []
+    inventory.value = []
+    latestScan.value = null
+    baselineScan.value = null
+    runningScan.value = null
+  }
 
   async function loadScans() {
     const scanList = await pb.collection('scans').getFullList({
@@ -41,16 +55,26 @@ export function useInventory(siteId: Ref<string> | string) {
   }
 
   async function loadSitePages() {
-    sitePages.value = await pb.collection('pages').getFullList({
-      filter: pbRelation('site', id.value),
-      expand: 'scan'
-    }) as unknown as InventoryPageRow[]
-
-    inventoryPages.value = mergeInventoryPages(
-      sitePages.value,
-      runningScan.value,
-      baselineScan.value
-    )
+    try {
+      sitePages.value = await safeGetFullList<InventoryPageRow>(pb, 'pages', {
+        filter: pbRelation('site', id.value),
+        expand: 'scan',
+        fields: INVENTORY_PAGE_FIELDS
+      })
+      inventoryPages.value = mergeInventoryPages(
+        sitePages.value,
+        runningScan.value,
+        baselineScan.value
+      )
+    } catch (err) {
+      if (err instanceof FullListGuardError) {
+        error.value = err.message
+        sitePages.value = []
+        inventoryPages.value = []
+        return
+      }
+      throw err
+    }
   }
 
   async function loadInventoryAssets() {
@@ -59,9 +83,18 @@ export function useInventory(siteId: Ref<string> | string) {
       inventory.value = []
       return
     }
-    inventory.value = await pb.collection('qa_inventory').getFullList({
-      filter: pbRelation('scan', scanId)
-    })
+    try {
+      inventory.value = await safeGetFullList<Record<string, unknown>>(pb, 'qa_inventory', {
+        filter: pbRelation('scan', scanId)
+      })
+    } catch (err) {
+      if (err instanceof FullListGuardError) {
+        error.value = err.message
+        inventory.value = []
+        return
+      }
+      throw err
+    }
   }
 
   async function flushPendingParts() {
@@ -74,15 +107,7 @@ export function useInventory(siteId: Ref<string> | string) {
       await loadScans()
     }
     if (parts.has('pages')) {
-      sitePages.value = await pb.collection('pages').getFullList({
-        filter: pbRelation('site', id.value),
-        expand: 'scan'
-      }) as unknown as InventoryPageRow[]
-      inventoryPages.value = mergeInventoryPages(
-        sitePages.value,
-        runningScan.value,
-        baselineScan.value
-      )
+      await loadSitePages()
     } else if (parts.has('scans')) {
       inventoryPages.value = mergeInventoryPages(
         sitePages.value,
@@ -115,6 +140,7 @@ export function useInventory(siteId: Ref<string> | string) {
 
   async function fetchInventoryData(options?: { silent?: boolean }) {
     if (!id.value) return
+    const generation = ++fetchGeneration
     if (!options?.silent) {
       loading.value = true
     } else {
@@ -124,6 +150,8 @@ export function useInventory(siteId: Ref<string> | string) {
 
     try {
       await loadScans()
+      if (generation !== fetchGeneration) return
+
       if (!latestScan.value) {
         sitePages.value = []
         inventoryPages.value = []
@@ -131,13 +159,21 @@ export function useInventory(siteId: Ref<string> | string) {
         return
       }
       await Promise.all([loadSitePages(), loadInventoryAssets()])
+      if (generation !== fetchGeneration) return
     } catch (e: unknown) {
+      if (generation !== fetchGeneration) return
+      if (e instanceof FullListGuardError) {
+        error.value = e.message
+        return
+      }
       error.value = pocketBaseErrorMessage(e) || 'Could not load inventory'
     } finally {
-      if (!options?.silent) {
-        loading.value = false
-      } else {
-        refreshing.value = false
+      if (generation === fetchGeneration) {
+        if (!options?.silent) {
+          loading.value = false
+        } else {
+          refreshing.value = false
+        }
       }
     }
   }
@@ -187,13 +223,20 @@ export function useInventory(siteId: Ref<string> | string) {
     }
   }
 
-  watch(id, () => {
+  watch(id, (nextId, previousId) => {
+    if (nextId !== previousId) {
+      fetchGeneration++
+      clearInventoryData()
+      error.value = ''
+    }
     fetchInventoryData()
     subscribeInventoryUpdates()
   }, { immediate: true })
 
   onUnmounted(() => {
+    fetchGeneration++
     unsubscribeInventoryUpdates()
+    clearInventoryData()
   })
 
   return {

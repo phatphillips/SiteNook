@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { Site } from '~/types/accessiq'
+import type { Site } from '~/types/sitenook'
 
 definePageMeta({ middleware: 'auth' })
 
 const { sessionUser, awaitAuthReady } = usePocketBase()
-const { sites, fetchSites, createSite, deleteSites } = useSites()
+const { sites, fetchSites, deleteSites } = useSites()
 const canWrite = computed(() => canWriteOrg(sessionUser.value))
 const toast = useToast()
 
@@ -20,10 +20,7 @@ const showAddModal = ref(false)
 const showDeleteModal = ref(false)
 const settingsSite = ref<Site | null>(null)
 const showSettingsModal = ref(false)
-const form = reactive({ name: '', url: '', description: '' })
-const loading = ref(false)
 const deleting = ref(false)
-const error = ref('')
 
 onMounted(async () => {
   await awaitAuthReady()
@@ -31,23 +28,6 @@ onMounted(async () => {
 })
 
 const selectedCount = computed(() => sitesTable.value?.selectedCount ?? 0)
-
-async function submitCreate() {
-  loading.value = true
-  error.value = ''
-  try {
-    await createSite(form)
-    showAddModal.value = false
-    form.name = ''
-    form.url = ''
-    form.description = ''
-  } catch (e: unknown) {
-    const msg = e && typeof e === 'object' && 'message' in e ? String((e as { message: string }).message) : 'Could not create site.'
-    error.value = msg.includes('Session expired') ? msg : msg.includes('Failed to create') ? 'Could not create site. Try signing in again.' : msg
-  } finally {
-    loading.value = false
-  }
-}
 
 async function openSettings(site: Site) {
   settingsSite.value = site
@@ -120,23 +100,7 @@ async function confirmDelete() {
     @deleted="fetchSites"
   />
 
-  <UModal v-model:open="showAddModal" title="Add Site">
-    <template #body>
-      <form class="space-y-4" @submit.prevent="submitCreate">
-        <UFormField label="Name" required>
-          <UInput v-model="form.name" required />
-        </UFormField>
-        <UFormField label="URL" required>
-          <UInput v-model="form.url" type="url" placeholder="https://example.com" required />
-        </UFormField>
-        <UFormField label="Description">
-          <UTextarea v-model="form.description" />
-        </UFormField>
-        <UAlert v-if="error" color="error" variant="subtle" :title="error" />
-        <UButton type="submit" :loading="loading">Create Site</UButton>
-      </form>
-    </template>
-  </UModal>
+  <AddSiteWizard v-model:open="showAddModal" />
 
   <UModal
     v-model:open="showDeleteModal"

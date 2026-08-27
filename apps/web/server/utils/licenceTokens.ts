@@ -115,7 +115,7 @@ export function requireLicenceAdminKey(event: H3Event): void {
 }
 
 export function hashInstanceFingerprint(domain: string, instanceFingerprint: string): string {
-  return createHmac('sha256', 'accessiq-licence-fingerprint')
+  return createHmac('sha256', 'sitenook-licence-fingerprint')
     .update(`${domain.trim().toLowerCase()}|${instanceFingerprint.trim()}`)
     .digest('hex')
 }

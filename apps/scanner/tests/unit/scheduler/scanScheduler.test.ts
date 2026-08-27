@@ -4,15 +4,16 @@ import {
   isSiteBusy,
   enqueueScheduledScan,
   pushOverdueScheduleForward,
-  skipScheduledRunIfFullScanAlreadyRan
+  skipScheduledRunIfWithinMinGap
 } from '../../../src/scheduler/scanScheduler.js'
 
 function mockPb(overrides: {
   queueCount?: number
   runningCount?: number
+  backgroundCount?: number
   createError?: boolean
   updateError?: boolean
-  fullScanTodayCount?: number
+  latestScan?: { started_at?: string, completed_at?: string, created?: string } | null
 }) {
   const create = vi.fn().mockResolvedValue({ id: 'q1' })
   const update = vi.fn().mockResolvedValue({})
@@ -29,8 +30,16 @@ function mockPb(overrides: {
       }
       if (name === 'scans') {
         return {
-          getList: vi.fn().mockResolvedValue({
-            items: Array(overrides.fullScanTodayCount ?? overrides.runningCount ?? 0).fill({})
+          getList: vi.fn().mockImplementation((_page: number, _perPage: number, opts?: { filter?: string }) => {
+            const filter = opts?.filter ?? ''
+            if (filter.includes('status')) {
+              const count = (overrides.backgroundCount ?? 0) + (overrides.runningCount ?? 0)
+              return Promise.resolve({ items: Array(count).fill({}) })
+            }
+            if (overrides.latestScan) {
+              return Promise.resolve({ items: [overrides.latestScan] })
+            }
+            return Promise.resolve({ items: [] })
           })
         }
       }
@@ -52,6 +61,11 @@ describe('isSiteBusy', () => {
 
   it('returns true when a scan is running', async () => {
     const pb = mockPb({ queueCount: 0, runningCount: 1 }) as never
+    await expect(isSiteBusy(pb, 'site1')).resolves.toBe(true)
+  })
+
+  it('returns true when a scan is in background_scan', async () => {
+    const pb = mockPb({ queueCount: 0, runningCount: 0, backgroundCount: 1 }) as never
     await expect(isSiteBusy(pb, 'site1')).resolves.toBe(true)
   })
 
@@ -182,7 +196,7 @@ describe('enqueueScheduledScan', () => {
   })
 })
 
-describe('skipScheduledRunIfFullScanAlreadyRan', () => {
+describe('skipScheduledRunIfWithinMinGap', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-28T12:00:00.000Z'))
@@ -192,33 +206,37 @@ describe('skipScheduledRunIfFullScanAlreadyRan', () => {
     vi.useRealTimers()
   })
 
-  it('rolls schedule forward when a full scan already completed today', async () => {
-    const pb = mockPb({ fullScanTodayCount: 1 }) as never
+  it('rolls schedule forward when last scan activity was within the gap window', async () => {
+    const pb = mockPb({
+      latestScan: { started_at: '2026-05-28T11:30:00.000Z' }
+    }) as never
     const site = {
       id: 'site1',
-      crawl_schedule: 'daily',
+      crawl_schedule: 'every_5d',
       schedule_next_run_at: '2026-05-28T10:00:00.000Z',
-      default_scan_config: { schedule: { time: '14:00' } }
+      default_scan_config: {}
     }
-    const result = await skipScheduledRunIfFullScanAlreadyRan(
+    const result = await skipScheduledRunIfWithinMinGap(
       pb,
       site,
       new Date('2026-05-28T12:00:00.000Z')
     )
-    expect(result.schedule_next_run_at).toBe('2026-05-29T14:00:00.000Z')
+    expect(result.schedule_next_run_at).toBe('2026-05-28T12:30:00.000Z')
     const pbMock = pb as { _update: ReturnType<typeof vi.fn> }
     expect(pbMock._update).toHaveBeenCalled()
   })
 
-  it('does nothing when no full scan ran today', async () => {
-    const pb = mockPb({ fullScanTodayCount: 0 }) as never
+  it('does nothing when last scan activity is outside the gap window', async () => {
+    const pb = mockPb({
+      latestScan: { completed_at: '2026-05-28T09:00:00.000Z' }
+    }) as never
     const site = {
       id: 'site1',
-      crawl_schedule: 'daily',
+      crawl_schedule: 'every_5d',
       schedule_next_run_at: '2026-05-28T10:00:00.000Z',
       default_scan_config: {}
     }
-    const result = await skipScheduledRunIfFullScanAlreadyRan(
+    const result = await skipScheduledRunIfWithinMinGap(
       pb,
       site,
       new Date('2026-05-28T12:00:00.000Z')

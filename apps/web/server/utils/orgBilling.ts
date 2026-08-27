@@ -1,6 +1,6 @@
 import type PocketBase from 'pocketbase'
 import { ClientResponseError } from 'pocketbase'
-import type { Organization, OrganizationPlan, SubscriptionStatus } from '~/types/accessiq'
+import type { Organization, OrganizationPlan, SubscriptionStatus } from '~/types/sitenook'
 import { pbSelect } from '~/utils/pbFilter'
 
 function escapeFilterValue(value: string): string {

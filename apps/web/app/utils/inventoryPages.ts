@@ -1,6 +1,39 @@
-import type { InventoryPageBadge, InventoryPageRow, Scan } from '~/types/accessiq'
+import type { InventoryPageBadge, InventoryPageRow, Scan } from '~/types/sitenook'
+import { inventoryUrlDedupeKey, normalizeInventoryUrl } from '~/utils/inventoryUrl'
 import { normalizePageUrl } from '~/utils/pageUrl'
 import { scanTimestamp } from '~/utils/scanDisplay'
+
+/** File size for inventory rows (HTML page bytes or asset bytes). */
+export function inventoryRowSizeBytes(row: Record<string, unknown>): number {
+  if (typeof row.size_bytes === 'number' && row.size_bytes > 0) return row.size_bytes
+  if (typeof row.html_size_bytes === 'number' && row.html_size_bytes > 0) return row.html_size_bytes
+  return 0
+}
+
+/** Display inventory size in KB or MB. */
+export function formatInventoryFileSize(bytes: unknown): string {
+  if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes <= 0) return '—'
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+export function dedupeInventoryRowsByUrl<T extends { url: string }>(items: T[]): T[] {
+  const byUrl = new Map<string, T>()
+  for (const item of items) {
+    const key = inventoryUrlDedupeKey(item.url)
+    const existing = byUrl.get(key)
+    const normalized = normalizeInventoryUrl(item.url)
+    const candidate = normalized === item.url ? item : { ...item, url: normalized }
+    if (
+      !existing
+      || inventoryRowSizeBytes(candidate as Record<string, unknown>)
+        > inventoryRowSizeBytes(existing as Record<string, unknown>)
+    ) {
+      byUrl.set(key, candidate)
+    }
+  }
+  return [...byUrl.values()].sort((a, b) => a.url.localeCompare(b.url))
+}
 
 export function pageScannedTimestamp(page: InventoryPageRow): string {
   if (page.created) return page.created
@@ -17,7 +50,9 @@ export function pageScannedMs(page: InventoryPageRow): number {
 }
 
 export function pickBaselineCompleteScan(scans: Scan[]): Scan | null {
-  const complete = scans.filter(s => s.status === 'complete')
+  const complete = scans.filter(s =>
+    s.status === 'complete' || s.status === 'complete_with_errors'
+  )
   if (!complete.length) return null
   return complete.slice().sort((a, b) => {
     const aMs = Date.parse(scanTimestamp(a)) || 0

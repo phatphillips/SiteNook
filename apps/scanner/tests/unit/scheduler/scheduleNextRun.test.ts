@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   computeScheduleNextRunAt,
   computeScheduleNextRunAfterManualFullScan,
+  computeScheduleNextRunWithMinGap,
   getScheduleTimeFromConfig,
   getScheduleTimezoneFromConfig,
   isSiteDue,
@@ -86,6 +87,13 @@ describe('computeScheduleNextRunAt', () => {
     })
     expect(next).toBe('2026-06-04T02:00:00.000Z')
   })
+
+  it('schedules every_5d from anchor', () => {
+    const from = new Date('2026-05-28T10:00:00.000Z')
+    const now = new Date('2026-05-28T10:00:00.000Z')
+    const next = computeScheduleNextRunAt('every_5d', { from, now })
+    expect(next).toBe('2026-06-02T10:00:00.000Z')
+  })
 })
 
 describe('isSiteDue', () => {
@@ -139,5 +147,29 @@ describe('computeScheduleNextRunAfterManualFullScan', () => {
 
   it('returns null for manual sites', () => {
     expect(computeScheduleNextRunAfterManualFullScan('manual')).toBeNull()
+  })
+})
+
+describe('computeScheduleNextRunWithMinGap', () => {
+  it('pushes hourly next run past the minimum gap after last activity', () => {
+    const now = new Date('2026-05-28T10:00:00.000Z')
+    const lastActivity = new Date('2026-05-28T09:55:00.000Z')
+    const next = computeScheduleNextRunWithMinGap(
+      'hourly',
+      { from: now, now },
+      lastActivity
+    )
+    expect(next).toBe('2026-05-28T11:00:00.000Z')
+  })
+
+  it('keeps interval next run when it is already beyond the gap', () => {
+    const now = new Date('2026-05-28T10:00:00.000Z')
+    const lastActivity = new Date('2026-05-20T10:00:00.000Z')
+    const next = computeScheduleNextRunWithMinGap(
+      'every_5d',
+      { from: now, now },
+      lastActivity
+    )
+    expect(next).toBe('2026-06-02T10:00:00.000Z')
   })
 })

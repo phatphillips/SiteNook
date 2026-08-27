@@ -1,4 +1,5 @@
 import { createError } from 'h3'
+import { trackServerFunnelEvent } from '../utils/funnelAnalytics'
 
 interface SignupOrganizationBody {
   orgName?: string
@@ -9,6 +10,7 @@ interface SignupOrganizationBody {
   acceptTerms?: boolean
   plan?: string
   checkoutSessionId?: string
+  trial?: boolean | string | number
 }
 
 export default defineEventHandler(async (event) => {
@@ -52,10 +54,11 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const { plan, checkoutSessionId } = await assertSignupPlanAuthorized(
+  const { plan, checkoutSessionId, teamTrial } = await assertSignupPlanAuthorized(
     event,
     body.plan ?? 'free',
-    body.checkoutSessionId
+    body.checkoutSessionId,
+    body.trial
   )
 
   const input = {
@@ -63,7 +66,8 @@ export default defineEventHandler(async (event) => {
     subdomain: String(body.subdomain ?? ''),
     ownerName: String(body.ownerName ?? ''),
     ownerEmail,
-    plan
+    plan,
+    teamTrial: teamTrial === true
   }
 
   const pb = await getPbAdmin(event)
@@ -74,6 +78,14 @@ export default defineEventHandler(async (event) => {
       appUrl: config.public.appUrl,
       createdVia: 'self_service'
     })
+
+    if (teamTrial) {
+      trackServerFunnelEvent('trial_start', {
+        organizationId: result.organization.id,
+        plan: 'team',
+        source: 'signup'
+      })
+    }
 
     if (checkoutSessionId?.startsWith('cs_')) {
       await markCheckoutSessionConsumed(pb, checkoutSessionId, result.organization.id)

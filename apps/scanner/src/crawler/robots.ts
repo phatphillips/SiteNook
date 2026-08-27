@@ -77,9 +77,21 @@ function groupsForAgent(groups: RobotsUserAgentGroup[], agent: string): RobotsUs
   return wildcard.length ? wildcard : groups
 }
 
-function pathMatchesRule(pathname: string, rule: string): boolean {
+/**
+ * Match a URL path against a robots.txt Allow/Disallow pattern.
+ * Supports trailing `*` (Drupal-style `/user/*`) as a prefix wildcard.
+ * `Disallow: /` matches every path.
+ */
+export function pathMatchesRule(pathname: string, rule: string): boolean {
   if (!rule) return false
   if (rule === '/') return true
+
+  // Trailing wildcard: `/admin*` or `/user/*`
+  if (rule.endsWith('*')) {
+    const prefix = rule.slice(0, -1)
+    return pathname.startsWith(prefix)
+  }
+
   return pathname === rule || pathname.startsWith(rule)
 }
 
@@ -116,7 +128,7 @@ export async function fetchRobotsTxt(origin: string): Promise<RobotsFetchResult>
   const url = `${origin}/robots.txt`
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'AccessIQ-Scanner/1.0' }
+      headers: { 'User-Agent': 'SiteNook-Scanner/1.0' }
     })
     if (!res.ok) {
       return { url, found: false, status: res.status }
@@ -134,11 +146,16 @@ export async function fetchRobotsTxt(origin: string): Promise<RobotsFetchResult>
   }
 }
 
+/**
+ * Disallow paths for the wildcard `*` user-agent only.
+ * Bot-specific blocks (e.g. DeepSeek `Disallow: /`) must not apply to the scanner.
+ */
 export async function loadRobotsDisallows(origin: string): Promise<string[]> {
   const result = await fetchRobotsTxt(origin)
   if (!result.found || !result.parsed) return []
   const paths: string[] = []
   for (const group of result.parsed.groups) {
+    if (!group.agents.includes('*')) continue
     for (const rule of group.rules) {
       if (rule.type === 'disallow' && rule.path) paths.push(rule.path)
     }
@@ -150,10 +167,7 @@ export function isDisallowedByRobots(url: string, disallows: string[]): boolean 
   if (!disallows.length) return false
   try {
     const pathname = new URL(url).pathname
-    return disallows.some((rule) => {
-      if (rule === '/') return true
-      return pathname.startsWith(rule)
-    })
+    return disallows.some(rule => pathMatchesRule(pathname, rule))
   } catch {
     return false
   }

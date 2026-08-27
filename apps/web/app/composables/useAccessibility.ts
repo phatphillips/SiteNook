@@ -1,5 +1,5 @@
 import { createSharedComposable } from '@vueuse/core'
-import type { AccessibilityIssue, IssueFilters, Scan, WcagLevelFilter } from '~/types/accessiq'
+import type { AccessibilityIssue, IssueFilters, Scan, WcagLevelFilter } from '~/types/sitenook'
 import { latestPageIdsByNormalizedUrl } from '~/utils/pageUrl'
 import { pbRelation } from '~/utils/pbFilter'
 import type { ElementTotals } from '~/utils/siteimproveScore'
@@ -25,7 +25,8 @@ import {
 import type { A11ySummary } from '~/utils/a11ySummary'
 import { createDebouncedReload } from '~/utils/reloadScheduler'
 import { compareTimestampsDesc } from '~/utils/sortTimestamps'
-import { pickLatestScan, scanTimestamp } from '~/utils/scanDisplay'
+import { pickLatestScan, pickLatestTrustedScan, scanTimestamp } from '~/utils/scanDisplay'
+import { parseA11yCheckStats } from '~/utils/a11yCheckStats'
 import { issueInSiteTarget, parseSiteSettings, classifyIssueCategory } from '~/utils/siteSettings'
 
 export {
@@ -136,10 +137,15 @@ function buildSiteAccessibility(siteId: string): SiteAccessibilityState {
     400
   )
 
+  function latestCheckStats() {
+    const scan = pickLatestTrustedScan(scans.value)
+    return parseA11yCheckStats(scan?.a11y_check_stats) ?? scan?.a11y_check_stats
+  }
+
   function recomputePointsToGain() {
     const site = sites.value.find(s => s.id === siteId)
     const totals = site?.score_denominators?.elements
-    pointsToGainByRule.value = buildPointsToGainByRule(issues.value, totals)
+    pointsToGainByRule.value = buildPointsToGainByRule(issues.value, totals, latestCheckStats())
   }
 
   async function loadSiteIssues() {
@@ -382,7 +388,16 @@ function _useAccessibilityPool() {
 
 const useAccessibilityPool = createSharedComposable(_useAccessibilityPool)
 
-export function useAccessibility(siteId: Ref<string> | string) {
+export interface UseAccessibilityOptions {
+  /** When false, call `ensureLoaded()` before reads or rely on `fetchSiteData`. */
+  eagerLoad?: boolean
+}
+
+export function useAccessibility(
+  siteId: Ref<string> | string,
+  options: UseAccessibilityOptions = {}
+) {
+  const eagerLoad = options.eagerLoad !== false
   const pool = useAccessibilityPool()
   const id = computed(() => (typeof siteId === 'object' ? siteId.value : siteId))
 
@@ -435,12 +450,12 @@ export function useAccessibility(siteId: Ref<string> | string) {
   }, { immediate: true })
 
   watch(id, () => {
-    void loadClientSiteData()
-  })
+    if (eagerLoad) void loadClientSiteData()
+  }, { immediate: eagerLoad })
 
-  onMounted(() => {
-    void loadClientSiteData()
-  })
+  async function ensureLoaded() {
+    await loadClientSiteData()
+  }
 
   onUnmounted(() => {
     if (id.value) pool.release(id.value)
@@ -508,8 +523,17 @@ export function useAccessibility(siteId: Ref<string> | string) {
     return site?.score_denominators?.elements
   })
 
+  const scoringCheckStats = computed(() => {
+    const scan = pickLatestTrustedScan(state.value?.scans.value ?? [])
+    return parseA11yCheckStats(scan?.a11y_check_stats) ?? scan?.a11y_check_stats ?? null
+  })
+
   const accessibilityScores = computed(() =>
-    calculateAccessibilityScores(scoreableTargetIssues.value, cachedElementTotals.value)
+    calculateAccessibilityScores(
+      scoreableTargetIssues.value,
+      cachedElementTotals.value,
+      scoringCheckStats.value
+    )
   )
 
   const overallScore = computed(() => accessibilityScores.value.overall)
@@ -523,7 +547,8 @@ export function useAccessibility(siteId: Ref<string> | string) {
   const compositeScore = computed(() =>
     calculateAccessibilityScores(
       scoreableIssues(filteredIssues.value),
-      cachedElementTotals.value
+      cachedElementTotals.value,
+      scoringCheckStats.value
     ).overall
   )
 
@@ -545,10 +570,12 @@ export function useAccessibility(siteId: Ref<string> | string) {
     overallScore,
     levelScores,
     scoreElementTotals: cachedElementTotals,
+    scoringCheckStats,
     scoreableTargetIssues,
     compositeScore,
     fetchSiteData: (options?: { silent?: boolean }) =>
       state.value?.fetchSiteData(options) ?? Promise.resolve(),
-    loadSiteIssues: () => state.value?.loadSiteIssues() ?? Promise.resolve()
+    loadSiteIssues: () => state.value?.loadSiteIssues() ?? Promise.resolve(),
+    ensureLoaded
   }
 }

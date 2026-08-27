@@ -1,6 +1,6 @@
 import { createError } from 'h3'
 import type { RecordModel } from 'pocketbase'
-import type { Organization } from '~/types/accessiq'
+import type { Organization } from '~/types/sitenook'
 import { isOrgAdmin, requireUserOrganizationId } from '~/utils/orgAccess'
 import { loadBillingInvoices } from '../../utils/billingStripeDetails'
 import { readStripeServerConfig, isStripeCheckoutConfigured } from '../../utils/stripeConfig'

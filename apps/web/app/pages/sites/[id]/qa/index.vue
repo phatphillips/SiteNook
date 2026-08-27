@@ -1,103 +1,179 @@
 <script setup lang="ts">
+import type { Site } from '~/types/sitenook'
+import type { OverviewDateRange } from '~/utils/overviewDateRange'
+import { filterScansByDateRange, overviewRangeBounds } from '~/utils/overviewDateRange'
+import { buildQaIssueBreakdown } from '~/utils/qaIssueBreakdown'
 import { siteSettingsForSite } from '~/utils/siteSettings'
+import { compareTimestampsDesc } from '~/utils/sortTimestamps'
+import { scanTimestamp } from '~/utils/scanDisplay'
 
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const siteId = computed(() => route.params.id as string)
-const { sites } = useSites()
-const { brokenLinkCount, misspellingCount, avgReadability, latestScan } = useQA(siteId)
-const { pb } = usePocketBase()
-const policyCount = ref(0)
+const { sites, refreshSite } = useSites()
+const showSettingsModal = ref(false)
+const settingsSite = ref<Site | null>(null)
+
+const {
+  scans,
+  brokenLinkCount,
+  misspellingCount,
+  policyMatchCount,
+  avgReadability,
+  wordsToReviewCount,
+  inventoryCount,
+  internalBrokenLinkCount,
+  externalBrokenLinkCount,
+  previewBrokenLinks,
+  previewSpelling,
+  previewPolicyMatches,
+  latestScan,
+  loading
+} = useQA(siteId, { overview: true })
+
+const dateRange = ref<OverviewDateRange>({ preset: 30 })
+const selectedCategoryId = ref<string | null>(null)
 
 const siteSettings = computed(() =>
   siteSettingsForSite(sites.value.find(s => s.id === siteId.value))
 )
 
 const qaScore = computed(() => latestScan.value?.score_qa ?? null)
+const rangeBounds = computed(() => overviewRangeBounds(dateRange.value))
 
-const overviewCardUi = {
-  root: 'bg-elevated/25 border border-default',
-  body: 'p-4 sm:p-6'
-}
+const overviewInitialLoading = computed(
+  () => loading.value && !latestScan.value
+)
 
-async function refreshPolicyCount() {
-  try {
-    if (!latestScan.value?.id) {
-      policyCount.value = 0
-      return
-    }
-    const policies = await pb.collection('policy_matches').getFullList({
-      filter: `scan = "${latestScan.value.id}" && status = 'open'`
-    })
-    policyCount.value = policies.length
-  } catch {
-    policyCount.value = 0
-  }
-}
+const breakdownRows = computed(() =>
+  buildQaIssueBreakdown({
+    brokenLinks: brokenLinkCount.value,
+    misspellings: misspellingCount.value,
+    wordsToReview: wordsToReviewCount.value,
+    policies: policyMatchCount.value,
+    inventory: inventoryCount.value,
+    siteId: siteId.value
+  })
+)
 
-onMounted(async () => {
-  await refreshPolicyCount()
+const filteredScans = computed(() =>
+  filterScansByDateRange(scans.value, rangeBounds.value)
+)
+
+const completeScansInRange = computed(() =>
+  filteredScans.value
+    .filter(s => s.status === 'complete' || s.status === 'complete_with_errors')
+    .sort((a, b) => compareTimestampsDesc(scanTimestamp(a), scanTimestamp(b)))
+)
+
+const scoreDelta = computed((): number | null => {
+  const current = completeScansInRange.value[0]
+  const previous = completeScansInRange.value[1]
+  if (!current || !previous) return null
+  if (current.score_qa == null || previous.score_qa == null) return null
+  return Math.round((current.score_qa - previous.score_qa) * 10) / 10
 })
 
-watch(latestScan, () => {
-  refreshPolicyCount()
-})
+const showBrokenLinksPreview = computed(() =>
+  !selectedCategoryId.value || selectedCategoryId.value === 'broken_links'
+)
+const showSpellingPreview = computed(() =>
+  !selectedCategoryId.value
+    || selectedCategoryId.value === 'misspellings'
+    || selectedCategoryId.value === 'words_to_review'
+)
+const showPoliciesPreview = computed(() =>
+  !selectedCategoryId.value || selectedCategoryId.value === 'policies'
+)
 
-function ringColor(count: number) {
-  if (count === 0) return 'text-green-500'
-  if (count <= 10) return 'text-amber-500'
-  return 'text-red-500'
+async function openSiteSettings() {
+  const site = sites.value.find(s => s.id === siteId.value)
+  if (!site) return
+  settingsSite.value = site
+  await nextTick()
+  showSettingsModal.value = true
+}
+
+async function onSettingsSaved() {
+  await refreshSite(siteId.value)
+  settingsSite.value = sites.value.find(s => s.id === siteId.value) ?? settingsSite.value
 }
 </script>
 
 <template>
-  <AppDashboardPanel>
+  <AppDashboardPanel full-width>
     <template #header>
       <DashboardPageNavbar title="Quality Assurance">
         <template #right><ScanTriggerButton :site-id="siteId" /></template>
       </DashboardPageNavbar>
     </template>
     <template #body>
-      <SitePageToolbar class="mb-2" />
-      <ScanStatusSummaryCard :scan="latestScan" title="QA Data Source" class="mb-6" />
+      <SitePageToolbar class="mb-2" :show-site-selector="false">
+        <QaTargetBadgeRow :settings="siteSettings" @edit="openSiteSettings" />
+        <template #trailing>
+          <AccessibilityOverviewDateRangeControls v-model="dateRange" />
+        </template>
+      </SitePageToolbar>
 
       <section class="mb-6">
-        <UCard :ui="overviewCardUi">
-          <div class="grid lg:grid-cols-2 gap-6 lg:gap-8 items-center">
-            <SiteTargetSummary variant="qa" :settings="siteSettings" />
-            <div class="flex flex-col items-center justify-center gap-2 min-h-[10rem]">
-              <AccessibilityScoreDonut
-                v-if="qaScore != null"
-                :score="qaScore"
-                label="QA score"
-              />
-              <p v-else class="text-sm text-muted text-center max-w-xs">
-                QA score appears after a completed scan with quality checks enabled.
-              </p>
-            </div>
-          </div>
+        <QaOverviewScoreSectionSkeleton v-if="overviewInitialLoading" />
+        <QaOverviewScoreSection
+          v-else-if="latestScan"
+          :site-id="siteId"
+          :scans="filteredScans"
+          :expand-scans="scans"
+          :qa-score="qaScore"
+          :score-delta="scoreDelta"
+          :range-bounds="rangeBounds"
+          :breakdown-rows="breakdownRows"
+          :selected-category-id="selectedCategoryId"
+          :preview-broken-links="previewBrokenLinks"
+          :preview-spelling="previewSpelling"
+          :preview-policy-matches="previewPolicyMatches"
+          :internal-broken-link-count="internalBrokenLinkCount"
+          :external-broken-link-count="externalBrokenLinkCount"
+          :words-to-review-count="wordsToReviewCount"
+          :avg-readability="avgReadability"
+          @update:selected-category-id="selectedCategoryId = $event"
+        />
+        <UCard
+          v-else
+          :ui="{ root: 'bg-elevated/25 border border-default', body: 'p-6' }"
+        >
+          <p class="text-sm text-muted text-center">
+            Run a scan with quality checks enabled to see QA scores and issue breakdowns.
+          </p>
         </UCard>
       </section>
 
-      <div class="grid md:grid-cols-4 gap-4 mb-8">
-        <UCard :to="`/sites/${siteId}/qa/links`" class="cursor-pointer">
-          <p class="text-sm text-muted">Broken Links</p>
-          <p class="text-3xl font-bold" :class="ringColor(brokenLinkCount)">{{ brokenLinkCount }}</p>
-        </UCard>
-        <UCard :to="`/sites/${siteId}/qa/spelling`" class="cursor-pointer">
-          <p class="text-sm text-muted">Misspellings</p>
-          <p class="text-3xl font-bold" :class="ringColor(misspellingCount)">{{ misspellingCount }}</p>
-        </UCard>
-        <UCard :to="`/policies`" class="cursor-pointer">
-          <p class="text-sm text-muted">Policies</p>
-          <p class="text-3xl font-bold" :class="ringColor(policyCount)">{{ policyCount }}</p>
-        </UCard>
-        <UCard>
-          <p class="text-sm text-muted">Readability</p>
-          <p class="text-3xl font-bold">{{ avgReadability }}</p>
-        </UCard>
-      </div>
+      <section v-if="latestScan && !overviewInitialLoading" class="grid gap-4 xl:grid-cols-2">
+        <QaBrokenLinksPreviewTable
+          v-if="showBrokenLinksPreview"
+          :links="previewBrokenLinks"
+          :loading="loading"
+          :site-id="siteId"
+        />
+        <QaSpellingPreviewTable
+          v-if="showSpellingPreview"
+          :items="previewSpelling"
+          :loading="loading"
+          :site-id="siteId"
+        />
+        <QaPolicyMatchesPreviewTable
+          v-if="showPoliciesPreview"
+          :items="previewPolicyMatches"
+          :loading="loading"
+          :site-id="siteId"
+          :class="{ 'xl:col-span-2': selectedCategoryId === 'policies' }"
+        />
+      </section>
+
+      <SiteSettingsModal
+        v-model:open="showSettingsModal"
+        :site="settingsSite"
+        @saved="onSettingsSaved"
+      />
     </template>
   </AppDashboardPanel>
 </template>

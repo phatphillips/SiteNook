@@ -1,4 +1,4 @@
-import type { HistoryStatusFilter, IssueFilters, WcagLevelFilter } from '~/types/accessiq'
+import type { HistoryStatusFilter, IssueFilters, WcagLevelFilter } from '~/types/sitenook'
 
 /** Drop in-memory caches when the signed-in user changes (login/logout/account switch). */
 export function resetAppSessionState() {

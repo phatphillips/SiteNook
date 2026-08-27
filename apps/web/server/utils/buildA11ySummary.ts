@@ -1,4 +1,4 @@
-import type { AccessibilityIssue } from '~/types/accessiq'
+import type { AccessibilityIssue } from '~/types/sitenook'
 import type { A11ySiteTargetSnapshot, A11ySummary, A11ySummaryRuleRow } from '~/utils/a11ySummary'
 import { normalizePageUrl } from '~/utils/pageUrl'
 import {
@@ -7,6 +7,7 @@ import {
   type ElementTotals,
   type SiteimproveScoreIssue
 } from '~/utils/siteimproveScore'
+import type { A11yCheckStats } from '~/utils/a11yCheckStats'
 
 const SAMPLE_URLS_PER_RULE = 5
 const PAGES_BREAKDOWN_MAX = 500
@@ -27,6 +28,7 @@ export function buildA11ySummaryFromIssues(
   options: {
     pageCount: number
     elementTotals?: ElementTotals
+    checkStats?: A11yCheckStats | null
     includePagesBreakdown?: boolean
     siteTarget?: A11ySiteTargetSnapshot
   }
@@ -111,7 +113,12 @@ export function buildA11ySummaryFromIssues(
       open_count: row.open_count,
       dismissed_count: row.dismissed_count,
       page_count: row.page_keys.size,
-      points_to_gain: pointsToGainIfAllResolvedForRule(scoreIssues, totals, row.rule_id),
+      points_to_gain: pointsToGainIfAllResolvedForRule(
+        scoreIssues,
+        totals,
+        row.rule_id,
+        options.checkStats
+      ),
       sample_page_urls: [...row.sample_urls],
       description: row.description,
       type: row.type,

@@ -10,11 +10,12 @@ import {
   type A11ySummaryIssueInput
 } from '../accessibility/buildA11ySummary.js'
 import type { ElementTotals } from '../accessibility/siteimproveScore.js'
+import { parseA11yCheckStats, type A11yCheckStats } from '../accessibility/a11yCheckStats.js'
 import { chunkPageIds, pbOrPageIds } from '../accessibility/a11yQueryFields.js'
 import { normalizePageUrl } from '../search/urlKey.js'
 
 const A11Y_PAGE_FIELDS =
-  'id,url,title,scan,site,expand.scan.completed_at,expand.scan.started_at,expand.scan.created'
+  'id,url,title,scan,site,created,expand.scan.completed_at,expand.scan.started_at,expand.scan.created'
 const A11Y_ISSUE_FIELDS =
   'id,scan,page,rule_id,wcag_level,wcag_version,wcag_sc,impact,type,element_type,responsible_role,description,status'
 
@@ -22,6 +23,7 @@ interface SlimPageRow {
   id: string
   url: string
   title?: string
+  created?: string
   expand?: {
     scan?: { completed_at?: string, created?: string, started_at?: string }
   }
@@ -30,17 +32,31 @@ interface SlimPageRow {
 function pageRowTimestamp(page: SlimPageRow): number {
   const scan = page.expand?.scan
   const raw = scan?.completed_at ?? scan?.started_at ?? scan?.created
-  if (!raw) return 0
-  const ms = Date.parse(String(raw))
-  return Number.isFinite(ms) ? ms : 0
+  if (raw) {
+    const ms = Date.parse(String(raw))
+    if (Number.isFinite(ms)) return ms
+  }
+  if (page.created) {
+    const createdMs = Date.parse(page.created)
+    if (Number.isFinite(createdMs)) return createdMs
+  }
+  return 0
 }
 
 export async function loadLatestSlimPages(
   pb: PocketBase,
   siteId: string
 ): Promise<SlimPageRow[]> {
+  const latest = await pb.collection('scans').getList(1, 1, {
+    filter: `site = "${siteId}" && (status = "complete" || status = "complete_with_errors")`,
+    sort: '-completed_at',
+    fields: 'id'
+  })
+  const scanId = latest.items[0]?.id
+  if (!scanId) return []
+
   const pages = await pb.collection('pages').getFullList({
-    filter: `site = "${siteId}"`,
+    filter: `scan = "${scanId}"`,
     expand: 'scan',
     fields: A11Y_PAGE_FIELDS
   }) as unknown as SlimPageRow[]
@@ -125,7 +141,13 @@ export async function reconcileSiteCurrentA11y(
 
 export async function rebuildScanA11ySummaryFromPb(
   pb: PocketBase,
-  scan: { id: string, site: string, pages_crawled?: number, score_denominators?: { elements?: ElementTotals } }
+  scan: {
+    id: string
+    site: string
+    pages_crawled?: number
+    score_denominators?: { elements?: ElementTotals }
+    a11y_check_stats?: A11yCheckStats
+  }
 ): Promise<A11ySummary> {
   const pages = await pb.collection('pages').getFullList({
     filter: `scan = "${scan.id}"`,
@@ -172,7 +194,8 @@ export async function rebuildScanA11ySummaryFromPb(
     })),
     {
       pageCount: scan.pages_crawled ?? pages.length,
-      elementTotals: scan.score_denominators?.elements
+      elementTotals: scan.score_denominators?.elements,
+      checkStats: parseA11yCheckStats(scan.a11y_check_stats) ?? scan.a11y_check_stats
     }
   )
 
@@ -190,16 +213,17 @@ export async function buildScanA11ySummary(
 ): Promise<A11ySummary> {
   void siteId
   let totals = elementTotals
-  if (!totals) {
-    const scan = await pb.collection('scans').getOne(scanId, {
-      fields: 'score_denominators'
-    }) as { score_denominators?: { elements?: ElementTotals } }
-    totals = scan.score_denominators?.elements
-  }
+  let checkStats: A11yCheckStats | undefined
+  const scan = await pb.collection('scans').getOne(scanId, {
+    fields: 'score_denominators,a11y_check_stats'
+  }) as { score_denominators?: { elements?: ElementTotals }, a11y_check_stats?: A11yCheckStats }
+  if (!totals) totals = scan.score_denominators?.elements
+  checkStats = parseA11yCheckStats(scan.a11y_check_stats) ?? scan.a11y_check_stats
 
   return buildA11ySummary(issues, {
     pageCount,
     elementTotals: totals,
+    checkStats,
     includePagesBreakdown: false
   })
 }

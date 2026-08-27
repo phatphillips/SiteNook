@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({ layout: false, middleware: 'guest' })
 
-import type { OrganizationPlan } from '~/types/accessiq'
+import type { OrganizationPlan } from '~/types/sitenook'
 import { parseSelfServiceSignupFlag } from '~/utils/selfServiceSignup'
 import { formatPlanLabel } from '~/utils/planPricing'
 
@@ -11,6 +11,7 @@ interface StartAccessResponse {
   checkoutSessionId?: string
   customerEmail?: string
   devBypass?: boolean
+  teamTrial?: boolean
   redirectTo?: string
   message?: string
 }
@@ -24,7 +25,10 @@ const canUseWizard = computed(() => selfServiceEnabled.value && isApexHost.value
 const checkingAccess = ref(true)
 const access = ref<StartAccessResponse | null>(null)
 
-const planLabel = computed(() => formatPlanLabel(access.value?.plan))
+const planLabel = computed(() => {
+  if (access.value?.teamTrial) return 'Team trial'
+  return formatPlanLabel(access.value?.plan)
+})
 
 onMounted(async () => {
   if (!ready.value) {
@@ -45,7 +49,8 @@ onMounted(async () => {
     const response = await $fetch<StartAccessResponse>('/api/start-access', {
       query: {
         plan: route.query.plan,
-        checkout: route.query.checkout
+        checkout: route.query.checkout,
+        trial: route.query.trial
       }
     })
     access.value = response
@@ -65,8 +70,8 @@ onMounted(async () => {
   <AuthPageShell
     title="Create your organization"
     :subtitle="access?.allowed
-      ? `Set up AccessIQ for your team (${planLabel} plan).`
-      : 'Set up AccessIQ for your team in a few steps.'"
+      ? `Set up SiteNook for your team (${planLabel} plan).`
+      : 'Set up SiteNook for your team in a few steps.'"
     icon="i-lucide-building-2"
   >
     <div v-if="checkingAccess" class="flex justify-center py-8">
@@ -80,6 +85,7 @@ onMounted(async () => {
       :turnstile-site-key="config.public.turnstileSiteKey || undefined"
       :plan="access.plan"
       :checkout-session-id="access.checkoutSessionId || (access.devBypass ? 'dev_bypass' : undefined)"
+      :team-trial="access.teamTrial === true"
       :initial-owner-email="access.customerEmail"
     />
   </AuthPageShell>

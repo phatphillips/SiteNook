@@ -29,6 +29,28 @@ describe('browserProfile', () => {
     expect(headers['X-Site-Token']).toBe('abc')
   })
 
+  it('does not set navigation-only Sec-Fetch / Accept on all requests', () => {
+    const headers = mergeBrowserHeaders()
+    expect(headers['Sec-Fetch-Dest']).toBeUndefined()
+    expect(headers['Sec-Fetch-Mode']).toBeUndefined()
+    expect(headers['Sec-Fetch-Site']).toBeUndefined()
+    expect(headers['Sec-Fetch-User']).toBeUndefined()
+    expect(headers.Accept).toBeUndefined()
+  })
+
+  it('strips navigation-only headers from custom site headers', () => {
+    const headers = mergeBrowserHeaders({
+      'X-Site-Token': 'abc',
+      Accept: 'text/html',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate'
+    })
+    expect(headers['X-Site-Token']).toBe('abc')
+    expect(headers.Accept).toBeUndefined()
+    expect(headers['Sec-Fetch-Dest']).toBeUndefined()
+    expect(headers['Sec-Fetch-Mode']).toBeUndefined()
+  })
+
   it('buildContextOptions includes locale and user agent', () => {
     const opts = buildContextOptions({})
     expect(opts.userAgent).toBe(DEFAULT_BROWSER_USER_AGENT)
@@ -46,6 +68,7 @@ describe('buildCrawlTip', () => {
     diag.httpErrors.set(403, 186)
     const tip = buildCrawlTip(diag)
     expect(tip).toMatch(/403/)
-    expect(tip).toMatch(/WAF|blocking/i)
+    expect(tip).toMatch(/WAF|blocking|challenge/i)
+    expect(tip).toMatch(/5s.*10s|background scan/i)
   })
 })

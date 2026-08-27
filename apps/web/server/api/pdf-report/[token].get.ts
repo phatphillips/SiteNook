@@ -1,5 +1,6 @@
 import { createError } from 'h3'
 import { getPbAdmin } from '../../utils/pbAdmin'
+import { pocketBaseFileUrl } from '../../utils/pocketbaseFileUrl'
 
 export default defineEventHandler(async (event) => {
   const token = getRouterParam(event, 'token')?.trim()
@@ -32,7 +33,7 @@ export default defineEventHandler(async (event) => {
   const file = String((document as { file?: string }).file ?? '')
   const url = String((document as { url?: string }).url ?? '')
   if (file) {
-    fileUrl = pb.files.getUrl(document, file)
+    fileUrl = pocketBaseFileUrl(pb, document, file)
   } else if (url) {
     fileUrl = url
   }

@@ -1,4 +1,4 @@
-import type { OrganizationPlan } from '~/types/accessiq'
+import type { OrganizationPlan } from '~/types/sitenook'
 import { normalizeOrganizationPlan } from '~/utils/planLimits'
 import { getUserOrganizationId } from '~/utils/orgAccess'
 import { AUTH_READY_TIMEOUT_MS, withTimeout } from '~/utils/fetchTimeout'

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   extractPdfMetadata,
   isLinearized,
-  parsePdfVersion
+  parsePdfVersion,
+  sanitizePocketBaseText
 } from '../../../src/pdf/extractPdfMetadata.js'
 
 function buildTestPdf(): Buffer {
@@ -65,5 +66,18 @@ describe('extractPdfMetadata', () => {
     expect(result.metadata.hasTags).toBe(true)
     expect(result.metadata.taggedForAccessibility).toBe(true)
     expect(result.metadata.pdfUa).toBe(false)
+  })
+})
+
+describe('sanitizePocketBaseText', () => {
+  it('strips NUL bytes that PocketBase rejects', () => {
+    expect(sanitizePocketBaseText('hello\u0000world')).toBe('helloworld')
+  })
+
+  it('caps by UTF-8 bytes rather than JS string length', () => {
+    const text = 'é'.repeat(20)
+    const out = sanitizePocketBaseText(text, 10)
+    expect(Buffer.from(out, 'utf8').byteLength).toBeLessThanOrEqual(10)
+    expect(out.length).toBeGreaterThan(0)
   })
 })

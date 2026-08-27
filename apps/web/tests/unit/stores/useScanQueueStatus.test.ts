@@ -5,7 +5,22 @@ import { ref } from 'vue'
 const mockGetList = vi.fn()
 const mockSubscribe = vi.fn()
 
+let queueItems: unknown[] = []
+let runningItems: unknown[] = []
+let terminalItems: unknown[] = []
+
 let useScanQueueStatus: typeof import('~/composables/useScanQueue').useScanQueueStatus
+
+function mockListByFilter(_page: number, _perPage: number, opts?: { filter?: string }) {
+  const filter = String(opts?.filter ?? '')
+  if (filter.includes('pending') || filter.includes('processing')) {
+    return Promise.resolve({ items: queueItems })
+  }
+  if (filter.includes('running') || filter.includes('background_scan')) {
+    return Promise.resolve({ items: runningItems })
+  }
+  return Promise.resolve({ items: terminalItems })
+}
 
 beforeAll(async () => {
   vi.stubGlobal('usePocketBase', () => ({
@@ -14,7 +29,8 @@ beforeAll(async () => {
         getList: mockGetList,
         subscribe: mockSubscribe
       })
-    }
+    },
+    awaitAuthReady: () => Promise.resolve()
   }))
 
   const mod = await import('~/composables/useScanQueue')
@@ -26,11 +42,15 @@ describe('useScanQueueStatus', () => {
   let latestScanHandler: ((e: { action: string, record: { site?: string, status?: string } }) => Promise<void>) | null
 
   beforeEach(() => {
+    queueItems = []
+    runningItems = []
+    terminalItems = []
     mockGetList.mockReset()
+    mockGetList.mockImplementation(mockListByFilter)
     mockSubscribe.mockReset()
     latestQueueHandler = null
     latestScanHandler = null
-    mockSubscribe.mockImplementation((topic: string, handler: unknown) => {
+    mockSubscribe.mockImplementation((_topic: string, handler: unknown) => {
       if (!latestQueueHandler) {
         latestQueueHandler = handler as typeof latestQueueHandler
       } else {
@@ -41,7 +61,7 @@ describe('useScanQueueStatus', () => {
   })
 
   it('isQueued returns true when a pending queue item exists', async () => {
-    mockGetList.mockResolvedValue({ items: [{ id: 'q1', status: 'pending' }] })
+    queueItems = [{ id: 'q1', status: 'pending' }]
 
     const siteId = ref('site-1')
     const { isQueued, isBusy, refresh } = useScanQueueStatus(siteId)
@@ -58,21 +78,19 @@ describe('useScanQueueStatus', () => {
     const { isQueued, refresh } = useScanQueueStatus(siteId)
     await flushPromises()
 
-    mockGetList
-      .mockResolvedValueOnce({ items: [{ id: 'q1', status: 'pending' }] })
-      .mockResolvedValueOnce({ items: [] })
+    queueItems = [{ id: 'q1', status: 'pending' }]
     siteId.value = 'site-1'
     await flushPromises()
     expect(isQueued.value).toBe(true)
 
-    mockGetList.mockResolvedValue({ items: [] })
+    queueItems = []
     await refresh()
     expect(isQueued.value).toBe(false)
     expect(mockGetList.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 
   it('clears queued state when site id is unset', async () => {
-    mockGetList.mockResolvedValue({ items: [{ id: 'q1', status: 'pending' }] })
+    queueItems = [{ id: 'q1', status: 'pending' }]
 
     const siteId = ref<string | undefined>('site-1')
     const { isQueued, refresh } = useScanQueueStatus(siteId)
@@ -86,20 +104,39 @@ describe('useScanQueueStatus', () => {
     expect(isQueued.value).toBe(false)
   })
 
+  it('treats processing queue item as running not queued', async () => {
+    queueItems = [{ id: 'q1', status: 'processing' }]
+
+    const siteId = ref('site-1')
+    const { isQueued, isRunning, refresh } = useScanQueueStatus(siteId)
+
+    await refresh()
+
+    expect(isQueued.value).toBe(false)
+    expect(isRunning.value).toBe(true)
+  })
+
   it('refreshes on queue delete event to avoid stale queued state', async () => {
-    mockGetList
-      .mockResolvedValueOnce({ items: [{ id: 'q1', status: 'pending' }] })
-      .mockResolvedValueOnce({ items: [] })
-      .mockResolvedValueOnce({ items: [] })
-      .mockResolvedValueOnce({ items: [] })
+    queueItems = [{ id: 'q1', status: 'pending' }]
 
     const siteId = ref('site-1')
     const { isQueued } = useScanQueueStatus(siteId)
     await flushPromises()
     expect(isQueued.value).toBe(true)
 
+    queueItems = []
     await latestQueueHandler?.({ action: 'delete', record: { site: 'site-1', status: 'pending' } })
     await flushPromises()
     expect(isQueued.value).toBe(false)
+  })
+
+  it('optimistically marks processing queue items as running', async () => {
+    const siteId = ref('site-1')
+    const { isQueued, isRunning } = useScanQueueStatus(siteId)
+    await flushPromises()
+
+    await latestQueueHandler?.({ action: 'update', record: { site: 'site-1', status: 'processing' } })
+    expect(isQueued.value).toBe(false)
+    expect(isRunning.value).toBe(true)
   })
 })

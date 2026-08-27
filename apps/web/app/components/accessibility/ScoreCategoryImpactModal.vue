@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { AccessibilityIssue } from '~/types/accessiq'
+import type { AccessibilityIssue } from '~/types/sitenook'
 import type { AccessibilityScoreDetailRow } from '~/utils/siteSettings'
 import type { ElementTotals } from '~/utils/siteimproveScore'
+import type { A11yCheckStats } from '~/utils/a11yCheckStats'
 import {
   categoryQuickStats,
   categoryScoreImpact,
@@ -22,6 +23,7 @@ const props = defineProps<{
   issues: AccessibilityIssue[]
   scoringIssues: AccessibilityIssue[]
   scoreElementTotals?: ElementTotals | null
+  checkStats?: A11yCheckStats | null
 }>()
 
 const emit = defineEmits<{ 'update:open': [boolean] }>()
@@ -37,9 +39,9 @@ const scoreColor = computed(() =>
 
 const scoreImpact = computed(() => {
   if (props.row) {
-    return categoryScoreImpact(props.row.id, props.scoringIssues, props.scoreElementTotals)
+    return categoryScoreImpact(props.row.id, props.scoringIssues, props.scoreElementTotals, props.checkStats)
   }
-  return overallScoreImpact(props.scoringIssues, props.scoreElementTotals)
+  return overallScoreImpact(props.scoringIssues, props.scoreElementTotals, props.checkStats)
 })
 
 const stats = computed(() => {
@@ -55,14 +57,17 @@ const topFixes = computed(() => {
       props.issues,
       props.scoringIssues,
       props.row.id,
-      props.scoreElementTotals
+      props.scoreElementTotals,
+      3,
+      { checkStats: props.checkStats }
     )
   }
   return topFixRulesOverall(
     props.issues,
     props.scoringIssues,
     props.scoreElementTotals,
-    5
+    5,
+    { checkStats: props.checkStats }
   )
 })
 

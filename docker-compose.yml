@@ -34,6 +34,8 @@ services:
       NUXT_STRIPE_STARTER_ANNUAL_PRICE_ID: ${NUXT_STRIPE_STARTER_ANNUAL_PRICE_ID:-}
       NUXT_STRIPE_TEAM_ANNUAL_PRICE_ID: ${NUXT_STRIPE_TEAM_ANNUAL_PRICE_ID:-}
       NUXT_STRIPE_BUSINESS_ANNUAL_PRICE_ID: ${NUXT_STRIPE_BUSINESS_ANNUAL_PRICE_ID:-}
+      NUXT_STRIPE_SELFHOST_PRICE_ID: ${NUXT_STRIPE_SELFHOST_PRICE_ID:-}
+      NUXT_STRIPE_SELFHOST_ANNUAL_PRICE_ID: ${NUXT_STRIPE_SELFHOST_ANNUAL_PRICE_ID:-}
       NUXT_STRIPE_STARTER_PRICE_ID_AUD: ${NUXT_STRIPE_STARTER_PRICE_ID_AUD:-}
       NUXT_STRIPE_TEAM_PRICE_ID_AUD: ${NUXT_STRIPE_TEAM_PRICE_ID_AUD:-}
       NUXT_STRIPE_BUSINESS_PRICE_ID_AUD: ${NUXT_STRIPE_BUSINESS_PRICE_ID_AUD:-}
@@ -44,7 +46,13 @@ services:
       NUXT_TURNSTILE_SECRET: ${NUXT_TURNSTILE_SECRET:-}
       NUXT_PUBLIC_TERMS_URL: ${NUXT_PUBLIC_TERMS_URL:-}
       NUXT_LICENCE_SIGNING_SECRET: ${NUXT_LICENCE_SIGNING_SECRET:-}
+      NUXT_PREVIEW_SIGNING_SECRET: ${NUXT_PREVIEW_SIGNING_SECRET:-${PB_ADMIN_PASSWORD}}
       NUXT_LICENCE_ADMIN_KEY: ${NUXT_LICENCE_ADMIN_KEY:-}
+      ANALYTICS_CREDENTIALS_ENCRYPTION_KEY: ${ANALYTICS_CREDENTIALS_ENCRYPTION_KEY:-}
+      GA4_OAUTH_CLIENT_ID: ${GA4_OAUTH_CLIENT_ID:-}
+      GA4_OAUTH_CLIENT_SECRET: ${GA4_OAUTH_CLIENT_SECRET:-}
+      ANALYTICS_SYNC_ENABLED: ${ANALYTICS_SYNC_ENABLED:-1}
+      ANALYTICS_SYNC_TICK_MS: ${ANALYTICS_SYNC_TICK_MS:-300000}
       TYPESENSE_URL: ${TYPESENSE_URL:-http://typesense:8108}
       TYPESENSE_API_KEY: ${TYPESENSE_API_KEY:-dev-typesense-key-local-only}
       TYPESENSE_ENABLED: ${TYPESENSE_ENABLED:-0}
@@ -56,6 +64,16 @@ services:
     image: verapdf/rest:latest
     ports:
       - "8080:8080"
+    restart: unless-stopped
+
+  opendataloader:
+    build: ./services/opendataloader
+    ports:
+      - "8095:8095"
+    environment:
+      PORT: 8095
+      ODL_MAX_BYTES: ${ODL_MAX_BYTES:-20971520}
+      ODL_TIMEOUT_SEC: ${ODL_TIMEOUT_SEC:-180}
     restart: unless-stopped
 
   typesense:
@@ -85,6 +103,7 @@ services:
       SCANNER_TIMEZONE: ${SCANNER_TIMEZONE:-UTC}
       SCANNER_CRAWL_DEBUG: ${SCANNER_CRAWL_DEBUG:-0}
       VERAPDF_URL: ${VERAPDF_URL:-http://verapdf:8080}
+      OPENDATALOADER_URL: ${OPENDATALOADER_URL:-http://opendataloader:8095}
       TYPESENSE_URL: ${TYPESENSE_URL:-http://typesense:8108}
       TYPESENSE_API_KEY: ${TYPESENSE_API_KEY:-dev-typesense-key-local-only}
       TYPESENSE_ENABLED: ${TYPESENSE_ENABLED:-0}
@@ -92,6 +111,8 @@ services:
       pocketbase:
         condition: service_healthy
       verapdf:
+        condition: service_started
+      opendataloader:
         condition: service_started
       typesense:
         condition: service_started
@@ -125,9 +146,9 @@ services:
     profiles: ["test"]
     build: ./services/pocketbase
     environment:
-      PB_ADMIN_EMAIL: test-admin@accessiq.test
+      PB_ADMIN_EMAIL: test-admin@sitenook.test
       PB_ADMIN_PASSWORD: test-password-123
-      APP_USER_EMAIL: test-user@accessiq.test
+      APP_USER_EMAIL: test-user@sitenook.test
       APP_USER_PASSWORD: test-user-password-123
     ports:
       - "8091:8090"

@@ -154,7 +154,7 @@ cd apps\scanner
 npm run test:integration
 ```
 
-Test credentials: `test-admin@accessiq.test` / `test-password-123` (see `AGENTS.md`).
+Test credentials: `test-admin@sitenook.test` / `test-password-123` (see `AGENTS.md`).
 
 ---
 

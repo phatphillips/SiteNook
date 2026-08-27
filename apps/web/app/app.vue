@@ -17,7 +17,7 @@ useHead({
   }
 })
 
-const title = 'AccessIQ'
+const title = 'SiteNook'
 const description = 'Hosted cloud web accessibility and QA monitoring platform.'
 
 useSeoMeta({

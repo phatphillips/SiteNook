@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Site } from '~/types/accessiq'
+import type { Site } from '~/types/sitenook'
 import type { ReadabilityMethodId } from '~/utils/readabilityMethods'
 import {
   READABILITY_METHODS,
@@ -8,47 +8,116 @@ import {
 } from '~/utils/readabilityMethods'
 import { parseSiteSettings } from '~/utils/siteSettings'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   site: Site | null
-}>()
+  /** When true, selection is stored locally (org all-sites view) instead of saving to a site. */
+  localOnly?: boolean
+  methods?: ReadabilityMethodId[]
+  /** Apply the chosen method to every site in the organization. Default true. */
+  applyToAllSites?: boolean
+}>(), {
+  localOnly: false,
+  methods: undefined,
+  applyToAllSites: true
+})
 
 const open = defineModel<boolean>('open', { default: false })
 
 const emit = defineEmits<{
   saved: []
+  'update:methods': [ReadabilityMethodId[]]
 }>()
 
 const toast = useToast()
-const { saveSiteSettings } = useSites()
+const { sites, saveSiteSettings } = useSites()
 const saving = ref(false)
 const draftMethod = ref<ReadabilityMethodId>(DEFAULT_READABILITY_METHODS[0])
 const referenceOpen = ref<string[]>([])
 
 watch(open, (isOpen) => {
-  if (!isOpen || !props.site) return
+  if (!isOpen) return
+  if (props.localOnly) {
+    const primary = coerceReadabilityMethods(props.methods ?? DEFAULT_READABILITY_METHODS)[0]
+      ?? DEFAULT_READABILITY_METHODS[0]
+    draftMethod.value = primary
+    referenceOpen.value = []
+    return
+  }
+  if (!props.site) return
   const settings = parseSiteSettings(props.site.site_settings, props.site.default_scan_config)
-  draftMethod.value = coerceReadabilityMethods(settings.readabilityMethods)[0]
+  const primary = coerceReadabilityMethods(settings.readabilityMethods)[0]
     ?? DEFAULT_READABILITY_METHODS[0]
+  draftMethod.value = primary
   referenceOpen.value = []
 })
 
+async function saveMethodToSites(methodId: ReadabilityMethodId) {
+  const targets = (props.applyToAllSites
+    ? sites.value
+    : props.site
+      ? [props.site]
+      : []
+  ).filter(Boolean)
+
+  if (!targets.length) {
+    throw new Error('No sites available to update')
+  }
+
+  await Promise.all(targets.map(async (site) => {
+    const current = parseSiteSettings(site.site_settings, site.default_scan_config)
+    const existing = (site.site_settings && typeof site.site_settings === 'object')
+      ? { ...(site.site_settings as Record<string, unknown>) }
+      : {}
+    await saveSiteSettings(site.id, {
+      ...existing,
+      ...current,
+      readabilityMethods: [methodId]
+    })
+  }))
+}
+
 async function save() {
-  if (!props.site) return
+  if (props.localOnly) {
+    emit('update:methods', [draftMethod.value])
+    if (props.applyToAllSites && sites.value.length) {
+      saving.value = true
+      try {
+        await saveMethodToSites(draftMethod.value)
+        open.value = false
+        emit('saved')
+        toast.add({
+          title: 'Readability method updated for all sites',
+          color: 'success'
+        })
+      } catch (err) {
+        toast.add({
+          title: 'Could not save readability method',
+          description: err instanceof Error ? err.message : undefined,
+          color: 'error'
+        })
+      } finally {
+        saving.value = false
+      }
+      return
+    }
+    open.value = false
+    emit('saved')
+    return
+  }
+
+  if (!props.site && !props.applyToAllSites) return
 
   saving.value = true
   try {
-    const current = parseSiteSettings(props.site.site_settings, props.site.default_scan_config)
-    const existing = (props.site.site_settings && typeof props.site.site_settings === 'object')
-      ? { ...(props.site.site_settings as Record<string, unknown>) }
-      : {}
-    await saveSiteSettings(props.site.id, {
-      ...existing,
-      ...current,
-      readabilityMethods: [draftMethod.value]
-    })
+    await saveMethodToSites(draftMethod.value)
     open.value = false
     emit('saved')
-    toast.add({ title: 'Readability method updated', color: 'success' })
+    toast.add({
+      title: props.applyToAllSites
+        ? 'Readability method updated for all sites'
+        : 'Readability method updated',
+      color: 'success'
+    })
   } catch (err) {
     toast.add({
       title: 'Could not save readability method',
@@ -69,11 +138,12 @@ async function save() {
   >
     <template #body>
       <div class="max-h-[70vh] overflow-y-auto space-y-6 pr-1">
-        <div>
-          <p class="text-sm text-muted mb-4">
-            Choose one readability test for this site. The scanner still computes all methods on each crawl; this setting controls which score is shown on the Readability page.
-          </p>
-          <div class="space-y-2">
+        <p class="text-sm text-muted">
+          Choose one readability test. The scanner still computes all methods on each crawl; this setting controls which score is shown on Readability pages
+          <template v-if="applyToAllSites"> and is applied to every site in your organization</template>.
+        </p>
+
+        <div class="space-y-2">
             <label
               v-for="method in READABILITY_METHODS"
               :key="method.id"
@@ -96,7 +166,6 @@ async function save() {
               </span>
             </label>
           </div>
-        </div>
 
         <UAccordion
           v-model="referenceOpen"

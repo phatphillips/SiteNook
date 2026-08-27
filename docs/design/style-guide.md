@@ -1,4 +1,4 @@
-# AccessIQ — Style Guide
+# SiteNook — Style Guide
 
 Reference for UI patterns in the Nuxt dashboard (`apps/web`). Prefer reusing these components and class combinations instead of inventing new layouts.
 

@@ -1,23 +1,15 @@
 <script setup lang="ts">
-import type { AccessibilityIssue, Site } from '~/types/accessiq'
+import type { AccessibilityIssue, Site } from '~/types/sitenook'
 import type { OverviewDateRange } from '~/utils/overviewDateRange'
 import {
   filterScansByDateRange,
   overviewRangeBounds
 } from '~/utils/overviewDateRange'
 import { affectedPagesForRule } from '~/utils/affectedPages'
-import {
-  buildUrlsByRule,
-  sortOpenByPointsToGain,
-  uniqueByRule
-} from '~/utils/accessibilityIssues'
 import { calculateAccessibilityScores } from '~/composables/useAccessibility'
-import { compareTimestampsDesc } from '~/utils/sortTimestamps'
-import { pickLatestScan, scanTimestamp } from '~/utils/scanDisplay'
+import { isTrustedScan, pickLatestScan, pickLatestTrustedScan } from '~/utils/scanDisplay'
 import {
-  hasMeaningfulStoredOverall,
-  preferStoredScanScore,
-  resolveBestPracticeScore
+  preferLiveScanScore
 } from '~/utils/scanScores'
 import {
   calculateTargetCategoryScores,
@@ -37,13 +29,12 @@ const settingsSite = ref<Site | null>(null)
 const {
   issues,
   scans,
-  pagesWithIssuesByScan,
   loading,
   overallScore,
   siteSettings,
   scoreableTargetIssues,
   scoreElementTotals,
-  pointsToGainByRule,
+  scoringCheckStats,
   fetchSiteData
 } = useAccessibility(siteId)
 
@@ -57,13 +48,19 @@ const filteredScans = computed(() =>
 
 const scanIdsInRange = computed(() => new Set(filteredScans.value.map(s => s.id)))
 
-const latestScanInRange = computed(() =>
-  pickLatestScan(
-    filteredScans.value.filter(
-      s => s.status === 'complete' || s.status === 'complete_with_errors'
-    )
+const completedScansInRange = computed(() =>
+  filteredScans.value.filter(
+    s => s.status === 'complete' || s.status === 'complete_with_errors'
   )
 )
+
+const latestScanInRange = computed(() => pickLatestTrustedScan(completedScansInRange.value))
+
+const latestUntrustedScan = computed(() => {
+  const latest = pickLatestScan(completedScansInRange.value)
+  if (!latest || isTrustedScan(latest)) return null
+  return latest
+})
 
 const issuesInRange = computed(() =>
   issues.value.filter(issue => scanIdsInRange.value.has(issue.scan))
@@ -93,65 +90,44 @@ const latestScanDenominators = computed(() => {
   return scan?.score_denominators?.elements ?? scoreElementTotals.value
 })
 
+const latestScanCheckStats = computed(() =>
+  latestScanInRange.value?.a11y_check_stats ?? scoringCheckStats.value
+)
+
 const liveScoresForLatestScan = computed(() => {
-  const issues = latestScanScoringIssues.value
-  if (!issues.length) return null
-  return calculateAccessibilityScores(issues, latestScanDenominators.value)
+  const scan = latestScanInRange.value
+  if (!scan) return null
+  // Empty set is a valid perfect score after all issues are fixed/dismissed.
+  return calculateAccessibilityScores(
+    latestScanScoringIssues.value,
+    latestScanDenominators.value,
+    latestScanCheckStats.value
+  )
 })
 
 const displayOverallScore = computed(() => {
   const scan = latestScanInRange.value
   const live = liveScoresForLatestScan.value?.overall ?? overallScore.value
-  return preferStoredScanScore(scan?.score_overall, live)
+  return preferLiveScanScore(live, scan?.score_overall)
 })
-
-const completeScansInRange = computed(() =>
-  filteredScans.value
-    .filter(s => s.status === 'complete' || s.status === 'complete_with_errors')
-    .sort((a, b) => compareTimestampsDesc(scanTimestamp(a), scanTimestamp(b)))
-)
 
 function liveCategoryScoresForScan(
   issues: AccessibilityIssue[],
   denominators: ElementTotals | null | undefined
 ): TargetCategoryScores {
   if (!issues.length) {
-    return calculateTargetCategoryScores([], denominators)
+    return calculateTargetCategoryScores([], denominators, latestScanCheckStats.value)
   }
-  return calculateTargetCategoryScores(toScoreIssues(issues), denominators)
+  return calculateTargetCategoryScores(toScoreIssues(issues), denominators, latestScanCheckStats.value)
 }
 
 const categoryScoresForLatestScan = computed((): TargetCategoryScores => {
-  const scan = latestScanInRange.value
-  const issues = latestScanScoringIssues.value
-  const denominators = latestScanDenominators.value
-  const live = liveCategoryScoresForScan(issues, denominators)
-
-  if (!scan) return live
-
-  return {
-    levelA: preferStoredScanScore(scan.score_a, live.levelA),
-    levelAA: preferStoredScanScore(scan.score_aa, live.levelAA),
-    levelAAA: preferStoredScanScore(scan.score_aaa, live.levelAAA),
-    aria: live.aria,
-    bestPractice: resolveBestPracticeScore(scan, live.bestPractice)
-  }
+  // Live scores reflect fixed/dismissed statuses immediately (stored scan scores do not).
+  return liveCategoryScoresForScan(latestScanScoringIssues.value, latestScanDenominators.value)
 })
 
-const scoreDelta = computed((): number | null => {
-  const ordered = completeScansInRange.value
-  const current = ordered[0] ?? null
-  const previous = ordered[1] ?? null
-  if (!current || !previous) return null
-
-  // Compare stored overall only — do not fall back to live for bugged zero baselines.
-  if (!hasMeaningfulStoredOverall(current) || !hasMeaningfulStoredOverall(previous)) {
-    return null
-  }
-
-  const delta = current.score_overall! - previous.score_overall!
-  return Math.round(delta * 10) / 10
-})
+const { isScoreRefreshing } = useA11yScoreRefresh()
+const scoreUpdating = isScoreRefreshing(siteId)
 
 async function openSiteSettings() {
   const site = sites.value.find(s => s.id === siteId.value)
@@ -169,19 +145,7 @@ async function onSettingsSaved() {
 
 const selectedIssue = ref<AccessibilityIssue | null>(null)
 const drawerOpen = ref(false)
-
-const openIssuesForScoring = computed(() =>
-  issuesInRange.value.filter(i => i.status === 'open')
-)
-
-const openUrlsByRule = computed(() =>
-  buildUrlsByRule(issuesInRange.value, ['open'])
-)
-
-const previewOpenIssues = computed(() => {
-  const unique = uniqueByRule(openIssuesForScoring.value)
-  return sortOpenByPointsToGain(unique, openIssuesForScoring.value).slice(0, 5)
-})
+const drawerReadOnly = ref(true)
 
 const selectedAffectedPages = computed(() => {
   if (!selectedIssue.value) return []
@@ -193,16 +157,6 @@ const latestScanOpenIssues = computed(() => {
   if (!scan) return []
   return issuesInRange.value.filter(i => i.scan === scan.id && i.status === 'open')
 })
-const issuesPageLink = computed(() => `/sites/${siteId.value}/accessibility/issues`)
-
-const overviewOpenColumnVisibility = {
-  issue: true,
-  impact: true,
-  pointsToGain: true,
-  wcag_level: false,
-  pages: false,
-  occurrences: false
-}
 
 onMounted(() => {
   activeSiteId.value = siteId.value
@@ -212,14 +166,15 @@ onMounted(() => {
   }
 })
 
-function openPreview(issue: AccessibilityIssue) {
+function openPreview(issue: AccessibilityIssue, options?: { actionable?: boolean }) {
+  drawerReadOnly.value = !options?.actionable
   selectedIssue.value = issue
   drawerOpen.value = true
 }
 </script>
 
 <template>
-  <AppDashboardPanel>
+  <AppDashboardPanel full-width hide-feature-banner>
     <template #header>
       <DashboardPageNavbar title="Accessibility">
         <template #right>
@@ -229,80 +184,66 @@ function openPreview(issue: AccessibilityIssue) {
     </template>
 
     <template #body>
-      <SitePageToolbar class="mb-2">
-        <SiteTargetBadgeRow :settings="siteSettings" @edit="openSiteSettings" />
-        <template #trailing>
-          <AccessibilityOverviewDateRangeControls v-model="dateRange" />
+      <div class="mx-auto w-full max-w-[1200px]">
+        <SitePageToolbar class="mb-3" :show-site-selector="false">
+          <SiteTargetBadgeRow :settings="siteSettings" @edit="openSiteSettings" />
+          <template #trailing>
+            <AccessibilityOverviewDateRangeControls v-model="dateRange" />
+          </template>
+        </SitePageToolbar>
+
+        <div v-if="loading" class="flex justify-center py-12">
+          <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin" />
+        </div>
+
+        <template v-else>
+          <UAlert
+            v-if="latestUntrustedScan"
+            class="mb-4"
+            color="warning"
+            variant="subtle"
+            icon="i-lucide-triangle-alert"
+            title="Latest scan was incomplete"
+            :description="latestUntrustedScan.scan_quality?.reason
+              ? `${latestUntrustedScan.scan_quality.reason}. Showing last trusted results. A verification scan is scheduled.`
+              : 'Showing last trusted results. A verification scan is scheduled.'"
+          />
+          <section class="scroll-mt-6">
+            <AccessibilityOverviewScoreSection
+              :settings="siteSettings"
+              :category-scores="categoryScoresForLatestScan"
+              :overall-score="displayOverallScore"
+              :score-updating="scoreUpdating"
+              :site-id="siteId"
+              :latest-scan-issues="latestScanOpenIssues"
+              :scoring-issues="latestScanScoringIssues"
+              :score-element-totals="latestScanDenominators"
+              :check-stats="latestScanCheckStats"
+              :scans="filteredScans"
+              :expand-scans="scans"
+              :range-bounds="rangeBounds"
+              @open-issue="openPreview($event, { actionable: true })"
+            />
+          </section>
         </template>
-      </SitePageToolbar>
 
-      <div v-if="loading" class="flex justify-center py-12">
-        <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin" />
+        <AccessibilityIssueDetailDrawer
+          :issue="selectedIssue"
+          :affected-pages="selectedAffectedPages"
+          :open="drawerOpen"
+          :site-id="siteId"
+          :scans="scans"
+          :read-only="drawerReadOnly"
+          :on-refresh="() => fetchSiteData({ silent: true })"
+          @update:open="drawerOpen = $event"
+        />
+
+        <SiteSettingsModal
+          v-model:open="showSettingsModal"
+          :site="settingsSite"
+          @saved="onSettingsSaved"
+        />
       </div>
-
-      <template v-else>
-        <section class="mb-6">
-          <ScanStatusSummaryCard
-            :scan="latestScanInRange"
-            title="Accessibility Data Source"
-          />
-        </section>
-
-        <section class="mb-6">
-          <AccessibilityOverviewScoreSection
-            :settings="siteSettings"
-            :category-scores="categoryScoresForLatestScan"
-            :overall-score="displayOverallScore"
-            :score-delta="scoreDelta"
-            :site-id="siteId"
-            :latest-scan-issues="latestScanOpenIssues"
-            :scoring-issues="latestScanScoringIssues"
-            :score-element-totals="latestScanDenominators"
-            :scans="filteredScans"
-            :pages-with-issues-by-scan="pagesWithIssuesByScan"
-            :range-bounds="rangeBounds"
-          />
-        </section>
-
-        <section class="min-w-0">
-          <AccessibilityIssuesTable
-            v-if="previewOpenIssues.length"
-            table-title="Open issues"
-            :default-column-visibility="overviewOpenColumnVisibility"
-            :issues="previewOpenIssues"
-            :scoring-issues="scoringIssuesInRange"
-            :score-element-totals="scoreElementTotals"
-            :points-to-gain-by-rule="pointsToGainByRule"
-            :pages-by-rule="openUrlsByRule"
-            :site-id="siteId"
-            read-only
-            hide-toolbar
-            :page-size="5"
-            :footer-link="{ to: issuesPageLink, label: 'View all issues' }"
-            @open="openPreview"
-          />
-          <p v-else class="text-sm text-muted py-4">
-            No open issues in this period.
-          </p>
-        </section>
-      </template>
-
-      <AccessibilityIssueDetailDrawer
-        :issue="selectedIssue"
-        :affected-pages="selectedAffectedPages"
-        :open="drawerOpen"
-        :site-id="siteId"
-        :scans="scans"
-        :on-refresh="() => fetchSiteData({ silent: true })"
-        read-only
-        @update:open="drawerOpen = $event"
-      />
-
-      <SiteSettingsModal
-        v-model:open="showSettingsModal"
-        :site="settingsSite"
-        @saved="onSettingsSaved"
-      />
     </template>
   </AppDashboardPanel>
 </template>

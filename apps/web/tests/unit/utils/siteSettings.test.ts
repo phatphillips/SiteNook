@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { reactive } from 'vue'
 import {
   accessibilityTargetRows,
+  classifyIssueCategory,
   getDefaultSiteSettings,
   issueInSiteTarget,
   levelsForConformance,
@@ -79,6 +80,56 @@ describe('issueInSiteTarget', () => {
       wcag_version: '2.2',
       type: 'review'
     }, { ...settings, includePotentialIssues: false })).toBe(false)
+  })
+
+  it('gates ARIA best-practice rules by ariaConformance', () => {
+    const ariaIssue = {
+      rule_id: 'aria-allowed-role',
+      wcag_level: 'AA' as const,
+      wcag_version: '2.2',
+      type: 'error' as const
+    }
+    expect(issueInSiteTarget(ariaIssue, settings)).toBe(true)
+    expect(issueInSiteTarget(ariaIssue, { ...settings, ariaConformance: false })).toBe(false)
+  })
+
+  it('gates WCAG aria rules by WCAG settings (not ariaConformance alone)', () => {
+    const ariaWcag = {
+      rule_id: 'aria-required-attr',
+      wcag_level: 'A' as const,
+      wcag_version: '2.2',
+      wcag_sc: '4.1.2',
+      type: 'error' as const
+    }
+    expect(issueInSiteTarget(ariaWcag, settings)).toBe(true)
+    expect(issueInSiteTarget(ariaWcag, { ...settings, ariaConformance: false })).toBe(true)
+    expect(issueInSiteTarget(ariaWcag, { ...settings, includeIssues: false })).toBe(false)
+  })
+})
+
+describe('classifyIssueCategory', () => {
+  it('classifies axe best-practice aria rules as aria', () => {
+    expect(classifyIssueCategory({ rule_id: 'aria-allowed-role' })).toBe('aria')
+    expect(classifyIssueCategory({ rule_id: 'aria-dialog-name' })).toBe('aria')
+  })
+
+  it('classifies WCAG aria rules as wcag (not aria / best_practice)', () => {
+    expect(classifyIssueCategory({
+      rule_id: 'aria-required-attr',
+      wcag_sc: '4.1.2'
+    })).toBe('wcag')
+  })
+
+  it('classifies non-aria best practices separately', () => {
+    expect(classifyIssueCategory({ rule_id: 'landmark-one-main' })).toBe('best_practice')
+    expect(classifyIssueCategory({ rule_id: 'heading-order' })).toBe('best_practice')
+  })
+
+  it('classifies WCAG criteria rules as wcag', () => {
+    expect(classifyIssueCategory({
+      rule_id: 'color-contrast',
+      wcag_sc: '1.4.3'
+    })).toBe('wcag')
   })
 })
 

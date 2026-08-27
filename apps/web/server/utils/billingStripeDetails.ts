@@ -1,5 +1,5 @@
 import type Stripe from 'stripe'
-import type { Organization } from '~/types/accessiq'
+import type { Organization } from '~/types/sitenook'
 import { resolveStripeSubscriptionForOrg } from './resolveStripeSubscription'
 
 export interface BillingSubscriptionDetails {

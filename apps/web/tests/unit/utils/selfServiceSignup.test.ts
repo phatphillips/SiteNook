@@ -26,7 +26,7 @@ describe('formatOrganizationUrl', () => {
   })
 
   it('builds production tenant URLs', () => {
-    expect(formatOrganizationUrl('acme', 'accessiq.com', 'https://accessiq.com'))
-      .toBe('https://acme.accessiq.com')
+    expect(formatOrganizationUrl('acme', 'sitenook.com', 'https://sitenook.com'))
+      .toBe('https://acme.sitenook.com')
   })
 })

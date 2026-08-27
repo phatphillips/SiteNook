@@ -6,12 +6,13 @@ import {
   formatElapsedSince,
   pickDisplayScan,
   pickLatestCompleteScan,
+  pickLatestTrustedScan,
   scanActiveStatusLabel,
   scanStatusUiColor,
   scanStatusUiIcon,
   sortScansForDisplay
 } from '~/utils/scanDisplay'
-import type { Scan } from '~/types/accessiq'
+import type { Scan } from '~/types/sitenook'
 
 describe('scanDisplay', () => {
   it('buildDisplayScansFilter includes complete, complete_with_errors, and running', () => {
@@ -121,5 +122,39 @@ describe('scanDisplay', () => {
     ]
     expect(pickLatestCompleteScan(scans)?.id).toBe('good')
     expect(buildLatestCompleteScanMap(scans).get('s1')?.id).toBe('good')
+  })
+
+  it('pickLatestTrustedScan skips an untrusted newer scan', () => {
+    const scans: Scan[] = [
+      {
+        id: 'trusted',
+        site: 's1',
+        status: 'complete',
+        scan_type: 'full',
+        pages_crawled: 10,
+        completed_at: '2025-06-01T12:00:00Z',
+        score_overall: 82
+      },
+      {
+        id: 'bad',
+        site: 's1',
+        status: 'complete_with_errors',
+        scan_type: 'full',
+        pages_crawled: 1,
+        completed_at: '2025-06-02T12:00:00Z',
+        score_overall: 100,
+        scan_quality: {
+          pages_attempted: 10,
+          pages_saved: 1,
+          axe_failed: 1,
+          http_errors: 8,
+          timeouts: 0,
+          network_errors: 0,
+          trusted: false,
+          reason: 'High crawl error rate'
+        }
+      }
+    ]
+    expect(pickLatestTrustedScan(scans)?.id).toBe('trusted')
   })
 })

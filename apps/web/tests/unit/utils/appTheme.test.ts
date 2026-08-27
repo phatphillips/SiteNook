@@ -20,7 +20,7 @@ describe('appTheme', () => {
   })
 
   it('maps theme-color meta for each appearance', () => {
-    expect(themeColorMeta('dark')).toBe('#1b1718')
+    expect(themeColorMeta('dark')).toBe('#131418')
     expect(themeColorMeta('solarized-light')).toBe('#fdf6e3')
     expect(themeColorMeta('light')).toBe('#ffffff')
   })

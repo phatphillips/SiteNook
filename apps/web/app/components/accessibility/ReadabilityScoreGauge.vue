@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ReadabilityMethodId } from '~/utils/readabilityMethods'
-import { formatReadabilityScore, getReadabilityMethod } from '~/utils/readabilityMethods'
+import { formatReadabilityScoreDisplay, getReadabilityMethod } from '~/utils/readabilityMethods'
 
 const props = defineProps<{
   methodId: ReadabilityMethodId
@@ -17,8 +17,14 @@ const markerLeft = computed(() => {
   return `${Math.max(0, Math.min(100, props.position))}%`
 })
 
-const displayValue = computed(() => {
-  if (props.rawScore != null) return formatReadabilityScore(props.rawScore)
+const displayValue = computed(() =>
+  formatReadabilityScoreDisplay(props.methodId, props.rawScore)
+)
+
+const markerValue = computed(() => {
+  if (props.rawScore != null) {
+    return formatReadabilityScoreDisplay(props.methodId, props.rawScore).split(' · ')[0]
+  }
   if (props.position != null) return props.position.toFixed(1)
   return '—'
 })
@@ -28,7 +34,7 @@ const displayValue = computed(() => {
   <div class="readability-gauge space-y-2">
     <div class="flex items-baseline justify-between gap-4">
       <p class="text-sm text-muted">
-        Site average · {{ method.badge }}
+        Site average · {{ method.shortLabel }}
       </p>
       <p class="text-2xl font-semibold tabular-nums text-default">
         {{ displayValue }}
@@ -46,7 +52,7 @@ const displayValue = computed(() => {
         class="readability-gauge__marker absolute top-0 flex flex-col items-center -translate-x-1/2"
         :style="{ left: markerLeft }"
       >
-        <span class="text-xs font-medium tabular-nums text-default mb-0.5">{{ displayValue }}</span>
+        <span class="text-xs font-medium tabular-nums text-default mb-0.5">{{ markerValue }}</span>
         <span class="readability-gauge__needle" />
       </div>
     </div>

@@ -10,7 +10,7 @@ import {
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
 import { format, subDays, startOfDay } from 'date-fns'
-import type { Scan } from '~/types/accessiq'
+import type { Scan } from '~/types/sitenook'
 import {
   buildChartTooltipOptions,
   chartAreaFill,

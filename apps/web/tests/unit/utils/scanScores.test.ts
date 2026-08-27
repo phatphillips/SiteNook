@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   deriveBestPracticeFromStoredScan,
   hasMeaningfulStoredOverall,
+  preferLiveScanScore,
   preferStoredScanScore,
   resolveBestPracticeScore
 } from '~/utils/scanScores'
@@ -16,6 +17,22 @@ describe('preferStoredScanScore', () => {
     expect(preferStoredScanScore(null, 82)).toBe(82)
     expect(preferStoredScanScore(undefined, 55)).toBe(55)
     expect(preferStoredScanScore(0, 63)).toBe(63)
+  })
+})
+
+describe('preferLiveScanScore', () => {
+  it('prefers live score even when stored differs', () => {
+    expect(preferLiveScanScore(90, 48.2)).toBe(90)
+    expect(preferLiveScanScore(0, 71.7)).toBe(0)
+  })
+
+  it('falls back to stored when live is unavailable', () => {
+    expect(preferLiveScanScore(null, 82)).toBe(82)
+    expect(preferLiveScanScore(undefined, 55)).toBe(55)
+  })
+
+  it('returns 0 when neither value is available', () => {
+    expect(preferLiveScanScore(null, undefined)).toBe(0)
   })
 })
 

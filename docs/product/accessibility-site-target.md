@@ -69,7 +69,7 @@ Stored scan scores on `scans` records reflect the full crawl; live dashboard sco
 
 ## Engine note (axe, not a separate ARIA product)
 
-AccessIQ uses **axe-core** for all accessibility rules. “WAI-ARIA authoring practices” and “best practices” are **categories** in the site target, not a switch to a different engine. The scanner always runs the full axe tag set (`DEFAULT_AXE_TAGS` in `axeRunner.ts`).
+SiteNook uses **axe-core** for all accessibility rules. “WAI-ARIA authoring practices” and “best practices” are **categories** in the site target, not a switch to a different engine. The scanner always runs the full axe tag set (`DEFAULT_AXE_TAGS` in `axeRunner.ts`).
 
 ## Defaults and migration
 

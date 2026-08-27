@@ -5,13 +5,27 @@ import { checkLinksOnPage, extractLinkHrefsFromPage } from './linkChecker.js'
 import { checkSpelling } from '../qa/spellChecker.js'
 import { countWords, extractMainContentFromPage } from '../qa/extractMainContent.js'
 import { scoreReadability, scoreAllReadabilityMethods } from '../qa/readability.js'
+import {
+  challengeBlockLogMessage,
+  isWafBlockedStatus,
+  resolveNavigationChallenge,
+  responseHasSgCaptcha
+} from './challengePage.js'
 import { retryForbiddenWithBackoff } from './wafRetry.js'
 import type { PageResult } from './siteCrawler.js'
 import type { ScanLogEventInput } from '../db/scanLogEvents.js'
 import { isHttpUrl } from '../db/recordSanitize.js'
+import { inventoryAssetFromUrl } from '../qa/inventoryUrl.js'
 import { runPageSeoChecks, shouldRunAccessibility, shouldRunQa, shouldRunSeo } from '../seo/scanSeo.js'
 import type { SeoSettings } from '../seo/types.js'
 import { DEFAULT_SEO_SETTINGS } from '../seo/types.js'
+import { truncateHtmlSnapshot } from '../utils/truncateHtmlSnapshot.js'
+import { captureSimulatorPreview, preparePageForPreviewCapture, waitForRenderedContent } from './captureSimulatorPreview.js'
+import { serializeRenderedPage, inlinePageAssetsForPreview } from './serializeRenderedHtml.js'
+import { renderedHtmlBufferFromSnapshot } from '../db/attachPageRenderedHtml.js'
+import { extractContentMarkdown } from '../content/extractContentMarkdown.js'
+import { settlePageForAxe } from './settlePageForAxe.js'
+import { normalizeUrl } from './siteCrawler.js'
 
 export interface ScanOnePageOptions {
   url: string
@@ -21,6 +35,8 @@ export interface ScanOnePageOptions {
   origin: string
   startUrl?: string
   seoSettings?: SeoSettings
+  /** CSS selectors excluded from axe (from exclude_from_accessibility policies). */
+  axeExcludeSelectors?: string[]
   onCrawlLog?: (event: ScanLogEventInput) => void | Promise<void>
 }
 
@@ -30,23 +46,14 @@ export type ScanOnePageOutcome =
 
 function extractInventory(html: string, pageUrl: string): PageResult['inventory'] {
   const items: PageResult['inventory'] = []
+  const seen = new Set<string>()
   const regex = /(?:src|href)=["']([^"']+)["']/gi
   let match
   while ((match = regex.exec(html)) !== null) {
-    try {
-      const assetUrl = new URL(match[1], pageUrl).toString()
-      if (!isHttpUrl(assetUrl)) continue
-      const isPdf = assetUrl.toLowerCase().endsWith('.pdf')
-      items.push({
-        url: assetUrl,
-        content_type: isPdf ? 'pdf' : 'asset',
-        mime_type: isPdf ? 'application/pdf' : 'unknown',
-        is_pdf: isPdf,
-        size_bytes: 0
-      })
-    } catch {
-      // skip invalid URLs
-    }
+    const asset = inventoryAssetFromUrl(match[1], pageUrl)
+    if (!asset || !isHttpUrl(asset.url) || seen.has(asset.url)) continue
+    seen.add(asset.url)
+    items.push(asset)
   }
   return items
 }
@@ -81,14 +88,14 @@ export async function scanOnePage(
   })
 
   let statusCode = response?.status() || 0
-  if (statusCode === 403) {
+  if (isWafBlockedStatus(statusCode) || responseHasSgCaptcha(response)) {
     const wafResult = await retryForbiddenWithBackoff(page, url, {
       timeoutMs,
       onWafRetry: async ({ attempt, delayMs }) => {
         const sec = Math.round(delayMs / 1000)
         await emitLog({
           level: 'warn',
-          message: `HTTP 403 (WAF) — retry ${attempt}/2 in ${sec}s`,
+          message: `HTTP ${statusCode || 403} (WAF) — retry ${attempt}/2 in ${sec}s`,
           url
         })
       }
@@ -99,6 +106,16 @@ export async function scanOnePage(
 
   if (postDelay > 0) await page.waitForTimeout(postDelay)
 
+  const challenge = await resolveNavigationChallenge(page, response)
+  if (challenge.blocked && challenge.kind) {
+    await emitLog({
+      level: 'error',
+      message: challengeBlockLogMessage(challenge.kind),
+      url
+    })
+    return { ok: false, statusCode: statusCode === 202 ? 202 : 403 }
+  }
+
   if (statusCode >= 400) {
     await emitLog({
       level: 'error',
@@ -108,23 +125,45 @@ export async function scanOnePage(
     return { ok: false, statusCode }
   }
 
+  await settlePageForAxe(page)
+
+  let storedUrl = url
+  try {
+    const finalUrl = page.url()
+    if (finalUrl.startsWith('http')) storedUrl = normalizeUrl(finalUrl)
+  } catch {
+    // keep requested URL
+  }
+
   const title = await page.title()
   const textContent = await extractMainContentFromPage(page)
   const wordCount = countWords(textContent)
   const readabilityScores = scoreAllReadabilityMethods(textContent)
   const readabilityScore = scoreReadability(textContent)
-  const htmlSnapshot = await page.content()
 
   let issues: PageResult['issues'] = []
+  let checkStats: PageResult['checkStats']
+  let a11yFailed = false
   let brokenLinks: PageResult['brokenLinks'] = []
   let linkHrefs: string[] = []
   let spelling: PageResult['spelling'] = []
 
   if (shouldRunAccessibility(scanType)) {
     try {
-      issues = await runAxeOnPage(page, DEFAULT_AXE_TAGS)
+      const axeResult = await runAxeOnPage(page, {
+        tags: DEFAULT_AXE_TAGS,
+        excludeSelectors: options.axeExcludeSelectors
+      })
+      issues = axeResult.issues
+      checkStats = axeResult.checkStats
     } catch (err) {
-      console.warn(`Axe scan failed for ${url}:`, err)
+      a11yFailed = true
+      console.warn(`Axe scan failed for ${storedUrl}:`, err)
+      await emitLog({
+        level: 'warn',
+        message: 'Accessibility scan failed — page saved without issue results',
+        url: storedUrl
+      })
     }
   }
 
@@ -134,11 +173,28 @@ export async function scanOnePage(
     spelling = checkSpelling(textContent)
   }
 
+  let previewImage: Buffer | undefined
+  let tabOrder: PageResult['tabOrder']
+  try {
+    const preview = await captureSimulatorPreview(page)
+    previewImage = preview.previewImage
+    tabOrder = preview.tabOrder
+  } catch (err) {
+    console.warn(`Simulator preview capture failed for ${url}:`, err)
+    await preparePageForPreviewCapture(page).catch(() => {})
+  }
+
+  await waitForRenderedContent(page).catch(() => {})
+  const htmlSnapshot = await serializeRenderedPage(page).catch(async () => page.content())
+  const htmlSizeBytes = Buffer.byteLength(htmlSnapshot, 'utf8')
+  const previewHtml = await inlinePageAssetsForPreview(page, htmlSnapshot).catch(() => htmlSnapshot)
+  const contentMarkdown = extractContentMarkdown(htmlSnapshot, storedUrl) ?? undefined
+
   let seoSnapshot: PageResult['seoSnapshot']
   let seoIssues: PageResult['seoIssues']
   if (shouldRunSeo(scanType, seoSettings)) {
     const seo = runPageSeoChecks({
-      url,
+      url: storedUrl,
       title,
       wordCount,
       readabilityScore,
@@ -155,21 +211,28 @@ export async function scanOnePage(
   return {
     ok: true,
     page: {
-      url,
+      url: storedUrl,
       title,
       statusCode,
       wordCount,
       readabilityScore,
       readabilityScores,
       crawlDepth: depth,
-      htmlSnapshot: htmlSnapshot.slice(0, 100000),
+      htmlSnapshot: truncateHtmlSnapshot(htmlSnapshot),
+      htmlSizeBytes,
+      renderedHtml: renderedHtmlBufferFromSnapshot(previewHtml),
       issues,
+      checkStats,
       brokenLinks,
       linkHrefs,
       spelling,
-      inventory: extractInventory(htmlSnapshot, url),
+      inventory: extractInventory(htmlSnapshot, storedUrl),
       seoSnapshot,
-      seoIssues
+      seoIssues,
+      previewImage,
+      tabOrder,
+      contentMarkdown,
+      a11yFailed
     }
   }
 }

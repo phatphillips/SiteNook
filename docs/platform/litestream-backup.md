@@ -26,5 +26,5 @@ The `litestream` service shares the `pb_data` volume with PocketBase and runs al
 ## Notes
 
 - Litestream is **backup/DR**, not a scaling layer — PocketBase remains single-writer SQLite.
-- Use a dedicated bucket path per environment (`accessiq/pocketbase` in the default config).
+- Use a dedicated bucket path per environment (`sitenook/pocketbase` in the default config).
 - For local dev, omit the `backup` profile — no Litestream container is started.

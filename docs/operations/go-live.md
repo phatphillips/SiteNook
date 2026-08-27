@@ -1,6 +1,6 @@
 # Go live — production checklist
 
-Use this checklist when moving AccessIQ from local/dev to a real customer-facing deployment. It ties together email deliverability (E2), apex vs tenant routing (E3), and DNS (E4).
+Use this checklist when moving SiteNook from local/dev to a real customer-facing deployment. It ties together email deliverability (E2), apex vs tenant routing (E3), and DNS (E4).
 
 For day-to-day development, keep `NUXT_PUBLIC_TENANT_ONLY` unset and use apex `localhost:3000` as today.
 
@@ -22,16 +22,16 @@ For day-to-day development, keep `NUXT_PUBLIC_TENANT_ONLY` unset and use apex `l
 
 Configure on your DNS provider (e.g. Cloudflare) — **not in this repo**:
 
-- [ ] **Apex** `accessiq.com` → load balancer / tunnel / server IP
-- [ ] **Wildcard** `*.accessiq.com` → same target (all tenant subdomains)
-- [ ] TLS: Cloudflare Universal SSL or wildcard cert for `*.accessiq.com`
+- [ ] **Apex** `sitenook.com` → load balancer / tunnel / server IP
+- [ ] **Wildcard** `*.sitenook.com` → same target (all tenant subdomains)
+- [ ] TLS: Cloudflare Universal SSL or wildcard cert for `*.sitenook.com`
 - [ ] Nginx passes `Host` through (already in `nginx/nginx.conf`)
 
 Set on the **web** service:
 
 ```bash
-NUXT_PUBLIC_APP_DOMAIN=accessiq.com
-NUXT_PUBLIC_APP_URL=https://accessiq.com
+NUXT_PUBLIC_APP_DOMAIN=sitenook.com
+NUXT_PUBLIC_APP_URL=https://sitenook.com
 ```
 
 Details: [multi-tenancy.md](../platform/multi-tenancy.md) § Production DNS / Cloudflare.
@@ -44,10 +44,10 @@ Invites and password resets are sent by **PocketBase over SMTP**. Dev Gmail ofte
 
 - [ ] Choose a transactional provider (**Resend** recommended, or SendGrid)
 - [ ] Verify sending domain; add **SPF**, **DKIM**, **DMARC** DNS records from the provider UI
-- [ ] PocketBase `/_/ → Settings → Mail settings` — SMTP + `From: AccessIQ <noreply@yourdomain.com>`
+- [ ] PocketBase `/_/ → Settings → Mail settings` — SMTP + `From: SiteNook <noreply@yourdomain.com>`
 - [ ] Align `APP_DASHBOARD_URL` and `APP_PUBLIC_DOMAIN` on the **pocketbase** service with production URLs
 - [ ] **Send test email** from PocketBase → arrives in **inbox** (not spam)
-- [ ] Provision or invite a test user → set-password link opens `{subdomain}.accessiq.com/reset-password`
+- [ ] Provision or invite a test user → set-password link opens `{subdomain}.sitenook.com/reset-password`
 
 Full setup: [onboarding.md](../platform/onboarding.md) § Email deliverability.
 
@@ -55,7 +55,7 @@ Full setup: [onboarding.md](../platform/onboarding.md) § Email deliverability.
 
 ## 3. Apex → tenant-only dashboard (E3)
 
-In production, the **apex** host (`accessiq.com`) should not serve the dashboard or login form. Users sign in at `{subdomain}.accessiq.com`.
+In production, the **apex** host (`sitenook.com`) should not serve the dashboard or login form. Users sign in at `{subdomain}.sitenook.com`.
 
 On the **web** service:
 
@@ -66,8 +66,8 @@ NUXT_PUBLIC_TENANT_ONLY=true
 | Host | `TENANT_ONLY=false` (dev) | `TENANT_ONLY=true` (prod) |
 |------|----------------------------|---------------------------|
 | `localhost:3000` | Full dashboard + login | Full dashboard + login (dev unchanged) |
-| `accessiq.com` | Dashboard + login (legacy) | `/sign-in` only — no apex login |
-| `agency.accessiq.com` | Tenant login + dashboard | Tenant login + dashboard |
+| `sitenook.com` | Dashboard + login (legacy) | `/sign-in` only — no apex login |
+| `agency.sitenook.com` | Tenant login + dashboard | Tenant login + dashboard |
 
 Apex paths still allowed when tenant-only: `/sign-in`, `/signup`, `/start`, `/account-not-found`, `/reset-password`, `/pricing`. Legacy `/find-account` redirects to `/sign-in`.
 
@@ -79,16 +79,16 @@ Details: [multi-tenancy.md](../platform/multi-tenancy.md) § Host behaviour.
 
 | Variable | Service | Production example |
 |----------|---------|-------------------|
-| `NUXT_PUBLIC_APP_DOMAIN` | web | `accessiq.com` |
-| `NUXT_PUBLIC_APP_URL` | web | `https://accessiq.com` |
+| `NUXT_PUBLIC_APP_DOMAIN` | web | `sitenook.com` |
+| `NUXT_PUBLIC_APP_URL` | web | `https://sitenook.com` |
 | `NUXT_PUBLIC_POCKETBASE_URL` | web | `/api` |
 | `NUXT_PUBLIC_TENANT_ONLY` | web | `true` |
 | `NUXT_PUBLIC_SELF_SERVICE_SIGNUP` | web | `false` until ready, then `true` |
 | `NUXT_PUBLIC_TURNSTILE_SITE_KEY` / `NUXT_TURNSTILE_SECRET` | web | Cloudflare Turnstile (recommended with self-service) |
 | `NUXT_PROVISION_API_KEY` | web | Strong secret (server only) |
 | `NUXT_PB_ADMIN_*` | web | PocketBase superuser |
-| `APP_DASHBOARD_URL` | pocketbase | `https://accessiq.com` |
-| `APP_PUBLIC_DOMAIN` | pocketbase | `accessiq.com` (from compose: `NUXT_PUBLIC_APP_DOMAIN`) |
+| `APP_DASHBOARD_URL` | pocketbase | `https://sitenook.com` |
+| `APP_PUBLIC_DOMAIN` | pocketbase | `sitenook.com` (from compose: `NUXT_PUBLIC_APP_DOMAIN`) |
 | PocketBase SMTP | pocketbase admin | Resend / SendGrid on verified domain |
 | `PB_ADMIN_*` | pocketbase, scanner | Change from `.env.example` defaults |
 
@@ -105,10 +105,10 @@ docker compose up -d --build
 
 | # | Check |
 |---|--------|
-| 1 | `https://accessiq.com` → **Find your organization** (not login form) |
-| 2 | `https://default.accessiq.com/login` (or a real tenant subdomain) → login works |
+| 1 | `https://sitenook.com` → **Find your organization** (not login form) |
+| 2 | `https://default.sitenook.com/login` (or a real tenant subdomain) → login works |
 | 3 | Wrong-org user on tenant host → blocked at login |
-| 4 | `https://unknown.accessiq.com` → `/account-not-found` |
+| 4 | `https://unknown.sitenook.com` → `/account-not-found` |
 | 5 | `POST /api/provision` → first admin email in **inbox** |
 | 6 | Admin invites colleague → email + tenant reset link + activity log |
 | 7 | Scanner processes `scan_queue` against customer sites |
@@ -126,12 +126,12 @@ NUXT_PUBLIC_MARKETING_SITE=true
 NUXT_PUBLIC_SELF_SERVICE_SIGNUP=true
 NUXT_PUBLIC_TURNSTILE_SITE_KEY=...   # recommended
 NUXT_TURNSTILE_SECRET=...
-NUXT_PUBLIC_TERMS_URL=https://accessiq.com/terms
+NUXT_PUBLIC_TERMS_URL=https://sitenook.com/terms
 ```
 
 | # | Check |
 |---|--------|
-| 1 | `https://accessiq.com/` — marketing landing (when `MARKETING_SITE=true`) |
+| 1 | `https://sitenook.com/` — marketing landing (when `MARKETING_SITE=true`) |
 | 2 | `/pricing` — free + paid plan CTAs work |
 | 3 | Free path → `/start?plan=free` → org with `plan: free` |
 | 4 | Paid path → Stripe Checkout → wizard → org with `plan: starter`, `team`, or `business` |
@@ -156,7 +156,7 @@ Production Stripe (live mode):
 | `NUXT_STRIPE_WEBHOOK_SECRET` | Dashboard webhook signing secret (not CLI) |
 | `NUXT_PUBLIC_STRIPE_DEV_BYPASS` | **`false`** |
 
-Configure a **live** webhook endpoint in Stripe Dashboard → `https://accessiq.com/api/stripe/webhook` for `checkout.session.completed`.
+Configure a **live** webhook endpoint in Stripe Dashboard → `https://sitenook.com/api/stripe/webhook` for `checkout.session.completed`.
 
 Setup guide: [stripe-setup.md](../platform/stripe-setup.md).
 

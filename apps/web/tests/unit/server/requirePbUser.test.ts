@@ -8,6 +8,7 @@ const { mockAuthRefresh } = vi.hoisted(() => ({
 vi.mock('pocketbase', () => ({
   default: class MockPocketBase {
     authStore = { save: vi.fn() }
+    autoCancellation = vi.fn()
     collection() {
       return { authRefresh: mockAuthRefresh }
     }
@@ -15,12 +16,14 @@ vi.mock('pocketbase', () => ({
 }))
 
 describe('requirePbUser', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockAuthRefresh.mockReset()
     vi.stubGlobal('useRuntimeConfig', () => ({
       pocketbaseUrl: 'http://pocketbase:8090',
       public: { pocketbaseUrl: 'http://localhost:8090' }
     }))
+    const { clearPbUserAuthCache } = await import('../../../server/utils/requirePbUser')
+    clearPbUserAuthCache()
   })
 
   it('returns 401 when Authorization header is missing', async () => {
@@ -58,5 +61,36 @@ describe('requirePbUser', () => {
     })
 
     await expect(requirePbUser(event)).resolves.toEqual(record)
+  })
+
+  it('skips authRefresh on cache hit within TTL', async () => {
+    const record = { id: 'user-1', email: 'user@test', collectionName: 'users' }
+    mockAuthRefresh.mockResolvedValue({ record })
+    const { requirePbUser } = await import('../../../server/utils/requirePbUser')
+    const event = createEvent({
+      method: 'GET',
+      url: '/api/sitemap-preview',
+      headers: { authorization: 'Bearer cached-token' }
+    })
+
+    await expect(requirePbUser(event)).resolves.toEqual(record)
+    await expect(requirePbUser(event)).resolves.toEqual(record)
+    expect(mockAuthRefresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('refreshes again after cache is cleared', async () => {
+    const record = { id: 'user-1', email: 'user@test', collectionName: 'users' }
+    mockAuthRefresh.mockResolvedValue({ record })
+    const { requirePbUser, clearPbUserAuthCache } = await import('../../../server/utils/requirePbUser')
+    const event = createEvent({
+      method: 'GET',
+      url: '/api/sitemap-preview',
+      headers: { authorization: 'Bearer refresh-again' }
+    })
+
+    await requirePbUser(event)
+    clearPbUserAuthCache()
+    await requirePbUser(event)
+    expect(mockAuthRefresh).toHaveBeenCalledTimes(2)
   })
 })

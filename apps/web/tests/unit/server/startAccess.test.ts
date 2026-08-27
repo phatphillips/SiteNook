@@ -8,7 +8,13 @@ describe('parseStartAccessIntent', () => {
     })
   })
 
-  it('requires checkout for paid team plan', () => {
+  it('allows Team trial without checkout', () => {
+    expect(parseStartAccessIntent({ plan: 'team', trial: '1' }, { devBypassAllowed: false })).toEqual({
+      kind: 'team_trial'
+    })
+  })
+
+  it('requires checkout for paid team plan without trial flag', () => {
     const intent = parseStartAccessIntent({ plan: 'team' }, { devBypassAllowed: false })
     expect(intent).toEqual({
       kind: 'deny',

@@ -1,4 +1,4 @@
-import type { ActiveScanRow, PageRecord, Scan, ScanLogEvent } from '~/types/accessiq'
+import type { ActiveScanRow, PageRecord, Scan, ScanLogEvent } from '~/types/sitenook'
 
 export type CrawlLogLevel = ScanLogEvent['level']
 
@@ -199,15 +199,24 @@ export function mergeCrawlLogLines(
   preferEvents: boolean
 ): CrawlLogLine[] {
   const byKey = new Map<string, CrawlLogLine>()
+  const successUrls = new Set<string>()
+
+  function addLine(line: CrawlLogLine, key = line.id) {
+    if (line.level === 'success' && line.url) {
+      if (successUrls.has(line.url)) return
+      successUrls.add(line.url)
+    }
+    if (!byKey.has(key)) byKey.set(key, line)
+  }
 
   for (const line of events) {
-    byKey.set(line.id, line)
+    addLine(line)
   }
 
   if (!preferEvents || events.length === 0) {
     for (const line of pages) {
       const key = line.url ? `page-url:${line.url}` : line.id
-      if (!byKey.has(key)) byKey.set(key, line)
+      addLine(line, key)
     }
   }
 

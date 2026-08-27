@@ -9,13 +9,10 @@ export async function reconcileSiteA11ySummary(siteId: string, token: string): P
 /** Update issue status and refresh the site accessibility summary. */
 export async function updateIssueStatusAndReconcile(
   pb: ReturnType<typeof usePocketBase>['pb'],
-  siteId: string,
+  _siteId: string,
   issueId: string,
   patch: Record<string, unknown>
 ): Promise<void> {
+  if (!pb) return
   await pb.collection('accessibility_issues').update(issueId, patch)
-  const token = pb.authStore.token
-  if (token) {
-    await reconcileSiteA11ySummary(siteId, token).catch(() => {})
-  }
 }

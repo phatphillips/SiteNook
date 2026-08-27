@@ -15,6 +15,7 @@ import {
   interpretGradeLevelScore,
   type ReadabilityTextStats
 } from '~/utils/readabilityPageStats'
+import ReadabilityCopyPromptButton from '~/components/accessibility/ReadabilityCopyPromptButton.vue'
 
 const props = defineProps<{
   page: ReadabilityPageRow | null
@@ -183,12 +184,18 @@ watch(
           </div>
         </div>
 
-        <div class="rounded-lg border border-default bg-elevated/25 p-4 space-y-2">
+        <div class="rounded-lg border border-default bg-elevated/25 p-4 space-y-3">
           <p class="text-sm text-default">{{ method.summary }}</p>
           <p class="text-xs text-muted">
             <span class="font-medium text-default">Best practice:</span>
             {{ method.bestPractice }}
           </p>
+          <ReadabilityCopyPromptButton
+            :url="page.url"
+            :title="page.title"
+            :method-id="methodId"
+            :score="score"
+          />
         </div>
       </div>
     </template>

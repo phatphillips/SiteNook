@@ -32,10 +32,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
       return navigateTo(buildLoginNavigation(to))
     }
 
+    to.meta.marketingLanding = false
     setPageLayout('default')
     return
   }
 
+  // Marketing apex: public landing for guests; dashboard only when signed in.
   if (import.meta.server) {
     to.meta.marketingLanding = true
     setPageLayout('marketing')
@@ -48,6 +50,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   const record = pb?.authStore.record
   if (pb?.authStore.isValid && isUserRecord(record)) {
+    to.meta.marketingLanding = false
     setPageLayout('default')
     return
   }

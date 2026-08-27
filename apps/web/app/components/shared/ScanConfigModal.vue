@@ -1,32 +1,15 @@
 <script setup lang="ts">
-import type { Site } from '~/types/accessiq'
+import type { Site } from '~/types/sitenook'
 import {
-  type ScanConfig,
-  type HeaderRow,
-  getDefaultScanConfig,
-  parseScanConfig,
-  parsePageUrls,
-  countPageUrls,
-  isValidHttpUrl,
-  validateAuth,
-  scopeSummary,
-  browserSummary,
-  authSummary,
-  scheduleSummary,
-  advancedSummary,
-  configFromHeaderRows,
-  headerRowsFromConfig,
-  getSiteHostname,
   deriveScanType,
-  serializeScanConfig,
-  normalizeScanConfig,
-  frequencyToCrawlSchedule
+  getSiteHostname,
+  serializeScanConfig
 } from '~/utils/scanConfig'
+import type ScanConfigForm from '~/components/shared/ScanConfigForm.vue'
 
 const props = defineProps<{
   site: Site | null
   initialPageUrl?: string
-  /** When set (e.g. rescan from history), overrides site default_scan_config */
   initialRawConfig?: Record<string, unknown> | null
 }>()
 
@@ -34,183 +17,28 @@ const open = defineModel<boolean>('open', { default: false })
 
 const emit = defineEmits<{
   queued: []
-  scheduleSaved: []
 }>()
 
-const { queueScanWithConfig, saveDefaultScanConfig, saveSiteSchedule } = useSites()
+const { queueScanWithConfig, saveDefaultScanConfig } = useSites()
 const { isSiteBusy } = useScans()
 const toast = useToast()
 const config = useRuntimeConfig()
 
 const maxPagesDefault = Number(config.public.maxPagesPerScan || 500)
 const submitting = ref(false)
-const pagesText = ref('')
-const pagesTouched = ref(false)
-const invalidPageLines = ref<number[]>([])
-const sitemapCount = ref<number | null>(null)
-const sitemapError = ref('')
-const sitemapLoading = ref(false)
-const headerRows = ref<HeaderRow[]>([{ key: '', value: '' }])
-const authErrors = ref<string[]>([])
-
-const configState = reactive<ScanConfig>(getDefaultScanConfig(undefined, maxPagesDefault))
-
-const accordionOpen = ref<string | string[]>('scope')
-
-const scanModeItems = [
-  { label: 'Full Crawl', value: 'full', description: 'Discover and scan all pages automatically' },
-  { label: 'Specific Pages', value: 'pages', description: 'Provide a list of exact URLs to scan' },
-  { label: 'Sitemap', value: 'sitemap', description: 'Parse sitemap.xml and scan discovered URLs' }
-]
-
-const viewportItems = [
-  { label: 'Desktop (1280×800)', value: 'desktop' },
-  { label: 'Tablet (768×1024)', value: 'tablet' },
-  { label: 'Mobile (375×812)', value: 'mobile' }
-]
-
-const waitStrategyItems = [
-  { label: 'Load event (fast)', value: 'load' },
-  { label: 'Network idle (recommended)', value: 'networkidle' },
-  { label: 'Fixed delay 2s', value: 'delay2s' },
-  { label: 'Fixed delay 10s (WAF-friendly)', value: 'delay10s' }
-]
-
-const authTypeItems = [
-  { label: 'None', value: 'none' },
-  { label: 'HTTP Basic Auth', value: 'basic' },
-  { label: 'Login Form', value: 'form' },
-  { label: 'Cookie / Session', value: 'cookie' },
-  { label: 'Bearer Token', value: 'bearer' }
-]
-
-const scheduleFrequencyItems = [
-  { label: 'Every hour', value: 'hourly' },
-  { label: 'Every 6 hours', value: 'every_6h' },
-  { label: 'Daily', value: 'daily' },
-  { label: 'Weekly', value: 'weekly' },
-  { label: 'Monthly', value: 'monthly' }
-]
+const formRef = useTemplateRef<InstanceType<typeof ScanConfigForm>>('formRef')
 
 const hostname = computed(() => (props.site ? getSiteHostname(props.site.url) : ''))
-const pageUrlCount = computed(() => countPageUrls(pagesText.value))
-const showScheduleTime = computed(() =>
-  ['daily', 'weekly', 'monthly'].includes(configState.scheduleFrequency)
-)
-const primaryLabel = computed(() =>
-  configState.scheduleEnabled ? 'Save Schedule' : 'Start Scan'
-)
-
-const accordionItems = computed(() => [
-  { label: `Scope  ›  ${scopeSummary(configState, pageUrlCount.value)}`, value: 'scope', slot: 'scope' as const },
-  { label: `Schedule  ›  ${scheduleSummary(configState)}`, value: 'schedule', slot: 'schedule' as const },
-  { label: `Browser  ›  ${browserSummary(configState)}`, value: 'browser', slot: 'browser' as const },
-  { label: `Authentication  ›  ${authSummary(configState)}`, value: 'auth', slot: 'auth' as const },
-  { label: `Advanced  ›  ${advancedSummary(configState)}`, value: 'advanced', slot: 'advanced' as const }
-])
-
-function resetForm() {
-  const site = props.site
-  const saved = props.initialRawConfig ?? site?.default_scan_config
-  const base = parseScanConfig(saved, site?.url, maxPagesDefault)
-
-  if (props.initialPageUrl) {
-    base.mode = 'pages'
-    base.pages = [props.initialPageUrl]
-    pagesText.value = props.initialPageUrl
-  } else if (base.mode === 'pages' && base.pages.length) {
-    pagesText.value = base.pages.join('\n')
-  } else {
-    pagesText.value = ''
-  }
-
-  Object.assign(configState, base)
-  headerRows.value = headerRowsFromConfig(base.customHeaders)
-  invalidPageLines.value = []
-  pagesTouched.value = false
-  sitemapCount.value = null
-  sitemapError.value = ''
-  authErrors.value = []
-}
 
 watch(open, (isOpen) => {
   if (isOpen) {
-    resetForm()
-    accordionOpen.value = 'scope'
+    nextTick(() => formRef.value?.resetForm())
   }
 })
-
-watch(() => props.site?.id, () => {
-  if (open.value) resetForm()
-})
-
-watch(() => props.initialRawConfig, () => {
-  if (open.value) resetForm()
-})
-
-watch(pagesText, (text) => {
-  configState.pages = parsePageUrls(text)
-})
-
-function validatePageUrls() {
-  pagesTouched.value = true
-  const lines = pagesText.value.split('\n')
-  invalidPageLines.value = []
-  lines.forEach((line, index) => {
-    const trimmed = line.trim()
-    if (trimmed && !isValidHttpUrl(trimmed)) {
-      invalidPageLines.value.push(index)
-    }
-  })
-}
-
-function addHeaderRow() {
-  headerRows.value.push({ key: '', value: '' })
-}
-
-function removeHeaderRow(index: number) {
-  headerRows.value.splice(index, 1)
-  if (!headerRows.value.length) headerRows.value.push({ key: '', value: '' })
-}
-
-const { pb, awaitAuthReady } = usePocketBase()
-
-async function fetchSitemapPreview() {
-  sitemapLoading.value = true
-  sitemapError.value = ''
-  sitemapCount.value = null
-  try {
-    await awaitAuthReady()
-    const token = pb?.authStore.token
-    if (!token) {
-      sitemapError.value = 'Sign in again to preview the sitemap.'
-      return
-    }
-    const result = await $fetch<{ count: number }>('/api/sitemap-preview', {
-      query: { url: configState.sitemapUrl },
-      headers: { Authorization: token }
-    })
-    sitemapCount.value = result.count
-  } catch (e: unknown) {
-    sitemapError.value = e && typeof e === 'object' && 'statusMessage' in e
-      ? String((e as { statusMessage: string }).statusMessage)
-      : 'Could not fetch sitemap'
-  } finally {
-    sitemapLoading.value = false
-  }
-}
-
-function buildSubmitConfig(): ScanConfig {
-  return normalizeScanConfig({
-    ...configState,
-    pages: parsePageUrls(pagesText.value),
-    customHeaders: configFromHeaderRows(headerRows.value)
-  })
-}
 
 async function saveAsDefault() {
-  if (!props.site) return
-  const payload = serializeScanConfig(buildSubmitConfig())
+  if (!props.site || !formRef.value) return
+  const payload = serializeScanConfig(formRef.value.buildSubmitConfig())
   try {
     await saveDefaultScanConfig(props.site.id, payload)
     toast.add({ title: 'Default saved', description: 'This configuration will pre-fill next time.' })
@@ -220,24 +48,19 @@ async function saveAsDefault() {
 }
 
 async function submit() {
-  if (!props.site) return
+  if (!props.site || !formRef.value) return
 
-  const finalConfig = buildSubmitConfig()
-  authErrors.value = validateAuth(finalConfig)
-
-  if (finalConfig.mode === 'pages') {
-    validatePageUrls()
-    if (!finalConfig.pages.length) {
-      toast.add({ title: 'Add URLs', description: 'Enter at least one URL to scan.', color: 'warning' })
-      return
-    }
-    if (invalidPageLines.value.length) {
-      toast.add({ title: 'Invalid URLs', description: 'Fix highlighted URLs before starting.', color: 'error' })
-      return
-    }
+  const validation = formRef.value.validateForSubmit()
+  if (!validation.ok) {
+    toast.add({
+      title: validation.color === 'warning' ? 'Add URLs' : 'Invalid configuration',
+      description: validation.message,
+      color: validation.color ?? 'error'
+    })
+    return
   }
 
-  if (finalConfig.mode === 'sitemap' && sitemapCount.value === null) {
+  if (validation.config.mode === 'sitemap' && formRef.value) {
     toast.add({
       title: 'Sitemap not verified',
       description: 'Consider fetching the sitemap preview first. You can still continue.',
@@ -245,34 +68,21 @@ async function submit() {
     })
   }
 
-  if (authErrors.value.length) return
-
   submitting.value = true
   try {
-    const raw = serializeScanConfig(finalConfig)
-
-    if (finalConfig.scheduleEnabled) {
-      await saveSiteSchedule(
-        props.site.id,
-        frequencyToCrawlSchedule(finalConfig.scheduleFrequency),
-        raw
-      )
-      toast.add({ title: 'Schedule saved', description: 'Recurring scan schedule updated for this site.' })
-      emit('scheduleSaved')
-    } else {
-      if (isSiteBusy(props.site.id)) {
-        toast.add({
-          title: 'Site busy',
-          description: 'Wait for the current scan to finish or stop it from the Scans page.',
-          color: 'warning'
-        })
-        return
-      }
-      await queueScanWithConfig(props.site.id, raw, deriveScanType(finalConfig))
-      toast.add({ title: 'Scan queued', description: 'The scanner will begin shortly.' })
-      emit('queued')
+    if (isSiteBusy(props.site.id)) {
+      toast.add({
+        title: 'Site busy',
+        description: 'Wait for the current scan to finish or stop it from the Scans page.',
+        color: 'warning'
+      })
+      return
     }
 
+    const raw = serializeScanConfig(validation.config)
+    await queueScanWithConfig(props.site.id, raw, deriveScanType(validation.config))
+    toast.add({ title: 'Scan queued', description: 'The scanner will begin shortly.' })
+    emit('queued')
     open.value = false
   } catch (e: unknown) {
     toast.add({ title: 'Failed', description: String(e), color: 'error' })
@@ -289,222 +99,15 @@ async function submit() {
     :description="hostname"
     :ui="{ content: 'sm:max-w-4xl', description: 'text-gray-400' }"
   >
-
     <template #body>
-      <UAccordion
-        v-model="accordionOpen"
-        type="multiple"
-        :items="accordionItems"
-        :unmount-on-hide="false"
-        class="space-y-1"
-      >
-        <template #scope-body>
-          <div class="space-y-5 pt-2">
-            <UFormField label="Scan mode">
-              <URadioGroup
-                v-model="configState.mode"
-                :items="scanModeItems"
-                orientation="horizontal"
-                variant="table"
-              />
-            </UFormField>
-
-            <div v-if="configState.mode === 'full'" class="space-y-4">
-              <div class="grid sm:grid-cols-2 gap-4">
-                <UFormField label="Page limit" help="Scan stops after this many pages">
-                  <UInput v-model.number="configState.maxPages" type="number" min="1" />
-                </UFormField>
-                <UFormField label="Max depth" help="How many links deep to follow from the homepage">
-                  <UInput v-model.number="configState.maxDepth" type="number" min="1" />
-                </UFormField>
-              </div>
-              <UFormField label="Stay on this domain" help="Don't follow links to external domains">
-                <USwitch v-model="configState.stayOnDomain" />
-              </UFormField>
-              <UFormField label="Respect robots.txt" help="Skip pages disallowed by robots.txt">
-                <USwitch v-model="configState.respectRobots" />
-              </UFormField>
-            </div>
-
-            <div v-else-if="configState.mode === 'pages'" class="space-y-2">
-              <UFormField
-                label="URLs to scan (one per line)"
-                help="Each URL is scanned independently. No crawling."
-              >
-                <UTextarea
-                  v-model="pagesText"
-                  :rows="6"
-                  class="min-h-[120px] font-mono text-sm"
-                  placeholder="https://example.com/about&#10;https://example.com/contact"
-                  @blur="validatePageUrls"
-                />
-              </UFormField>
-              <p class="text-sm text-muted">
-                {{ pageUrlCount }} URL{{ pageUrlCount === 1 ? '' : 's' }} entered
-              </p>
-              <p v-if="pagesTouched && invalidPageLines.length" class="text-sm text-error">
-                {{ invalidPageLines.length }} invalid URL line(s) — check format (https://…)
-              </p>
-            </div>
-
-            <div v-else class="space-y-4">
-              <UFormField label="Sitemap URL">
-                <div class="flex gap-2">
-                  <UInput v-model="configState.sitemapUrl" class="flex-1" />
-                  <UButton
-                    label="Fetch & Preview"
-                    variant="outline"
-                    :loading="sitemapLoading"
-                    @click="fetchSitemapPreview"
-                  />
-                </div>
-              </UFormField>
-              <p v-if="sitemapCount !== null" class="text-sm text-success">
-                Found {{ sitemapCount }} URLs in sitemap
-              </p>
-              <p v-if="sitemapError" class="text-sm text-error">{{ sitemapError }}</p>
-              <UFormField label="Page limit" help="Scan stops after this many pages">
-                <UInput v-model.number="configState.maxPages" type="number" min="1" />
-              </UFormField>
-            </div>
-
-            <div class="border-t border-default pt-4 space-y-4">
-              <UFormField
-                label="Include patterns (optional)"
-                help="Only scan URLs matching these glob patterns. Leave empty for all."
-              >
-                <UInputTags v-model="configState.includePatterns" placeholder="/blog/* or /products/*" />
-              </UFormField>
-              <UFormField
-                label="Exclude patterns (optional)"
-                help="Skip URLs matching these patterns."
-              >
-                <UInputTags v-model="configState.excludePatterns" placeholder="/admin/* or *.pdf" />
-              </UFormField>
-            </div>
-          </div>
-        </template>
-
-        <template #schedule-body>
-          <div class="space-y-4 pt-2">
-            <UFormField
-              label="Schedule this scan"
-              help="Save as a recurring schedule for this site (replaces any existing schedule)."
-            >
-              <USwitch v-model="configState.scheduleEnabled" />
-            </UFormField>
-            <div v-if="configState.scheduleEnabled" class="grid sm:grid-cols-2 gap-4">
-              <UFormField label="Frequency">
-                <USelectMenu v-model="configState.scheduleFrequency" :items="scheduleFrequencyItems" value-key="value" />
-              </UFormField>
-              <UFormField v-if="showScheduleTime" label="Run at">
-                <UInput v-model="configState.scheduleTime" type="time" />
-              </UFormField>
-            </div>
-          </div>
-        </template>
-
-        <template #browser-body>
-          <div class="space-y-4 pt-2">
-            <UFormField label="Viewport" help="Viewport affects responsive layouts and may change which issues are detected">
-              <URadioGroup v-model="configState.viewport" :items="viewportItems" orientation="horizontal" variant="table" />
-            </UFormField>
-            <UFormField
-              label="Wait for page load"
-              help="How long Playwright waits before running axe. Use Network idle for SPAs and JS-heavy sites."
-            >
-              <USelectMenu v-model="configState.waitStrategy" :items="waitStrategyItems" value-key="value" />
-            </UFormField>
-            <div class="grid sm:grid-cols-2 gap-4">
-              <UFormField label="Parallel pages" help="Higher = faster scans but more memory. Reduce if the scanner crashes.">
-                <UInput v-model.number="configState.concurrency" type="number" min="1" max="10" />
-              </UFormField>
-              <UFormField label="Page timeout (seconds)" help="Skip a page if it doesn't load within this time">
-                <UInput v-model.number="configState.timeout" type="number" min="5" />
-              </UFormField>
-            </div>
-          </div>
-        </template>
-
-        <template #auth-body>
-          <div class="space-y-4 pt-2">
-            <UFormField label="Auth type">
-              <USelectMenu v-model="configState.auth.type" :items="authTypeItems" value-key="value" />
-            </UFormField>
-
-            <div v-if="configState.auth.type === 'basic'" class="grid sm:grid-cols-2 gap-4">
-              <UFormField label="Username" :error="authErrors.includes('Username is required for HTTP Basic Auth')">
-                <UInput v-model="configState.auth.username" />
-              </UFormField>
-              <UFormField label="Password" :error="authErrors.includes('Password is required for HTTP Basic Auth')">
-                <UInput v-model="configState.auth.password" type="password" />
-              </UFormField>
-            </div>
-
-            <div v-else-if="configState.auth.type === 'form'" class="space-y-4">
-              <UFormField label="Login page URL">
-                <UInput v-model="configState.auth.loginUrl" placeholder="https://example.com/login" />
-              </UFormField>
-              <div class="grid sm:grid-cols-2 gap-4">
-                <UFormField label="Username field selector">
-                  <UInput v-model="configState.auth.usernameSelector" />
-                </UFormField>
-                <UFormField label="Password field selector">
-                  <UInput v-model="configState.auth.passwordSelector" />
-                </UFormField>
-              </div>
-              <div class="grid sm:grid-cols-2 gap-4">
-                <UFormField label="Username value">
-                  <UInput v-model="configState.auth.username" />
-                </UFormField>
-                <UFormField label="Password value">
-                  <UInput v-model="configState.auth.password" type="password" />
-                </UFormField>
-              </div>
-              <UFormField label="Submit button selector">
-                <UInput v-model="configState.auth.submitSelector" />
-              </UFormField>
-              <p class="text-sm text-muted">
-                Playwright will fill and submit this form before starting the crawl, then reuse the authenticated session for all pages.
-              </p>
-            </div>
-
-            <div v-else-if="configState.auth.type === 'cookie'">
-              <UFormField label="Cookie string" help="Paste cookies from your browser's DevTools (Application → Cookies)">
-                <UTextarea v-model="configState.auth.cookieString" placeholder="name=value; name2=value2" :rows="4" />
-              </UFormField>
-            </div>
-
-            <div v-else-if="configState.auth.type === 'bearer'">
-              <UFormField label="Token value" help="Sent as Authorization: Bearer &lt;token&gt; header on every request">
-                <UInput v-model="configState.auth.token" type="password" />
-              </UFormField>
-            </div>
-          </div>
-        </template>
-
-        <template #advanced-body>
-          <div class="space-y-4 pt-2">
-            <UFormField label="Custom HTTP headers" help="Sent with every Playwright request. Useful for feature flags, bypass tokens, or CDN authentication.">
-              <div class="space-y-2">
-                <div
-                  v-for="(row, index) in headerRows"
-                  :key="index"
-                  class="flex gap-2 items-center"
-                >
-                  <UInput v-model="row.key" placeholder="Header name" class="flex-1" />
-                  <UInput v-model="row.value" placeholder="Value" class="flex-1" />
-                  <UButton icon="i-lucide-x" color="neutral" variant="ghost" @click="removeHeaderRow(index)" />
-                </div>
-                <UButton label="Add header" icon="i-lucide-plus" size="sm" variant="outline" @click="addHeaderRow" />
-              </div>
-            </UFormField>
-            <UFormField label="User agent override" help="Leave empty to use the default Chromium user agent">
-              <UInput v-model="configState.userAgent" placeholder="Mozilla/5.0 ..." />
-            </UFormField>
-          </div>
-        </template>
-      </UAccordion>
+      <ScanConfigForm
+        v-if="site"
+        ref="formRef"
+        :site-url="site.url"
+        :initial-raw-config="initialRawConfig ?? site.default_scan_config"
+        :initial-page-url="initialPageUrl"
+        :max-pages-default="maxPagesDefault"
+      />
     </template>
 
     <template #footer>
@@ -512,11 +115,7 @@ async function submit() {
         <UButton label="Save as default" variant="link" color="neutral" size="sm" @click="saveAsDefault" />
         <div class="flex gap-2">
           <UButton label="Cancel" color="neutral" variant="outline" @click="open = false" />
-          <UButton
-            :label="primaryLabel"
-            :loading="submitting"
-            @click="submit"
-          />
+          <UButton label="Start Scan" :loading="submitting" @click="submit" />
         </div>
       </div>
     </template>

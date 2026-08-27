@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AccessibilityIssue } from '~/types/accessiq'
+import type { AccessibilityIssue } from '~/types/sitenook'
 
 export interface DonutSegment {
   label: string
@@ -12,6 +12,17 @@ const props = defineProps<{
   label?: string
   size?: 'sm' | 'lg'
   variant?: 'default' | 'site-target'
+  /** Override arc/value color (defaults to score severity ring color). */
+  ringColor?: string
+  /**
+   * When true, hovering swaps the score arc to severity color (green/amber/red).
+   */
+  severityHover?: boolean
+  /**
+   * When true, hovering slightly scales the rings and thickens the score arc
+   * without changing its color.
+   */
+  hoverZoom?: boolean
   /** Main chart: show "Overall score" + calculation tooltip */
   showOverallLabel?: boolean
   /** Open issues for impact breakdown ring (main chart). */
@@ -21,6 +32,8 @@ const props = defineProps<{
   deltaTooltip?: string
   /** Potential overall score while hovering a conformance row (site-target variant). */
   potentialScore?: number | null
+  /** Show a subtle updating indicator (site-target variant). */
+  scoreUpdating?: boolean
 }>()
 
 const SCORE_TOOLTIP =
@@ -35,7 +48,26 @@ const IMPACT_COLORS: Record<string, string> = {
 
 const TRACK_COLOR = 'rgba(255, 255, 255, 0.06)'
 
-const color = computed(() => scoreRingColor(props.score))
+const hovered = ref(false)
+
+const hoverInteractive = computed(() => props.severityHover || props.hoverZoom)
+
+const color = computed(() => {
+  if (props.severityHover && hovered.value) {
+    return scoreRingColor(props.score)
+  }
+  return props.ringColor ?? scoreRingColor(props.score)
+})
+
+function onDonutEnter() {
+  if (!hoverInteractive.value) return
+  hovered.value = true
+}
+
+function onDonutLeave() {
+  if (!hoverInteractive.value) return
+  hovered.value = false
+}
 
 const impactSegments = computed((): DonutSegment[] => {
   if (!props.impactIssues?.length) return []
@@ -65,10 +97,7 @@ const SEGMENT_GAP = 3
 
 const isSiteTarget = computed(() => props.variant === 'site-target')
 
-const strokeWidth = computed(() => {
-  if (isSiteTarget.value) return 14
-  return props.size === 'sm' ? 7 : 9
-})
+const strokeWidth = computed(() => (props.size === 'sm' ? 7 : 9))
 const impactStrokeWidth = 4
 
 const CENTER = 50
@@ -190,40 +219,49 @@ const ariaLabel = computed(() => {
   if (props.label) return `${props.label} score ${displayScore.value}`
   if (isSiteTarget.value) {
     const deltaPart = props.delta ? `, change ${props.delta}` : ''
-    return `Site target score ${displayScore.value} percent${deltaPart}`
+    return `Site score ${displayScore.value} percent${deltaPart}`
   }
   return `Overall score ${displayScore.value}`
 })
 </script>
 
 <template>
-  <div class="relative inline-flex flex-col items-center" :class="sizeClass">
+  <div
+    class="score-donut relative inline-flex flex-col items-center"
+    :class="[sizeClass, { 'score-donut--interactive': hoverInteractive, 'score-donut--hovered': hoverInteractive && hovered }]"
+    @mouseenter="onDonutEnter"
+    @mouseleave="onDonutLeave"
+  >
     <svg
       class="size-full"
       viewBox="0 0 100 100"
       role="img"
       :aria-label="ariaLabel"
     >
-      <circle
-        v-bind="ringCircleProps"
-        :stroke="TRACK_COLOR"
-      />
-      <circle
-        v-if="scoreArc.visible"
-        v-bind="ringCircleProps"
-        :stroke="color"
-        stroke-linecap="round"
-        class="score-donut-arc transition-[stroke-dasharray,stroke-dashoffset] duration-300 ease-out"
-        :stroke-dasharray="scoreArc.dashArray"
-        :stroke-dashoffset="scoreArc.dashOffset"
-        :transform="`rotate(-90 ${CENTER} ${CENTER})`"
-      />
+      <g class="score-donut-rings-group">
+        <circle
+          v-bind="ringCircleProps"
+          :stroke="TRACK_COLOR"
+          class="score-donut-track"
+        />
+        <circle
+          v-if="scoreArc.visible"
+          v-bind="ringCircleProps"
+          :stroke="color"
+          :stroke-width="hoverInteractive && hovered ? strokeWidth + 1.5 : strokeWidth"
+          stroke-linecap="round"
+          class="score-donut-arc"
+          :stroke-dasharray="scoreArc.dashArray"
+          :stroke-dashoffset="scoreArc.dashOffset"
+          :transform="`rotate(-90 ${CENTER} ${CENTER})`"
+        />
+      </g>
       <circle
         v-if="gainArc.visible"
         v-bind="ringCircleProps"
         :stroke="gainArcColor"
         stroke-linecap="round"
-        class="score-donut-gain transition-[stroke-dasharray,stroke-dashoffset,opacity] duration-300 ease-out"
+        class="score-donut-gain"
         :stroke-dasharray="gainArc.dashArray"
         :stroke-dashoffset="gainArc.dashOffset"
         :transform="`rotate(-90 ${CENTER} ${CENTER})`"
@@ -245,23 +283,33 @@ const ariaLabel = computed(() => {
         />
       </template>
     </svg>
-    <div class="absolute inset-0 flex flex-col items-center justify-center px-2 text-center pointer-events-none">
+    <div class="score-donut-center absolute inset-0 flex flex-col items-center justify-center px-2 text-center pointer-events-none">
       <template v-if="isSiteTarget">
         <template v-if="showPotentialGain && displayPotentialScore">
-          <span class="text-xs text-muted">Could be</span>
-          <span class="font-bold leading-none text-4xl mt-0.5 transition-opacity duration-300">
+          <span class="text-base font-semibold text-highlighted">Could be</span>
+          <span class="score-donut-value font-bold leading-none text-4xl mt-0.5">
             {{ displayPotentialScore }}%
           </span>
         </template>
         <template v-else>
-          <span class="text-xs text-muted">Score</span>
-          <span class="font-bold leading-none text-4xl mt-0.5 transition-opacity duration-300">
+          <div class="flex items-center gap-1.5">
+            <span class="text-base font-semibold text-highlighted">Site score</span>
+            <span
+              v-if="scoreUpdating"
+              class="inline-flex items-center gap-1 text-xs font-medium text-muted"
+              role="status"
+              aria-live="polite"
+            >
+              <UIcon name="i-lucide-loader-circle" class="size-3.5 animate-spin" />
+            </span>
+          </div>
+          <span class="score-donut-value font-bold leading-none text-4xl mt-0.5">
             {{ displayScore }}%
           </span>
         </template>
         <div
           v-if="delta && !showPotentialGain"
-          class="mt-1.5 flex items-center gap-1 text-sm font-medium pointer-events-auto"
+          class="score-donut-delta mt-1.5 flex items-center gap-1 text-sm font-medium pointer-events-auto"
           :class="deltaClass"
         >
           <span>{{ delta }}</span>
@@ -281,7 +329,10 @@ const ariaLabel = computed(() => {
         </div>
       </template>
       <template v-else>
-        <span class="font-bold leading-none" :class="size === 'sm' ? 'text-lg' : 'text-3xl'">{{ displayScore }}</span>
+        <span
+          class="score-donut-value font-bold leading-none"
+          :class="size === 'sm' ? 'text-lg' : 'text-3xl'"
+        >{{ displayScore }}%</span>
         <span v-if="label" class="text-xs text-muted mt-0.5">{{ label }}</span>
         <template v-else-if="showOverallLabel && isLarge">
           <span class="text-xs text-muted mt-1">Overall score</span>
@@ -299,3 +350,53 @@ const ariaLabel = computed(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.score-donut--interactive {
+  cursor: default;
+}
+
+.score-donut-arc {
+  transition:
+    stroke 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    stroke-dasharray 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    stroke-dashoffset 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    stroke-width 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.score-donut-gain {
+  transition:
+    stroke 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    stroke-dasharray 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    stroke-dashoffset 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.score-donut-rings-group {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  transition: transform 380ms cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.score-donut--hovered .score-donut-rings-group {
+  transform: scale(1.045);
+}
+
+.score-donut-track {
+  transition: stroke-width 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.score-donut-center {
+  transform-box: border-box;
+  transform-origin: center center;
+  transition: transform 380ms cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.score-donut--hovered .score-donut-center {
+  transform: scale(1.045);
+}
+
+.score-donut-value {
+  display: inline-block;
+}
+</style>

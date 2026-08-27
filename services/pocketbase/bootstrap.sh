@@ -1,5 +1,5 @@
 #!/bin/sh
-# Creates AccessIQ collections via PocketBase Admin REST API (runs once).
+# Creates SiteNook collections via PocketBase Admin REST API (runs once).
 set -e
 
 PB_URL="${PB_URL:-http://127.0.0.1:8090}"

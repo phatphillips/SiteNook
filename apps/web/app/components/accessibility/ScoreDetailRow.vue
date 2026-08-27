@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import {
+  A11Y_BAR_FILL,
+  A11Y_BAR_FILL_HOVER,
+  A11Y_BAR_TRACK
+} from '~/utils/chartTheme'
+
 const props = defineProps<{
   badge: string
   badgeClass: string
@@ -25,7 +31,6 @@ const ACCENT_BY_BADGE: Record<string, string> = {
   'site-target-badge--bp': '#0d47a1'
 }
 
-const barColor = computed(() => scoreRingColor(props.score))
 const displayScore = computed(() => formatAccessibilityScore(props.score))
 const accentColor = computed(() => ACCENT_BY_BADGE[props.badgeClass] ?? '#7b1fa2')
 const fillWidth = computed(() => {
@@ -47,8 +52,14 @@ const rowStateClass = computed(() => {
 })
 
 const rowStyle = computed(() => {
-  if (!props.selected) return undefined
+  const base = {
+    '--bar-fill': A11Y_BAR_FILL,
+    '--bar-fill-hover': A11Y_BAR_FILL_HOVER,
+    '--bar-track': A11Y_BAR_TRACK
+  }
+  if (!props.selected) return base
   return {
+    ...base,
     boxShadow: `inset 3px 0 0 ${accentColor.value}, 0 1px 2px rgb(0 0 0 / 0.05)`
   }
 })
@@ -67,7 +78,13 @@ function onHelpClick(event: MouseEvent) {
     type="button"
     data-score-row
     class="score-detail-row group flex w-full flex-col justify-center gap-1.5 rounded-lg border border-transparent px-3 py-2.5 -mx-3 text-left transition-[background-color,border-color,box-shadow] duration-150 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-    :class="rowStateClass"
+    :class="[
+      rowStateClass,
+      {
+        'score-detail-row--active': active,
+        'score-detail-row--selected': selected
+      }
+    ]"
     :style="rowStyle"
     :aria-pressed="selected"
     @click="onRowClick"
@@ -101,23 +118,48 @@ function onHelpClick(event: MouseEvent) {
           : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-hover:translate-x-0.5'"
         aria-hidden="true"
       />
-      <span
-        class="text-sm font-semibold tabular-nums shrink-0"
-        :style="{ color: barColor }"
-      >
+      <span class="text-sm font-semibold tabular-nums shrink-0 text-highlighted">
         {{ displayScore }}%
       </span>
     </div>
     <div
-      class="h-2 shrink-0 rounded-full overflow-hidden bg-default/60 transition-[background-color] duration-150 dark:bg-white/[0.06]"
-      :class="active ? 'bg-default/80 dark:bg-white/[0.1]' : ''"
+      class="score-detail-row__track relative h-2.5 shrink-0 overflow-hidden rounded transition-[background-color] duration-150"
       role="presentation"
       aria-hidden="true"
     >
       <div
-        class="h-full rounded-full transition-[width] duration-300"
-        :style="{ width: fillWidth, backgroundColor: barColor }"
+        class="score-detail-row__bar absolute inset-y-0 left-0 rounded"
+        :style="{ width: fillWidth }"
       />
     </div>
   </button>
 </template>
+
+<style scoped>
+.score-detail-row__track {
+  background-color: var(--bar-track);
+  transform-origin: left center;
+  transition: transform 380ms cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.score-detail-row:hover .score-detail-row__track,
+.score-detail-row:focus-visible .score-detail-row__track,
+.score-detail-row--active .score-detail-row__track,
+.score-detail-row--selected .score-detail-row__track {
+  transform: scale(1.012);
+}
+
+.score-detail-row__bar {
+  background-color: var(--bar-fill);
+  transition:
+    background-color 180ms ease,
+    width 300ms ease;
+}
+
+.score-detail-row:hover .score-detail-row__bar,
+.score-detail-row:focus-visible .score-detail-row__bar,
+.score-detail-row--active .score-detail-row__bar,
+.score-detail-row--selected .score-detail-row__bar {
+  background-color: var(--bar-fill-hover);
+}
+</style>

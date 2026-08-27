@@ -3,6 +3,7 @@ import { getPbAdmin } from '../../../../utils/pbAdmin'
 import { requireSiteAccess } from '../../../../utils/requireSiteAccess'
 import { reconcileSiteCurrentA11y } from '../../../../utils/reconcileSiteCurrentA11y'
 import { invalidateIssuesCache } from '../../../../utils/a11yIssuesCache'
+import { recomputeDashboardRollupsForSite } from '../../../../utils/dashboardRollups'
 
 export default defineEventHandler(async (event) => {
   const siteId = getRouterParam(event, 'siteId') ?? ''
@@ -11,6 +12,7 @@ export default defineEventHandler(async (event) => {
   try {
     const admin = await getPbAdmin(event)
     const summary = await reconcileSiteCurrentA11y(admin, siteId)
+    await recomputeDashboardRollupsForSite(admin, siteId)
     invalidateIssuesCache(siteId)
     return { currentA11y: summary }
   } catch (error) {

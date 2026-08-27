@@ -333,7 +333,7 @@ ensure_reset_password_template() {
   target_fragment="${DASHBOARD_URL}/reset-password?token={TOKEN}"
 
   if echo "$current_url" | grep -qF "$target_fragment"; then
-    echo "  users.resetPasswordTemplate already points at AccessIQ"
+    echo "  users.resetPasswordTemplate already points at SiteNook"
     return
   fi
 

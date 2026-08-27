@@ -36,7 +36,7 @@ function listBillingContactEmails(app, organizationId) {
 
 function buildChurnRetentionEmail(app, orgRecord) {
   const mailer = require(`${__hooks}/mailer_tenant_reset_lib.js`)
-  const appName = String($os.getenv('APP_NAME') || 'AccessIQ').trim() || 'AccessIQ'
+  const appName = String($os.getenv('APP_NAME') || 'SiteNook').trim() || 'SiteNook'
   const supportEmail = String($os.getenv('NUXT_PUBLIC_SUPPORT_EMAIL') || 'contact@your-org.com').trim()
   const dashboardUrl = String($os.getenv('APP_DASHBOARD_URL') || 'http://localhost:3000').replace(/\/$/, '')
   const appDomain = String($os.getenv('APP_PUBLIC_DOMAIN') || 'localhost').trim().toLowerCase()
@@ -71,7 +71,7 @@ function buildChurnRetentionEmail(app, orgRecord) {
 
 function buildClosureEmail(app, orgRecord) {
   const mailer = require(`${__hooks}/mailer_tenant_reset_lib.js`)
-  const appName = String($os.getenv('APP_NAME') || 'AccessIQ').trim() || 'AccessIQ'
+  const appName = String($os.getenv('APP_NAME') || 'SiteNook').trim() || 'SiteNook'
   const supportEmail = String($os.getenv('NUXT_PUBLIC_SUPPORT_EMAIL') || 'contact@your-org.com').trim()
   const dashboardUrl = String($os.getenv('APP_DASHBOARD_URL') || 'http://localhost:3000').replace(/\/$/, '')
   const appDomain = String($os.getenv('APP_PUBLIC_DOMAIN') || 'localhost').trim().toLowerCase()
@@ -109,7 +109,7 @@ function notifyBillingContactsOfChurn(app, orgRecord) {
 
   const settings = app.settings()
   const fromAddress = String(settings.meta.senderAddress || '').trim()
-  const fromName = String(settings.meta.senderName || 'AccessIQ').trim()
+  const fromName = String(settings.meta.senderName || 'SiteNook').trim()
   if (!fromAddress) {
     console.warn('[org_closure_mailer] senderAddress not configured; skipping churn emails')
     return 0
@@ -143,7 +143,7 @@ function notifyBillingContactsOfClosure(app, orgRecord) {
 
   const settings = app.settings()
   const fromAddress = String(settings.meta.senderAddress || '').trim()
-  const fromName = String(settings.meta.senderName || 'AccessIQ').trim()
+  const fromName = String(settings.meta.senderName || 'SiteNook').trim()
   if (!fromAddress) {
     console.warn('[org_closure_mailer] senderAddress not configured; skipping closure emails')
     return 0

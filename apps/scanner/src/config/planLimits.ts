@@ -22,7 +22,7 @@ const LEGACY_PLAN_ALIASES: Record<string, OrganizationPlan> = {
 
 const PLAN_LIMITS: Record<OrganizationPlan, PlanLimitSet> = {
   free: {
-    maxPagesPerScan: 100,
+    maxPagesPerScan: 20,
     scanHistoryDays: 7,
     scheduledScans: false,
     seoModule: false,

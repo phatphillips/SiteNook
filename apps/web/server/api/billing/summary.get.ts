@@ -1,6 +1,6 @@
 import { createError } from 'h3'
 import type { RecordModel } from 'pocketbase'
-import type { Organization } from '~/types/accessiq'
+import type { Organization } from '~/types/sitenook'
 import { loadOrganizationPlanUsage } from '../../utils/orgPlanUsage'
 import { isOrgAdmin, requireUserOrganizationId } from '~/utils/orgAccess'
 import { buildPaidPlanChangeAssessments } from '~/utils/planEligibility'

@@ -7,6 +7,12 @@ import type { SeoIssueDraft } from '../seo/types.js'
 import { normalizeSeoUrl } from '../seo/linkGraph.js'
 import { indexWebpageFromPage } from '../search/searchIndexer.js'
 import { extractHrefUrlsFromHtml, mergeOutboundLinkUrls } from '../search/outboundLinks.js'
+import { buildInventoryRefsForPage } from '../qa/inventoryRefs.js'
+import { truncateHtmlSnapshot } from '../utils/truncateHtmlSnapshot.js'
+import { attachPageSimulatorPreview } from './attachPageSimulatorPreview.js'
+import { attachPageRenderedHtml } from './attachPageRenderedHtml.js'
+import { persistContentObservation } from '../content/persistContentObservation.js'
+import { createPageRecord } from './createPageRecord.js'
 
 export interface SavePageResultOptions {
   persistInventory?: boolean
@@ -63,7 +69,7 @@ export async function saveSinglePageResult(
   const pb = getPocketBase()
   const pageUrl = requireHttpUrl(pageResult.url, startUrl)
 
-  const pageRecord = await pb.collection('pages').create({
+  const pageRecord = await createPageRecord(pb, {
     scan: scanId,
     site: siteId,
     url: pageUrl,
@@ -73,9 +79,39 @@ export async function saveSinglePageResult(
     readability_score: pageResult.readabilityScore,
     readability_scores: pageResult.readabilityScores,
     crawl_depth: pageResult.crawlDepth,
-    html_snapshot: pageResult.htmlSnapshot.slice(0, 200000),
+    html_snapshot: truncateHtmlSnapshot(pageResult.htmlSnapshot),
+    html_size_bytes: pageResult.htmlSizeBytes,
+    ...(pageResult.tabOrder ? { tab_order: pageResult.tabOrder } : {}),
     ...(pageResult.seoSnapshot ? { seo_snapshot: pageResult.seoSnapshot } : {})
   })
+
+  await attachPageSimulatorPreview(pb, pageRecord.id, pageResult.previewImage)
+  await attachPageRenderedHtml(pb, pageRecord.id, pageResult.renderedHtml)
+
+  if (pageResult.contentMarkdown?.trim()) {
+    try {
+      const content = await persistContentObservation(pb, {
+        scanId,
+        siteId,
+        pageId: pageRecord.id,
+        pageUrl,
+        title: pageResult.title,
+        markdown: pageResult.contentMarkdown
+      })
+      if (content) {
+        await pb.collection('pages').update(pageRecord.id, {
+          content_blob: content.blobId,
+          content_hash: content.contentHash,
+          content_unchanged: content.unchanged
+        })
+      }
+    } catch (err) {
+      console.warn(
+        `Content observation failed for page ${pageRecord.id}:`,
+        err instanceof Error ? err.message : err
+      )
+    }
+  }
 
   if (pageResult.issues.length) {
     await batchCreate('accessibility_issues', pageResult.issues.map(issue =>
@@ -117,6 +153,8 @@ export async function saveSinglePageResult(
     .filter((item): item is NonNullable<typeof item> => item !== null)
   if (options?.persistInventory && inventory.length) {
     await batchCreate('qa_inventory', inventory)
+    const refs = buildInventoryRefsForPage(scanId, pageRecord.id, inventory)
+    if (refs.length) await batchCreate('qa_inventory_refs', refs)
   }
 
   if (pageResult.seoIssues?.length) {

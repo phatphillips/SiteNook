@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Scan } from '~/types/accessiq'
+import type { Scan } from '~/types/sitenook'
 import {
   formatScanChangesCompact,
   formatScanDiffDetail,

@@ -101,3 +101,26 @@ export function startPeriodicAuthRefresh(
 
   return () => window.clearInterval(intervalId)
 }
+
+/** Refresh when the tab becomes visible again (browsers throttle timers in background tabs). */
+export function startVisibilityAuthRefresh(
+  pb: PocketBase,
+  refreshAuthToken: () => Promise<boolean>,
+  onSessionExpired: () => void
+): () => void {
+  const handler = () => {
+    if (document.visibilityState !== 'visible') return
+    if (!pb.authStore.isValid) {
+      onSessionExpired()
+      return
+    }
+    void refreshAuthToken().then((refreshed) => {
+      if (!refreshed && !pb.authStore.isValid) {
+        onSessionExpired()
+      }
+    })
+  }
+
+  document.addEventListener('visibilitychange', handler)
+  return () => document.removeEventListener('visibilitychange', handler)
+}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import type { SeoIssue } from '~/types/accessiq'
+import type { SeoIssue } from '~/types/sitenook'
 
 import type { SerpDevice } from '~/utils/serpPreview'
 
@@ -22,7 +22,7 @@ const siteId = computed(() => route.params.id as string)
 
 const { sites, activeSiteId } = useSites()
 
-const { pages, openIssues } = useSEO(siteId)
+const { pages, openIssues } = useSEO(siteId, { summary: false, parts: ['issues', 'pages'] })
 
 
 
@@ -219,8 +219,6 @@ function openIssue(issue: SeoIssue) {
     </template>
 
     <template #body>
-
-      <SitePageToolbar class="mb-2" />
 
       <div class="grid grid-cols-1 lg:grid-cols-[55fr_45fr] gap-4 lg:gap-5 items-start">
 

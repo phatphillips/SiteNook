@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AccessibilityIssue, IssueFilters } from '~/types/accessiq'
+import type { AccessibilityIssue, IssueFilters } from '~/types/sitenook'
 
 const props = defineProps<{
   modelValue: IssueFilters

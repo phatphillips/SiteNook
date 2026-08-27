@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" fill="none">
+  <rect width="960" height="540" fill="#111827"/>
+  <rect x="80" y="70" width="800" height="400" rx="18" fill="#1F2937"/>
+  <circle cx="120" cy="110" r="6" fill="#EF4444"/>
+  <circle cx="144" cy="110" r="6" fill="#F59E0B"/>
+  <circle cx="168" cy="110" r="6" fill="#22C55E"/>
+  <rect x="200" y="100" width="280" height="20" rx="6" fill="#374151"/>
+  <rect x="110" y="160" width="180" height="14" rx="4" fill="#4B5563"/>
+  <rect x="110" y="190" width="740" height="40" rx="8" fill="#111827"/>
+  <circle cx="130" cy="210" r="5" fill="#22C55E"/>
+  <rect x="150" y="204" width="280" height="12" rx="3" fill="#6B7280"/>
+  <rect x="110" y="250" width="740" height="40" rx="8" fill="#111827"/>
+  <circle cx="130" cy="270" r="5" fill="#38BDF8"/>
+  <rect x="150" y="264" width="360" height="12" rx="3" fill="#6B7280"/>
+  <rect x="110" y="310" width="740" height="40" rx="8" fill="#111827"/>
+  <circle cx="130" cy="330" r="5" fill="#F59E0B"/>
+  <rect x="150" y="324" width="420" height="12" rx="3" fill="#6B7280"/>
+  <rect x="110" y="370" width="740" height="40" rx="8" fill="#111827"/>
+  <circle cx="130" cy="390" r="5" fill="#22C55E"/>
+  <rect x="150" y="384" width="300" height="12" rx="3" fill="#6B7280"/>
+  <text x="780" y="118" text-anchor="end" fill="#22C55E" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Live</text>
+</svg>

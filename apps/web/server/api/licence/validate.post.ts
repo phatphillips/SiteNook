@@ -1,5 +1,10 @@
 import { createError } from 'h3'
 import {
+  getLicenceTierLimits,
+  normalizeLicenceTier,
+  organizationPlanForLicenceTier
+} from '~/utils/licenceTiers'
+import {
   buildLicenceTokenPayload,
   hashInstanceFingerprint,
   signLicenceToken
@@ -56,7 +61,8 @@ export default defineEventHandler(async (event) => {
     await pb.collection('licences').update(record.id, { fingerprint })
   }
 
-  const tier = String(record.tier ?? 'enterprise')
+  const tier = normalizeLicenceTier(record.tier)
+  const limits = getLicenceTierLimits(tier)
   const payload = buildLicenceTokenPayload({
     key,
     tier,
@@ -65,9 +71,25 @@ export default defineEventHandler(async (event) => {
     expires_at: expiresAt
   })
 
+  if (!String(record.domain ?? '').trim()) {
+    await pb.collection('licences').update(record.id, { domain })
+  }
+
   return {
     valid: true,
     tier,
+    plan: organizationPlanForLicenceTier(tier),
+    limits: {
+      maxSites: limits.maxSites,
+      maxPagesPerScan: limits.maxPagesPerScan,
+      maxTeamMembers: limits.maxTeamMembers,
+      scanHistoryDays: limits.scanHistoryDays,
+      scheduledScans: limits.scheduledScans,
+      seoModule: limits.seoModule,
+      policies: limits.policies,
+      inventory: limits.inventory,
+      pdfAccessibility: limits.pdfAccessibility
+    },
     expires_at: expiresAt,
     signed_token: signLicenceToken(payload, event)
   }

@@ -4,7 +4,7 @@ import { upperFirst } from 'scule'
 import { getExpandedRowModel, getPaginationRowModel, getSortedRowModel } from '@tanstack/vue-table'
 import type { TableColumn } from '@nuxt/ui'
 import type { Column, Row, SortingState } from '@tanstack/vue-table'
-import type { AccessibilityIssue } from '~/types/accessiq'
+import type { AccessibilityIssue } from '~/types/sitenook'
 import { formatIssueSeverity, parsePageUrl } from '~/utils/issueExplanation'
 import { normalizePageUrl, preferPageUrlDisplay } from '~/utils/pageUrl'
 import { issueRowActionGroups } from '~/utils/issueActions'
@@ -39,6 +39,7 @@ const columnVisibility = ref<Record<string, boolean>>({})
 
 interface PageRow {
   url: string
+  title: string
   a: number
   aa: number
   aaa: number
@@ -47,6 +48,7 @@ interface PageRow {
 
 const COLUMN_LABELS: Record<string, string> = {
   expand: 'Expand',
+  title: 'Title',
   url: 'Page URL',
   a: 'A',
   aa: 'AA',
@@ -69,8 +71,9 @@ const rows = computed<PageRow[]>(() => {
     const rawUrl = issue.expand?.page?.url
     if (!rawUrl) continue
     const key = normalizePageUrl(rawUrl)
-    const row = map.get(key) ?? { url: rawUrl, a: 0, aa: 0, aaa: 0, issues: [] }
+    const row = map.get(key) ?? { url: rawUrl, title: issue.expand?.page?.title || '', a: 0, aa: 0, aaa: 0, issues: [] }
     row.url = preferPageUrlDisplay(row.url, rawUrl)
+    if (!row.title && issue.expand?.page?.title) row.title = issue.expand.page.title
     row.issues.push(issue)
     map.set(key, row)
   }
@@ -134,6 +137,15 @@ const columns: TableColumn<PageRow>[] = [
         onClick: () => row.toggleExpanded()
       })
     }
+  },
+  {
+    accessorKey: 'title',
+    enableHiding: false,
+    header: ({ column }) => sortableHeader(column, 'Title'),
+    cell: ({ row }) => h('span', {
+      class: 'text-sm text-default block truncate max-w-xs',
+      title: row.original.title
+    }, row.original.title || '—')
   },
   {
     accessorKey: 'url',
@@ -228,7 +240,8 @@ const columnMenuItems = computed((): ColumnMenuItem[] => {
 defineExpose({
   get columnMenuItems() {
     return columnMenuItems.value
-  }
+  },
+  getColumnVisibility: () => columnVisibility.value
 })
 
 const filteredRowCount = computed(

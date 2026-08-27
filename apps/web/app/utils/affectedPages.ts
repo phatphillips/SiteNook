@@ -1,4 +1,4 @@
-import type { AccessibilityIssue } from '~/types/accessiq'
+import type { AccessibilityIssue } from '~/types/sitenook'
 import { normalizePageUrl } from '~/utils/pageUrl'
 
 export interface AffectedPageDetail {
@@ -12,6 +12,8 @@ export interface AffectedPageSummary {
   url: string
   title?: string
   occurrences: number
+  /** Open issue record ids for this page (when loaded for dismiss actions). */
+  issueIds?: string[]
 }
 
 export function pageDisplayTitle(page: Pick<AffectedPageSummary, 'url' | 'title'>): string {
@@ -32,7 +34,7 @@ export function affectedPagesSummaryForRule(
   options?: { statuses?: Array<AccessibilityIssue['status']> }
 ): AffectedPageSummary[] {
   const allowed = options?.statuses ? new Set(options.statuses) : null
-  const map = new Map<string, { url: string, title?: string, occurrences: number }>()
+  const map = new Map<string, { url: string, title?: string, occurrences: number, issueIds: string[] }>()
 
   for (const issue of issues) {
     if (issue.rule_id !== ruleId) continue
@@ -43,6 +45,7 @@ export function affectedPagesSummaryForRule(
     const existing = map.get(key)
     if (existing) {
       existing.occurrences += 1
+      if (issue.status === 'open') existing.issueIds.push(issue.id)
       if (!existing.title && issue.expand?.page?.title) {
         existing.title = issue.expand.page.title
       }
@@ -50,12 +53,18 @@ export function affectedPagesSummaryForRule(
       map.set(key, {
         url,
         title: issue.expand?.page?.title,
-        occurrences: 1
+        occurrences: 1,
+        issueIds: issue.status === 'open' ? [issue.id] : []
       })
     }
   }
 
-  return [...map.values()].sort((a, b) => a.url.localeCompare(b.url))
+  return [...map.values()]
+    .map(({ issueIds, ...page }) => ({
+      ...page,
+      issueIds: issueIds.length ? issueIds : undefined
+    }))
+    .sort((a, b) => a.url.localeCompare(b.url))
 }
 
 export function buildAffectedPagesByRule(
@@ -99,6 +108,23 @@ export function openIssueIdsForRule(issues: AccessibilityIssue[], ruleId: string
   return issues
     .filter(i => i.rule_id === ruleId && i.status === 'open')
     .map(i => i.id)
+}
+
+export function openIssueIdsForRuleAndPage(
+  issues: AccessibilityIssue[],
+  ruleId: string,
+  pageUrl: string
+): string[] {
+  const key = normalizePageUrl(pageUrl)
+  return issues
+    .filter((issue) => {
+      const url = issue.expand?.page?.url
+      return issue.rule_id === ruleId
+        && issue.status === 'open'
+        && url
+        && normalizePageUrl(url) === key
+    })
+    .map(issue => issue.id)
 }
 
 export function openIssueIdsForPage(issues: AccessibilityIssue[], pageUrl: string): string[] {

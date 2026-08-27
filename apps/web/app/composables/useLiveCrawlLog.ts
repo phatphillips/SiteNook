@@ -1,4 +1,4 @@
-import type { ActiveScanRow, Scan, ScanLogEvent } from '~/types/accessiq'
+import type { ActiveScanRow, Scan, ScanLogEvent } from '~/types/sitenook'
 import { pbRelation } from '~/utils/pbFilter'
 import {
   crawlLogLevelClass,
@@ -155,6 +155,13 @@ export function useLiveCrawlLog(
 
   function pushLine(line: CrawlLogLine) {
     if (allLines.value.some(l => l.id === line.id)) return
+    if (
+      line.level === 'success'
+      && line.url
+      && allLines.value.some(existing => existing.level === 'success' && existing.url === line.url)
+    ) {
+      return
+    }
     allLines.value = [...allLines.value, line].sort((a, b) => a.ts - b.ts)
   }
 
@@ -182,7 +189,7 @@ export function useLiveCrawlLog(
 
       const eventLines = (events as unknown as ScanLogEvent[]).map(eventToLine)
       const pageLines = (pages as Array<{ id: string, url: string, title?: string, created?: string }>)
-        .map(p => pageToLine(p as import('~/types/accessiq').PageRecord))
+        .map(p => pageToLine(p as import('~/types/sitenook').PageRecord))
 
       let merged = mergeCrawlLogLines(eventLines, pageLines, eventLines.length > 0)
       lastScanSnapshot.value = scan as Scan | null
@@ -235,7 +242,7 @@ export function useLiveCrawlLog(
         const record = e.record as { scan?: string, id: string, url: string, title?: string, created?: string }
         if (record.scan !== id) return
         if (allLines.value.some(l => l.url === record.url && l.level === 'success')) return
-        pushLine(pageToLine(record as import('~/types/accessiq').PageRecord))
+        pushLine(pageToLine(record as import('~/types/sitenook').PageRecord))
       })
     } catch {
       // optional

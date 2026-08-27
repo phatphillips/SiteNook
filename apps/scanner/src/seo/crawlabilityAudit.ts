@@ -118,7 +118,7 @@ async function probeUrl(url: string): Promise<{ status?: number, redirect?: stri
       method: 'HEAD',
       redirect: 'manual',
       signal: controller.signal,
-      headers: { 'User-Agent': 'AccessIQ-Scanner/1.0' }
+      headers: { 'User-Agent': 'SiteNook-Scanner/1.0' }
     })
     if (res.status >= 300 && res.status < 400) {
       return { status: res.status, redirect: res.headers.get('location') ?? undefined }
@@ -128,7 +128,7 @@ async function probeUrl(url: string): Promise<{ status?: number, redirect?: stri
         method: 'GET',
         redirect: 'manual',
         signal: controller.signal,
-        headers: { 'User-Agent': 'AccessIQ-Scanner/1.0' }
+        headers: { 'User-Agent': 'SiteNook-Scanner/1.0' }
       })
       if (getRes.status >= 300 && getRes.status < 400) {
         return { status: getRes.status, redirect: getRes.headers.get('location') ?? undefined }

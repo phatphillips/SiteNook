@@ -2,7 +2,7 @@
 
 By default, new customer organizations are provisioned by platform operators (`POST /api/provision`). Existing org **admins** invite colleagues from the dashboard.
 
-**Phase F (optional):** When `NUXT_PUBLIC_SELF_SERVICE_SIGNUP=true`, new customers can create an organization from the apex host. **Phase G** adds marketing landing, `/pricing`, and Stripe Checkout before `/start` for paid plans. Team member onboarding is unchanged — only admins invite colleagues.
+**Phase F (optional):** When `NUXT_PUBLIC_SELF_SERVICE_SIGNUP=true`, new customers can create an organization from the apex host. **Phase G** adds marketing landing, `/pricing`, and Stripe Checkout before `/start` for paid plans. The primary marketing CTA is a **30-day Team trial** (`/start?plan=team&trial=1`, no credit card); Free remains available at 1 site / 20 pages per scan. After trial expiry the scanner downgrades the org to Free. Team member onboarding is unchanged — only admins invite colleagues.
 
 ---
 
@@ -12,6 +12,7 @@ By default, new customer organizations are provisioned by platform operators (`P
 |------|-----|-----|
 | **New organization** | Platform operator / sales | `POST /api/provision` (Nitro, API key) |
 | **New organization (self-service, free)** | New customer on apex | `/pricing` → **Get started free** → `/start?plan=free` |
+| **New organization (self-service, Team trial)** | New customer on apex | Landing/pricing → **Start free trial** → `/start?plan=team&trial=1` (no card; 30-day Team) |
 | **New organization (self-service, paid)** | New customer on apex | `/pricing` → Stripe Checkout → `/start?checkout=cs_…&plan=team` (or `starter` / `business`) |
 | **New colleague** | Org admin | Settings → Team Members → **Send invite** |
 | **Set password** | Invited user | Email link → `/reset-password?setup=1` → sign in on tenant URL |
@@ -55,7 +56,7 @@ X-Provision-Key: <NUXT_PROVISION_API_KEY>
 {
   "organization": { "id": "…", "name": "Acme Agency", "subdomain": "acme" },
   "owner": { "id": "…", "email": "jane@acme.example", "name": "Jane Smith" },
-  "loginUrl": "https://acme.accessiq.com/login",
+  "loginUrl": "https://acme.sitenook.com/login",
   "inviteEmailSent": true
 }
 ```
@@ -96,7 +97,7 @@ From the member drawer, admins can **Resend account setup email** (pending membe
 3. Signs in at the **tenant URL**: `https://{subdomain}.{app-domain}/login` (e.g. `acme.localhost:3000` in dev).
 4. Tenant middleware and login reject users who belong to a different organization.
 
-Apex hosts (`localhost:3000`, `accessiq.com`) allow any org member to sign in when `NUXT_PUBLIC_TENANT_ONLY` is off. In production, set `NUXT_PUBLIC_TENANT_ONLY=true` so apex shows `/sign-in` instead of login (see [multi-tenancy.md](./multi-tenancy.md), [go-live.md](../operations/go-live.md)).
+Apex hosts (`localhost:3000`, `sitenook.com`) allow any org member to sign in when `NUXT_PUBLIC_TENANT_ONLY` is off. In production, set `NUXT_PUBLIC_TENANT_ONLY=true` so apex shows `/sign-in` instead of login (see [multi-tenancy.md](./multi-tenancy.md), [go-live.md](../operations/go-live.md)).
 
 ---
 
@@ -119,7 +120,7 @@ sequenceDiagram
   PB->>Mail: set-password email
   Mail->>Admin: reset link
   Admin->>Web: /reset-password → set password
-  Admin->>Web: login at subdomain.accessiq.com
+  Admin->>Web: login at subdomain.sitenook.com
 
   Admin->>Web: Team Members → Send invite
   Web->>PB: create users (role, org) as admin JWT
@@ -150,7 +151,7 @@ sequenceDiagram
 |----------|---------|---------|
 | `NUXT_PROVISION_API_KEY` | web (Nitro) | Shared secret for `POST /api/provision` |
 | `NUXT_PB_ADMIN_EMAIL` / `NUXT_PB_ADMIN_PASSWORD` | web (Nitro) | Superuser for provisioning + org-context |
-| `NUXT_PUBLIC_APP_DOMAIN` | web | Build tenant login URLs (`acme.accessiq.com`) |
+| `NUXT_PUBLIC_APP_DOMAIN` | web | Build tenant login URLs (`acme.sitenook.com`) |
 | `NUXT_PUBLIC_APP_URL` | web | Apex URL; dev port for `*.localhost` links |
 | `NUXT_PUBLIC_SUPPORT_EMAIL` | web | Contact on `/signup` invite-only page |
 | PocketBase SMTP | pocketbase | Required for set-password / invite emails |
@@ -176,8 +177,8 @@ On boot, `patch-users.sh` sets the template base URL from `APP_DASHBOARD_URL`. T
 | **Username** | Your Gmail address | `resend` |
 | **Password** | [Google app password](https://myaccount.google.com/apppasswords) | Resend API key (`re_…`) |
 | **TLS** | On (STARTTLS on 587) | On |
-| **From address** | Your Gmail address | `AccessIQ <noreply@yourdomain.com>` (verified domain) |
-| **Local name** (EHLO) | Leave blank or `localhost` | Your sending domain, e.g. `accessiq.com` |
+| **From address** | Your Gmail address | `SiteNook <noreply@yourdomain.com>` (verified domain) |
+| **Local name** (EHLO) | Leave blank or `localhost` | Your sending domain, e.g. `sitenook.com` |
 
 Use **Send test email** in PocketBase after saving. Invites and password resets use the same SMTP client.
 
@@ -195,9 +196,9 @@ Dev Gmail is fine for F1 smoke tests; do not rely on it for production.
 
 #### Recommended: Resend (or SendGrid)
 
-**Resend** fits AccessIQ well: SMTP works with PocketBase’s built-in mailer, no code changes, and domain verification gives you DNS records to copy.
+**Resend** fits SiteNook well: SMTP works with PocketBase’s built-in mailer, no code changes, and domain verification gives you DNS records to copy.
 
-1. Create a [Resend](https://resend.com) account and **add your domain** (e.g. `accessiq.com`).
+1. Create a [Resend](https://resend.com) account and **add your domain** (e.g. `sitenook.com`).
 2. Add the **SPF**, **DKIM**, and **DMARC** DNS records Resend shows (usually in Cloudflare or your DNS host). Wait for verification.
 3. Create an API key with **Sending access**.
 4. In PocketBase **Settings → Mail settings**:
@@ -208,8 +209,8 @@ Dev Gmail is fine for F1 smoke tests; do not rely on it for production.
    | Port | `587` |
    | Username | `resend` |
    | Password | Your API key |
-   | From | `AccessIQ <noreply@accessiq.com>` (must use the verified domain) |
-   | Local name | `accessiq.com` |
+   | From | `SiteNook <noreply@sitenook.com>` (must use the verified domain) |
+   | Local name | `sitenook.com` |
 
 5. Send a test email from PocketBase to an external inbox (Gmail, Outlook).
 
@@ -223,7 +224,7 @@ If you already use Google Workspace for `@yourdomain.com`:
 2. In Google Admin → **Apps → Google Workspace → Gmail → Authenticate email**, enable **DKIM** for your domain and publish the TXT record.
 3. Add **SPF** at your DNS apex: `v=spf1 include:_spf.google.com ~all`
 4. Add **DMARC** (start with monitoring): `v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com`
-5. Set PocketBase **From** to a Workspace address on that domain (e.g. `noreply@accessiq.com`) and **Local name** to `accessiq.com`.
+5. Set PocketBase **From** to a Workspace address on that domain (e.g. `noreply@sitenook.com`) and **Local name** to `sitenook.com`.
 
 Workspace is workable but more admin overhead than Resend for pure transactional invite mail.
 
@@ -243,10 +244,10 @@ Reset links must match your public app URL or tenant rewriting will point users 
 
 | Variable | Service | Example (production) |
 |----------|---------|----------------------|
-| `APP_DASHBOARD_URL` | pocketbase | `https://accessiq.com` (apex; hook rewrites to `{subdomain}.accessiq.com`) |
-| `APP_PUBLIC_DOMAIN` | pocketbase | `accessiq.com` (from `NUXT_PUBLIC_APP_DOMAIN` in compose) |
-| `NUXT_PUBLIC_APP_DOMAIN` | web | `accessiq.com` |
-| `NUXT_PUBLIC_APP_URL` | web | `https://accessiq.com` |
+| `APP_DASHBOARD_URL` | pocketbase | `https://sitenook.com` (apex; hook rewrites to `{subdomain}.sitenook.com`) |
+| `APP_PUBLIC_DOMAIN` | pocketbase | `sitenook.com` (from `NUXT_PUBLIC_APP_DOMAIN` in compose) |
+| `NUXT_PUBLIC_APP_DOMAIN` | web | `sitenook.com` |
+| `NUXT_PUBLIC_APP_URL` | web | `https://sitenook.com` |
 
 Recreate the **pocketbase** and **web** containers after changing these.
 
@@ -256,7 +257,7 @@ Run after production SMTP + DNS are configured:
 
 1. PocketBase **Send test email** → arrives in **inbox** (not spam) on a personal Gmail or Outlook address.
 2. `POST /api/provision` (or Team Members invite) → recipient receives account setup mail in **inbox**.
-3. Link opens `{subdomain}.accessiq.com/reset-password?token=…&setup=1` (not raw PocketBase `:8090`).
+3. Link opens `{subdomain}.sitenook.com/reset-password?token=…&setup=1` (not raw PocketBase `:8090`).
 4. Optional: [mail-tester.com](https://www.mail-tester.com) — aim for **8+/10** before go-live.
 
 If mail still hits spam: confirm From uses the verified domain, DKIM shows **pass** in the message headers, and you are not sending from `@gmail.com` in production.
@@ -303,7 +304,7 @@ NUXT_STRIPE_WEBHOOK_SECRET=whsec_...
 # Recommended in production:
 NUXT_PUBLIC_TURNSTILE_SITE_KEY=...
 NUXT_TURNSTILE_SECRET=...
-NUXT_PUBLIC_TERMS_URL=https://accessiq.com/terms
+NUXT_PUBLIC_TERMS_URL=https://sitenook.com/terms
 ```
 
 | Route | Auth | Purpose |

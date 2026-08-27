@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({
-  middleware: 'pricing'
+  middleware: 'marketing-public'
 })
 </script>
 

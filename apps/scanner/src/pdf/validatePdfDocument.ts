@@ -2,9 +2,29 @@ import { randomBytes } from 'node:crypto'
 import type PocketBase from 'pocketbase'
 import { extractPdfMetadata } from './extractPdfMetadata.js'
 import { mapVeraPdfReport } from './mapVeraPdfReport.js'
-import { downloadPdfBuffer, type PdfDocumentRecord } from './pdfDownload.js'
+import { downloadAndStorePdf, persistPdfFileIfMissing, type PdfDocumentRecord } from './pdfDownload.js'
 import { validatePdfBuffer, validatePdfUrl } from './veraPdfClient.js'
 import { indexPdfFromDocumentId } from '../search/searchIndexer.js'
+
+async function enqueueStructureAfterValidate(pb: PocketBase, documentId: string): Promise<void> {
+  try {
+    await pb.collection('pdf_documents').update(documentId, {
+      structure_status: 'pending',
+      structure_error: ''
+    })
+    await pb.collection('pdf_remediation_queue').create({
+      pdf_document: documentId,
+      job_type: 'structure',
+      status: 'pending',
+      priority: 5
+    })
+  } catch (err) {
+    console.warn(
+      `Failed to enqueue PDF structure for ${documentId}:`,
+      err instanceof Error ? err.message : err
+    )
+  }
+}
 
 export function generateShareToken(): string {
   return randomBytes(24).toString('base64url')
@@ -22,7 +42,7 @@ export async function validatePdfDocument(
   })
 
   try {
-    const { buffer, filename } = await downloadPdfBuffer(pb, doc)
+    const { buffer, filename } = await downloadAndStorePdf(pb, doc)
     const report = await validatePdfBuffer(buffer, filename)
     const mapped = mapVeraPdfReport(report)
 
@@ -72,14 +92,19 @@ export async function validatePdfDocument(
     })
 
     if (doc.inventory) {
-      await pb.collection('qa_inventory').update(doc.inventory, {
+      const inventoryPatch: Record<string, unknown> = {
         pdf_accessibility_score: mapped.accessibilityScore
-      })
+      }
+      if (buffer?.length) {
+        inventoryPatch.size_bytes = buffer.length
+      }
+      await pb.collection('qa_inventory').update(doc.inventory, inventoryPatch)
     }
 
     void indexPdfFromDocumentId(pb, documentId).catch(indexErr => {
       console.warn(`Search index failed for PDF ${documentId}:`, indexErr instanceof Error ? indexErr.message : indexErr)
     })
+    void enqueueStructureAfterValidate(pb, documentId)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     await pb.collection('pdf_documents').update(documentId, {
@@ -109,7 +134,7 @@ export async function validatePdfDocumentByUrl(
     try {
       report = await validatePdfUrl(url, fileSizeBytes)
     } catch {
-      const downloaded = await downloadPdfBuffer(pb, { ...doc, url })
+      const downloaded = await downloadAndStorePdf(pb, { ...doc, url })
       buffer = downloaded.buffer
       report = await validatePdfBuffer(downloaded.buffer, downloaded.filename)
     }
@@ -117,8 +142,17 @@ export async function validatePdfDocumentByUrl(
     const mapped = mapVeraPdfReport(report)
 
     if (!buffer) {
-      const downloaded = await downloadPdfBuffer(pb, { ...doc, url })
+      const downloaded = await downloadAndStorePdf(pb, { ...doc, url })
       buffer = downloaded.buffer
+    } else {
+      try {
+        await persistPdfFileIfMissing(pb, doc, buffer, doc.filename || 'document.pdf')
+      } catch (persistErr) {
+        console.warn(
+          `Could not persist crawl PDF file for ${documentId}:`,
+          persistErr instanceof Error ? persistErr.message : persistErr
+        )
+      }
     }
     const extracted = await extractPdfMetadata(buffer, {
       hasPdfTags: mapped.hasPdfTags,
@@ -166,14 +200,21 @@ export async function validatePdfDocumentByUrl(
     })
 
     if (doc.inventory) {
-      await pb.collection('qa_inventory').update(doc.inventory, {
+      const inventoryPatch: Record<string, unknown> = {
         pdf_accessibility_score: mapped.accessibilityScore
-      })
+      }
+      if (typeof fileSizeBytes === 'number' && fileSizeBytes > 0) {
+        inventoryPatch.size_bytes = fileSizeBytes
+      } else if (buffer?.length) {
+        inventoryPatch.size_bytes = buffer.length
+      }
+      await pb.collection('qa_inventory').update(doc.inventory, inventoryPatch)
     }
 
     void indexPdfFromDocumentId(pb, documentId).catch(indexErr => {
       console.warn(`Search index failed for PDF ${documentId}:`, indexErr instanceof Error ? indexErr.message : indexErr)
     })
+    void enqueueStructureAfterValidate(pb, documentId)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     await pb.collection('pdf_documents').update(documentId, {

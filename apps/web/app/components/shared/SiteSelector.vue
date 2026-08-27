@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { pathAfterSelectSite } from '~/utils/workspaceSwitchPath'
 const props = withDefaults(
   defineProps<{
     /** Full-width control for sidebar (legacy). */
@@ -14,7 +15,7 @@ const props = withDefaults(
   }
 )
 
-const { sites, activeSiteId, fetchSites } = useSites()
+const { sites, activeSiteId, isAllSites, fetchSites } = useSites()
 const route = useRoute()
 
 const isNavbar = computed(() => props.variant === 'navbar')
@@ -22,6 +23,7 @@ const isNavbar = computed(() => props.variant === 'navbar')
 watch(
   () => route.params.id,
   (id) => {
+    if (isAllSites.value) return
     if (typeof id === 'string' && id) {
       activeSiteId.value = id
     }
@@ -48,9 +50,9 @@ const selectedSiteId = computed({
   set(siteId: string) {
     if (!siteId || siteId === activeSiteId.value) return
     activeSiteId.value = siteId
-    const siteRoute = route.path.match(/^\/sites\/[^/]+(\/.*)?$/)
-    if (siteRoute) {
-      navigateTo(`/sites/${siteId}${siteRoute[1] || ''}`)
+    const nextPath = pathAfterSelectSite(route.path, siteId)
+    if (nextPath) {
+      navigateTo(nextPath)
     }
   }
 })

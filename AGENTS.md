@@ -1,10 +1,10 @@
-# AccessIQ — Agent Onboarding
+# SiteNook — Agent Onboarding
 
 You are joining an existing repo. Help implement and fix features **without breaking stack conventions**. Work incrementally, prefer small safe changes, and verify with tests or linters when relevant.
 
 ## Project overview
 
-**AccessIQ** is a self-hosted web accessibility and QA monitoring platform (an open-source SiteImprove-style replacement). It crawls registered sites with **Playwright** and **axe-core**, stores results in **PocketBase**, and exposes a **Nuxt dashboard** for WCAG issues, broken links, spelling, policies, and scan management.
+**SiteNook** is a self-hosted web accessibility and QA monitoring platform (an open-source SiteImprove-style replacement). It crawls registered sites with **Playwright** and **axe-core**, stores results in **PocketBase**, and exposes a **Nuxt dashboard** for WCAG issues, broken links, spelling, policies, and scan management.
 
 ## Stack
 
@@ -146,7 +146,7 @@ docker compose build
 
 **Test PocketBase**: port **8091** (Docker profile `test`). **Dev PocketBase**: port **8090** — never point tests at dev data.
 
-Test credentials (integration): `test-admin@accessiq.test` / `test-password-123`; user: `test-user@accessiq.test` / `test-user-password-123`. Fixtures: `tests/fixtures/pb_data/`.
+Test credentials (integration): `test-admin@sitenook.test` / `test-password-123`; user: `test-user@sitenook.test` / `test-user-password-123`. Fixtures: `tests/fixtures/pb_data/`.
 
 ### What to test when changing…
 

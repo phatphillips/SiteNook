@@ -1,4 +1,4 @@
-import type { AccessibilityIssue, Scan } from '~/types/accessiq'
+import type { AccessibilityIssue, Scan } from '~/types/sitenook'
 
 export interface A11yPageRow {
   id: string

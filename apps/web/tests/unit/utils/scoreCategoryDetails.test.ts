@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { AccessibilityIssue } from '~/types/accessiq'
+import type { AccessibilityIssue } from '~/types/sitenook'
 import {
   categoryScoreImpact,
   issueMatchesScoreCategory,
@@ -8,6 +8,7 @@ import {
   overallQuickStats,
   overallScoreImpact,
   potentialOverallScoreForCategory,
+  topFixRulesForCategory,
   topFixRulesOverall,
   viewAllIssuesLabel
 } from '~/utils/scoreCategoryDetails'
@@ -35,10 +36,32 @@ describe('issueMatchesScoreCategory', () => {
     expect(issueMatchesScoreCategory(aIssue, 'A')).toBe(false)
   })
 
-  it('matches ARIA issues', () => {
-    const ariaIssue = issue({ rule_id: 'aria-valid-attr', element_type: 'aria' })
+  it('matches ARIA best-practice issues', () => {
+    const ariaIssue = issue({ rule_id: 'aria-allowed-role', element_type: 'aria' })
     expect(issueMatchesScoreCategory(ariaIssue, 'aria')).toBe(true)
     expect(issueMatchesScoreCategory(ariaIssue, 'best_practice')).toBe(false)
+  })
+
+  it('keeps WCAG aria rules in their WCAG level (not the ARIA row)', () => {
+    // axe-core tags these as wcag2a, not best-practice — they belong under Level A.
+    const ariaWcag = issue({
+      rule_id: 'aria-required-attr',
+      wcag_level: 'A',
+      wcag_sc: '4.1.2',
+      element_type: 'aria'
+    })
+    expect(issueMatchesScoreCategory(ariaWcag, 'A')).toBe(true)
+    expect(issueMatchesScoreCategory(ariaWcag, 'aria')).toBe(false)
+    expect(issueMatchesScoreCategory(ariaWcag, 'best_practice')).toBe(false)
+  })
+
+  it('matches non-ARIA best practices including rules that used to be missing from the BP set', () => {
+    const landmark = issue({ rule_id: 'landmark-one-main', wcag_level: 'AA' })
+    const headingOrder = issue({ rule_id: 'heading-order', wcag_level: 'AA' })
+    expect(issueMatchesScoreCategory(landmark, 'best_practice')).toBe(true)
+    expect(issueMatchesScoreCategory(headingOrder, 'best_practice')).toBe(true)
+    expect(issueMatchesScoreCategory(landmark, 'aria')).toBe(false)
+    expect(issueMatchesScoreCategory(headingOrder, 'AA')).toBe(false)
   })
 })
 
@@ -64,10 +87,56 @@ describe('openIssuesInCategory', () => {
     const issues = [
       issue({ id: '1', rule_id: 'color-contrast', wcag_level: 'A', wcag_sc: '1.4.1' }),
       issue({ id: '2', rule_id: 'image-alt', wcag_level: 'A', wcag_sc: '1.1.1', status: 'fixed' }),
-      issue({ id: '3', rule_id: 'aria-valid-attr', element_type: 'aria' })
+      issue({ id: '3', rule_id: 'aria-allowed-role', element_type: 'aria' })
     ]
     expect(openIssuesInCategory(issues, 'A')).toHaveLength(1)
     expect(openIssuesInCategory(issues, 'aria')).toHaveLength(1)
+  })
+
+  it('includes ARIA best-practice rules in the ARIA category breakdown', () => {
+    const issues = [
+      issue({
+        id: '1',
+        rule_id: 'aria-dialog-name',
+        wcag_level: 'AA',
+        description: 'ARIA dialog nodes should have an accessible name'
+      }),
+      issue({
+        id: '2',
+        rule_id: 'color-contrast',
+        wcag_level: 'AA',
+        wcag_sc: '1.4.3'
+      })
+    ]
+    const ariaOpen = openIssuesInCategory(issues, 'aria')
+    expect(ariaOpen).toHaveLength(1)
+    expect(ariaOpen[0]!.rule_id).toBe('aria-dialog-name')
+    expect(openIssuesInCategory(issues, 'best_practice')).toHaveLength(0)
+  })
+
+  it('includes heading-order in best practices (not WCAG AA)', () => {
+    const issues = [
+      issue({ id: '1', rule_id: 'heading-order', wcag_level: 'AA', description: 'Heading levels should only increase by one' }),
+      issue({ id: '2', rule_id: 'page-has-heading-one', wcag_level: 'AA', description: 'Page should contain a level-one heading' })
+    ]
+    expect(openIssuesInCategory(issues, 'best_practice')).toHaveLength(2)
+    expect(openIssuesInCategory(issues, 'AA')).toHaveLength(0)
+  })
+})
+
+describe('topFixRulesForCategory', () => {
+  it('lists best-practice rules even when points round to 0', () => {
+    const issues = [
+      issue({
+        id: '1',
+        rule_id: 'heading-order',
+        wcag_level: 'AA',
+        description: 'Heading levels should only increase by one'
+      })
+    ]
+    const fixes = topFixRulesForCategory(issues, issues, 'best_practice', null, 3)
+    expect(fixes).toHaveLength(1)
+    expect(fixes[0]!.ruleId).toBe('heading-order')
   })
 })
 

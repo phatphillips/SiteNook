@@ -1,4 +1,4 @@
-import type { AccessibilityIssue } from '~/types/accessiq'
+import type { AccessibilityIssue } from '~/types/sitenook'
 import type { A11ySummary, A11ySummaryRuleRow } from '~/utils/a11ySummary'
 import { classifyIssueCategory, type SiteSettings } from '~/utils/siteSettings'
 import type { A11yIssuesQuery } from './a11yQueries'

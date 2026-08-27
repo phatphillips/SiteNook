@@ -1,6 +1,6 @@
 import type PocketBase from 'pocketbase'
-import type { AccessibilityIssue, Scan } from '~/types/accessiq'
-import type { A11ySummary } from '~/utils/a11ySummary'
+import type { AccessibilityIssue, Scan } from '~/types/sitenook'
+import { isA11ySummaryFresh, type A11ySummary } from '~/utils/a11ySummary'
 import { attachPageMetaToIssues, pageUrlMapFromRows, type A11yPageRow } from '~/utils/a11yPageMeta'
 import type { AffectedPageSummary } from '~/utils/affectedPages'
 import { affectedPagesSummaryForRule } from '~/utils/affectedPages'
@@ -10,10 +10,17 @@ import { buildPointsToGainByRule } from '~/utils/a11yScoring'
 import { latestPageIdsByNormalizedUrl } from '~/utils/pageUrl'
 import { pbRelation } from '~/utils/pbFilter'
 import { compareTimestampsDesc } from '~/utils/sortTimestamps'
-import { scanTimestamp } from '~/utils/scanDisplay'
+import { pickLatestTrustedScan, scanTimestamp } from '~/utils/scanDisplay'
+import { parseA11yCheckStats } from '~/utils/a11yCheckStats'
 import { classifyIssueCategory, issueInSiteTarget, parseSiteSettings, siteTargetSnapshotsEqual } from '~/utils/siteSettings'
 import type { ElementTotals } from '~/utils/siteimproveScore'
-import { getCachedIssuesResponse, setCachedIssuesResponse } from './a11yIssuesCache'
+import {
+  getCachedAffectedPages,
+  getCachedIssuesResponse,
+  invalidateIssuesCache,
+  setCachedAffectedPages,
+  setCachedIssuesResponse
+} from './a11yIssuesCache'
 import { issueFromSummaryRow, queryIssuesFromSummary, type A11yRuleStats } from './a11ySummaryQuery'
 
 export interface A11yIssuesQuery {
@@ -139,6 +146,15 @@ function applyIssueFilters(
   })
 }
 
+async function loadLatestCheckStats(pb: PocketBase, siteId: string) {
+  const scans = await pb.collection('scans').getFullList({
+    filter: pbRelation('site', siteId),
+    fields: 'id,status,completed_at,started_at,created,a11y_check_stats,scan_quality'
+  }) as unknown as Scan[]
+  const latest = pickLatestTrustedScan(scans)
+  return parseA11yCheckStats(latest?.a11y_check_stats) ?? latest?.a11y_check_stats ?? null
+}
+
 function emptyIssuesResult(query: A11yIssuesQuery, currentA11y: A11ySummary | null): A11yIssuesQueryResult {
   return {
     items: [],
@@ -188,8 +204,13 @@ async function queryAccessibilityIssuesFull(
   const scoreable = allIssues.filter(
     i => (i.status === 'open' || i.status === 'dismissed') && issueInSiteTarget(i, siteSettings)
   )
+  const checkStats = await loadLatestCheckStats(pb, siteId)
   const pointsToGainByRule = Object.fromEntries(
-    buildPointsToGainByRule(scoreable, site.score_denominators?.elements as ElementTotals | undefined)
+    buildPointsToGainByRule(
+      scoreable,
+      site.score_denominators?.elements as ElementTotals | undefined,
+      checkStats
+    )
   )
 
   const ruleStats: Record<string, A11yRuleStats> = {}
@@ -224,23 +245,39 @@ export async function queryAccessibilityIssues(
   const cached = getCachedIssuesResponse(siteId, query)
   if (cached) return cached as A11yIssuesQueryResult
 
-  const site = await pb.collection('sites').getOne(siteId, {
-    fields: 'score_denominators,site_settings,default_scan_config,current_a11y'
-  }) as {
-    score_denominators?: { elements?: Record<string, number> }
-    site_settings?: Record<string, unknown>
-    default_scan_config?: Record<string, unknown>
-    current_a11y?: A11ySummary | null
-  }
+  const [site, latestScan] = await Promise.all([
+    pb.collection('sites').getOne(siteId, {
+      fields: 'score_denominators,site_settings,default_scan_config,current_a11y'
+    }) as Promise<{
+      score_denominators?: { elements?: Record<string, number> }
+      site_settings?: Record<string, unknown>
+      default_scan_config?: Record<string, unknown>
+      current_a11y?: A11ySummary | null
+    }>,
+    pb.collection('scans').getList(1, 1, {
+      filter: `${pbRelation('site', siteId)} && (status = "complete" || status = "complete_with_errors")`,
+      sort: '-completed_at',
+      fields: 'id,completed_at,started_at,scan_quality'
+    }).catch(() => ({ items: [] as Array<{ completed_at?: string, started_at?: string, scan_quality?: { trusted?: boolean } }> }))
+  ])
 
   const siteSettings = parseSiteSettings(site.site_settings, site.default_scan_config)
   const summary = site.current_a11y
+  const latest = latestScan.items[0] as { completed_at?: string, started_at?: string, scan_quality?: { trusted?: boolean } } | undefined
+  const latestCompletedAt = latest?.completed_at ?? latest?.started_at
+  const summaryFresh = isA11ySummaryFresh(summary, latestCompletedAt)
+    && latest?.scan_quality?.trusted !== false
 
   let result: A11yIssuesQueryResult
-  if (summary?.by_rule?.length && siteTargetSnapshotsEqual(summary.site_target, siteSettings)) {
+  if (
+    summaryFresh
+    && summary?.by_rule?.length
+    && siteTargetSnapshotsEqual(summary.site_target, siteSettings)
+  ) {
     const fromSummary = queryIssuesFromSummary(summary, query, siteSettings)
     result = { ...fromSummary, source: 'summary' }
   } else {
+    if (summary && !summaryFresh) invalidateIssuesCache(siteId)
     result = await queryAccessibilityIssuesFull(pb, siteId, query, site, siteSettings)
   }
 
@@ -254,14 +291,20 @@ export async function loadAffectedPagesForRule(
   ruleId: string,
   options?: { statuses?: Array<AccessibilityIssue['status']> }
 ): Promise<AffectedPageSummary[]> {
+  const statuses = options?.statuses ?? ['open']
+  const cached = getCachedAffectedPages(siteId, ruleId, statuses)
+  if (cached) return cached
+
   const site = await pb.collection('sites').getOne(siteId, {
     fields: 'site_settings,default_scan_config'
   }) as { site_settings?: Record<string, unknown>, default_scan_config?: Record<string, unknown> }
 
   const siteSettings = parseSiteSettings(site.site_settings, site.default_scan_config)
-  const statuses = options?.statuses ?? ['open']
   const { pageIds, pageById } = await loadLatestPageIdsForSite(pb, siteId)
-  if (!pageIds.size) return []
+  if (!pageIds.size) {
+    setCachedAffectedPages(siteId, ruleId, statuses, [])
+    return []
+  }
 
   const batches = chunkPageIds([...pageIds])
   const issues = (
@@ -279,7 +322,9 @@ export async function loadAffectedPagesForRule(
   const filtered = issues.filter(
     issue => issueInSiteTarget(issue, siteSettings) && statuses.includes(issue.status)
   )
-  return affectedPagesSummaryForRule(filtered, ruleId, { statuses })
+  const pages = affectedPagesSummaryForRule(filtered, ruleId, { statuses })
+  setCachedAffectedPages(siteId, ruleId, statuses, pages)
+  return pages
 }
 
 export async function queryAccessibilityOverview(

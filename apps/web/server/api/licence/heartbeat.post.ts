@@ -1,5 +1,10 @@
 import { createError } from 'h3'
 import {
+  getLicenceTierLimits,
+  normalizeLicenceTier,
+  organizationPlanForLicenceTier
+} from '~/utils/licenceTiers'
+import {
   buildLicenceTokenPayload,
   signLicenceToken,
   verifyLicenceToken
@@ -37,9 +42,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Licence expired' })
   }
 
+  const tier = normalizeLicenceTier(record.tier ?? payload.tier)
+  const limits = getLicenceTierLimits(tier)
   const refreshed = buildLicenceTokenPayload({
     key: payload.key,
-    tier: payload.tier,
+    tier,
     domain: payload.domain,
     fingerprint: payload.fingerprint,
     expires_at: expiresAt
@@ -47,6 +54,19 @@ export default defineEventHandler(async (event) => {
 
   return {
     valid: true,
+    tier,
+    plan: organizationPlanForLicenceTier(tier),
+    limits: {
+      maxSites: limits.maxSites,
+      maxPagesPerScan: limits.maxPagesPerScan,
+      maxTeamMembers: limits.maxTeamMembers,
+      scanHistoryDays: limits.scanHistoryDays,
+      scheduledScans: limits.scheduledScans,
+      seoModule: limits.seoModule,
+      policies: limits.policies,
+      inventory: limits.inventory,
+      pdfAccessibility: limits.pdfAccessibility
+    },
     expires_at: expiresAt,
     signed_token: signLicenceToken(refreshed, event)
   }

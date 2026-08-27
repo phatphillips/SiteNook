@@ -1,4 +1,4 @@
-import type { AccessibilityIssue } from '~/types/accessiq'
+import type { AccessibilityIssue } from '~/types/sitenook'
 import { calculatePointsToGain } from '~/utils/a11yScoring'
 import { dedupePageUrls } from '~/utils/pageUrl'
 

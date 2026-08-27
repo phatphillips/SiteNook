@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { Organization } from '~/types/accessiq'
+import type { Organization } from '~/types/sitenook'
 import type { BillingInterval } from '~/utils/planPricing'
 import type { PlanChangeAssessment, OrganizationPlanUsage } from '~/utils/planEligibility'
 import type { PaidCheckoutPlan } from '~/utils/planLimits'
 import { formatPlanPrice, getPlanOffering, PAID_PLAN_OFFERINGS } from '~/utils/planPricing'
 import { formatRequestError } from '~/utils/pbClientError'
+import { trackFunnelEvent } from '~/utils/funnelAnalytics'
 
 const props = withDefaults(defineProps<{
   organization: Organization | null
@@ -27,11 +28,21 @@ const emit = defineEmits<{
 const { pb } = usePocketBase()
 const toast = useToast()
 
-const billingInterval = ref<BillingInterval>('monthly')
+const billingInterval = ref<BillingInterval>('annual')
 const loadingPlan = ref<PaidCheckoutPlan | null>(null)
 const expandedBlockers = ref<PaidCheckoutPlan | null>(null)
 
 const annualToggleEnabled = computed(() => props.annualCheckoutConfigured === true)
+
+watch(
+  () => props.annualCheckoutConfigured,
+  (enabled) => {
+    if (!enabled && billingInterval.value === 'annual') {
+      billingInterval.value = 'monthly'
+    }
+  },
+  { immediate: true }
+)
 const paidPlans = computed(() => PAID_PLAN_OFFERINGS.filter(plan => !plan.contactSales))
 
 function assessmentFor(plan: PaidCheckoutPlan): PlanChangeAssessment | undefined {
@@ -77,6 +88,12 @@ async function changePlan(plan: PaidCheckoutPlan) {
 
   if (!pb?.authStore.token) return
   loadingPlan.value = plan
+  trackFunnelEvent('upgrade_click', {
+    organizationId: props.organization?.id,
+    plan,
+    interval: billingInterval.value,
+    source: 'billing_plan_change'
+  })
   try {
     const result = await $fetch<{
       mode: 'checkout' | 'portal' | 'updated'

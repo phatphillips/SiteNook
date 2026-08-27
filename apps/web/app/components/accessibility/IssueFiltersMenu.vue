@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import type { AccessibilityIssue, IssueFilters } from '~/types/accessiq'
+import type { AccessibilityIssue, IssueFilters } from '~/types/sitenook'
+import { classifyIssueCategory, type IssueTargetCategory } from '~/utils/siteSettings'
+import { issueTargetCategoryLabel } from '~/utils/issueLabels'
 
 const props = defineProps<{
   modelValue: IssueFilters
@@ -19,6 +21,12 @@ function countImpact(impact: string): number {
 function countWcag(level: 'A' | 'AA' | 'AAA'): number {
   return openIssues.value.filter(i => i.wcag_level === level).length
 }
+
+function countTargetCategory(category: IssueTargetCategory): number {
+  return openIssues.value.filter(i => classifyIssueCategory(i) === category).length
+}
+
+const TARGET_CATEGORY_OPTIONS: IssueTargetCategory[] = ['wcag', 'aria', 'best_practice']
 
 const allSelected = computed(() =>
   props.modelValue.impacts.length === 0
@@ -76,6 +84,14 @@ function toggleWcag(level: 'A' | 'AA' | 'AAA') {
   if (idx >= 0) levels.splice(idx, 1)
   else levels.push(level)
   emit('update:modelValue', { ...props.modelValue, wcagLevels: levels })
+}
+
+function toggleTargetCategory(category: IssueTargetCategory) {
+  const categories = [...props.modelValue.targetCategories]
+  const idx = categories.indexOf(category)
+  if (idx >= 0) categories.splice(idx, 1)
+  else categories.push(category)
+  emit('update:modelValue', { ...props.modelValue, targetCategories: categories })
 }
 
 type FilterMenuItem = {
@@ -167,7 +183,18 @@ const filterMenuItems = computed((): FilterMenuItem[][] => [
         e.preventDefault()
       }
     }
-  ]
+  ],
+  TARGET_CATEGORY_OPTIONS.map((category) => ({
+    label: `${issueTargetCategoryLabel(category)} (${countTargetCategory(category)})`,
+    type: 'checkbox' as const,
+    checked: props.modelValue.targetCategories.includes(category),
+    onUpdateChecked() {
+      toggleTargetCategory(category)
+    },
+    onSelect(e: Event) {
+      e.preventDefault()
+    }
+  }))
 ])
 </script>
 
@@ -180,7 +207,7 @@ const filterMenuItems = computed((): FilterMenuItem[][] => [
       label="Filters"
       icon="i-lucide-list-filter"
       :active-ring="hasActiveFilters"
-      aria-label="Filter issues by severity and WCAG level"
+      aria-label="Filter issues by severity, WCAG level, and check type"
     />
   </UDropdownMenu>
 </template>

@@ -15,6 +15,7 @@ import {
 } from '~/utils/planLimits'
 import type { TeamActivityLogEntry } from '~/utils/teamActivityLog'
 import { generateInvitePassword } from '~/utils/inviteUser'
+import { tryRefreshAuthSession } from '~/utils/sessionRefresh'
 
 export interface TeamMember {
   id: string
@@ -61,6 +62,17 @@ function _useTeamMembers() {
   async function fetchMembers() {
     await awaitAuthReady()
     syncAuth()
+    if (!pb) {
+      members.value = []
+      throw new Error('Session expired. Please sign in again.')
+    }
+    if (!pb.authStore.isValid) {
+      const refreshed = await tryRefreshAuthSession(pb, syncAuth)
+      if (!refreshed) {
+        members.value = []
+        throw new Error('Session expired. Please sign in again.')
+      }
+    }
     requireUser()
     loading.value = true
     try {

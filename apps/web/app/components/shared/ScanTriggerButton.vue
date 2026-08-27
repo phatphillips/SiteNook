@@ -32,18 +32,43 @@ const emit = defineEmits<{
 }>()
 
 const showConfigModal = ref(false)
-const loadedSite = ref<import('~/types/accessiq').Site | null>(null)
+const loadedSite = ref<import('~/types/sitenook').Site | null>(null)
 
 const resolvedSiteId = computed(() =>
   props.siteId || (route.params.id as string | undefined) || activeSiteId.value
 )
 const queueSiteId = computed<string | undefined>(() => resolvedSiteId.value ?? undefined)
 
+const otherSiteId = computed(() => {
+  const id = queueSiteId.value
+  if (!id || id === activeSiteId.value) return undefined
+  return id
+})
+
+const activeScan = useActiveWorkspaceScanState()
+const otherScan = useScanQueueStatus(otherSiteId)
+
+const isQueued = computed(() =>
+  otherSiteId.value ? otherScan.isQueued.value : activeScan.isQueued.value
+)
+const isRunning = computed(() =>
+  otherSiteId.value ? otherScan.isRunning.value : activeScan.isRunning.value
+)
+const isBusy = computed(() =>
+  otherSiteId.value ? otherScan.isBusy.value : activeScan.isBusy.value
+)
+
+async function refreshScanStatus() {
+  if (otherSiteId.value) {
+    await otherScan.refresh()
+  } else {
+    await activeScan.refresh()
+  }
+}
+
 const site = computed(() =>
   sites.value.find(s => s.id === resolvedSiteId.value) || loadedSite.value
 )
-
-const { isQueued, isRunning, isBusy, refresh } = useScanQueueStatus(queueSiteId)
 
 const buttonLabel = computed(() =>
   isQueued.value ? props.queuedLabel : (isRunning.value ? props.busyLabel : props.label)
@@ -67,7 +92,7 @@ async function openModal() {
   if (!site.value) {
     try {
       if (!sites.value.length) await fetchSites()
-      loadedSite.value = await pb.collection('sites').getOne(resolvedSiteId.value) as import('~/types/accessiq').Site
+      loadedSite.value = await pb.collection('sites').getOne(resolvedSiteId.value) as import('~/types/sitenook').Site
     } catch {
       useToast().add({ title: 'Site not found', color: 'error' })
       return
@@ -78,7 +103,7 @@ async function openModal() {
 }
 
 async function onQueued() {
-  await refresh()
+  await refreshScanStatus()
   emit('queued')
 }
 </script>

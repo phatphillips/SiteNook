@@ -3,7 +3,7 @@ import { h, resolveComponent } from 'vue'
 import { getExpandedRowModel, getSortedRowModel } from '@tanstack/vue-table'
 import type { TableColumn } from '@nuxt/ui'
 import type { Column, SortingState } from '@tanstack/vue-table'
-import type { SeoIssue } from '~/types/accessiq'
+import type { SeoIssue } from '~/types/sitenook'
 import { seoIssueDescription } from '~/composables/useSeoIssueDescriptions'
 import {
   buildSeoAffectedPagesByRule,
@@ -13,9 +13,13 @@ import {
 import { ruleLabel, severityColor } from '~/utils/seoRules'
 import { trafficLightFromSeverity } from '~/utils/trafficLightStatus'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   issues: SeoIssue[]
-}>()
+  /** Skip the outer table surface when nested in a preview card. */
+  embedded?: boolean
+}>(), {
+  embedded: false
+})
 
 const emit = defineEmits<{
   select: [issue: SeoIssue]
@@ -161,7 +165,7 @@ const columns = computed((): TableColumn<SeoIssue>[] => [
   <div v-if="!groupedIssues.length" class="text-sm text-muted py-8 text-center">
     No SEO issues found for this view.
   </div>
-  <div v-else class="table-surface overflow-x-auto">
+  <div v-else :class="embedded ? 'overflow-x-auto' : 'table-surface overflow-x-auto'">
     <UTable
       v-model:expanded="expanded"
       v-model:sorting="sorting"

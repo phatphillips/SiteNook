@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import type { SiteSettings } from '~/utils/siteSettings'
 import { getPrimaryReadabilityMethod, getReadabilityMethod } from '~/utils/readabilityMethods'
+import { DATA_TABLE_SKELETON_CLASS } from '~/utils/dataTableUi'
 
-const props = defineProps<{
+const skeleton = DATA_TABLE_SKELETON_CLASS
+
+const props = withDefaults(defineProps<{
   settings: SiteSettings
-}>()
+  hideEdit?: boolean
+  loading?: boolean
+}>(), {
+  hideEdit: false,
+  loading: false
+})
 
 const emit = defineEmits<{
   edit: []
@@ -18,7 +26,28 @@ const primaryMethod = computed(() =>
 </script>
 
 <template>
-  <section v-if="primaryMethod" class="mb-6 rounded-lg border border-default bg-elevated/25 p-4 sm:p-5">
+  <section
+    v-if="loading"
+    class="mb-6 rounded-lg border border-default bg-elevated/25 p-4 sm:p-5"
+    aria-hidden="true"
+  >
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="min-w-0 flex-1 space-y-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <USkeleton :class="`h-6 w-14 rounded-md ${skeleton}`" />
+          <USkeleton :class="`h-5 w-48 max-w-full ${skeleton}`" />
+        </div>
+        <USkeleton :class="`h-4 w-full max-w-3xl ${skeleton}`" />
+        <USkeleton :class="`h-4 w-4/5 max-w-2xl ${skeleton}`" />
+      </div>
+      <USkeleton
+        v-if="!hideEdit"
+        :class="`h-8 w-36 shrink-0 rounded-lg ${skeleton}`"
+      />
+    </div>
+  </section>
+
+  <section v-else-if="primaryMethod" class="mb-6 rounded-lg border border-default bg-elevated/25 p-4 sm:p-5">
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div class="min-w-0 flex-1 space-y-2">
         <div class="flex flex-wrap items-center gap-2">
@@ -32,6 +61,7 @@ const primaryMethod = computed(() =>
         </p>
       </div>
       <button
+        v-if="!hideEdit"
         type="button"
         class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-default bg-default px-2.5 py-1 text-sm transition-colors hover:bg-elevated/50"
         aria-label="Edit readability methods"

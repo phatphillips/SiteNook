@@ -1,4 +1,4 @@
-import type { Scan } from '~/types/accessiq'
+import type { Scan } from '~/types/sitenook'
 
 /** Use persisted scan score when present and non-zero; live only when stored is 0 or missing. */
 export function preferStoredScanScore(
@@ -7,6 +7,19 @@ export function preferStoredScanScore(
 ): number {
   if (stored != null && stored !== 0) return stored
   return live
+}
+
+/**
+ * Prefer a live score recalculated from current issue statuses (open / dismissed / fixed).
+ * Fall back to the stored scan score only when live is unavailable.
+ */
+export function preferLiveScanScore(
+  live: number | null | undefined,
+  stored: number | null | undefined
+): number {
+  if (live != null) return live
+  if (stored != null) return stored
+  return 0
 }
 
 /** Stored overall is meaningful enough to compare scan-to-scan deltas. */

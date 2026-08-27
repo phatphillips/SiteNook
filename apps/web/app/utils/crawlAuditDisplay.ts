@@ -1,4 +1,4 @@
-import type { SeoCrawlAudit, SeoIssue } from '~/types/accessiq'
+import type { SeoCrawlAudit, SeoIssue } from '~/types/sitenook'
 import type { TrafficLight } from '~/utils/trafficLightStatus'
 
 export type CrawlFileKey = 'robots' | 'sitemap' | 'llms'

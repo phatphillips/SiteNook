@@ -16,7 +16,7 @@ export function isAppColorMode(value: string): value is AppColorMode {
 }
 
 export function themeColorMeta(mode: string): string {
-  if (mode === 'dark') return '#1b1718'
+  if (mode === 'dark') return '#131418'
   if (mode === 'solarized-light') return '#fdf6e3'
   return '#ffffff'
 }

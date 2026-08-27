@@ -2,7 +2,7 @@ import { Queue, Worker, type ConnectionOptions } from 'bullmq'
 import { Redis } from 'ioredis'
 import type PocketBase from 'pocketbase'
 
-const QUEUE_NAME = 'accessiq-scans'
+const QUEUE_NAME = 'sitenook-scans'
 
 let scanQueue: Queue | null = null
 let scanWorker: Worker | null = null

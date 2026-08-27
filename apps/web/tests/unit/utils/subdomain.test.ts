@@ -3,21 +3,21 @@ import { parseHostSubdomain } from '~/utils/subdomain'
 
 describe('parseHostSubdomain', () => {
   it('treats apex production hosts as non-tenant', () => {
-    expect(parseHostSubdomain('accessiq.com', 'accessiq.com')).toEqual({
-      host: 'accessiq.com',
+    expect(parseHostSubdomain('sitenook.com', 'sitenook.com')).toEqual({
+      host: 'sitenook.com',
       subdomain: null,
       isApex: true
     })
-    expect(parseHostSubdomain('www.accessiq.com', 'accessiq.com')).toEqual({
-      host: 'www.accessiq.com',
+    expect(parseHostSubdomain('www.sitenook.com', 'sitenook.com')).toEqual({
+      host: 'www.sitenook.com',
       subdomain: null,
       isApex: true
     })
   })
 
   it('extracts tenant subdomains from production hosts', () => {
-    expect(parseHostSubdomain('agency.accessiq.com', 'accessiq.com')).toEqual({
-      host: 'agency.accessiq.com',
+    expect(parseHostSubdomain('agency.sitenook.com', 'sitenook.com')).toEqual({
+      host: 'agency.sitenook.com',
       subdomain: 'agency',
       isApex: false
     })
@@ -37,7 +37,7 @@ describe('parseHostSubdomain', () => {
   })
 
   it('ignores reserved infrastructure subdomains', () => {
-    expect(parseHostSubdomain('www.accessiq.com', 'accessiq.com').isApex).toBe(true)
-    expect(parseHostSubdomain('api.accessiq.com', 'accessiq.com').isApex).toBe(true)
+    expect(parseHostSubdomain('www.sitenook.com', 'sitenook.com').isApex).toBe(true)
+    expect(parseHostSubdomain('api.sitenook.com', 'sitenook.com').isApex).toBe(true)
   })
 })

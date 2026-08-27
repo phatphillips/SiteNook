@@ -6,6 +6,11 @@ import { buildReadabilityDistribution } from '~/utils/readabilityDistribution'
 const props = defineProps<{
   methodId: ReadabilityMethodId
   pages: ReadabilityPageRow[]
+  selectedBucketId?: string | null
+}>()
+
+const emit = defineEmits<{
+  'update:selectedBucketId': [bucketId: string | null]
 }>()
 
 const open = ref<string[]>(['breakdown'])
@@ -23,6 +28,10 @@ const maxCount = computed(() =>
 const scoredPageCount = computed(() =>
   distribution.value.reduce((total, row) => total + row.count, 0)
 )
+
+function toggleBucket(bucketId: string) {
+  emit('update:selectedBucketId', props.selectedBucketId === bucketId ? null : bucketId)
+}
 </script>
 
 <template>
@@ -60,12 +69,19 @@ const scoredPageCount = computed(() =>
             <span class="text-sm text-muted text-right leading-tight">
               {{ row.bucket.label }}
             </span>
-            <div class="h-7 rounded bg-default/60 overflow-hidden">
+            <button
+              type="button"
+              class="h-7 rounded bg-default/60 overflow-hidden transition ring-1 ring-transparent hover:ring-primary/40"
+              :class="{ 'ring-primary bg-primary/10': selectedBucketId === row.bucket.id }"
+              :aria-pressed="selectedBucketId === row.bucket.id"
+              :title="`Filter table by ${row.bucket.label}`"
+              @click="toggleBucket(row.bucket.id)"
+            >
               <div
                 class="h-full rounded bg-[var(--color-chart-line)] transition-all duration-300"
                 :style="{ width: `${(row.count / maxCount) * 100}%` }"
               />
-            </div>
+            </button>
             <span class="text-sm tabular-nums text-default text-right">
               {{ row.count }}
             </span>
@@ -74,6 +90,16 @@ const scoredPageCount = computed(() =>
 
         <p class="text-xs text-muted text-center mt-4">
           Pages · {{ scoredPageCount }} scored
+          <template v-if="selectedBucketId">
+            · Filter active
+            <button
+              type="button"
+              class="ms-1 text-primary hover:underline"
+              @click="emit('update:selectedBucketId', null)"
+            >
+              Clear
+            </button>
+          </template>
         </p>
       </div>
     </template>

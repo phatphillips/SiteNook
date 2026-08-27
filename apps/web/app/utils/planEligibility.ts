@@ -1,4 +1,4 @@
-import type { OrganizationPlan } from '~/types/accessiq'
+import type { OrganizationPlan } from '~/types/sitenook'
 import {
   getPlanLimits,
   normalizeOrganizationPlan,

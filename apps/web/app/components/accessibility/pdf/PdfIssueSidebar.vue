@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PdfIssue } from '~/types/accessiq'
+import type { PdfIssue } from '~/types/sitenook'
 
 const props = defineProps<{
   issues: PdfIssue[]

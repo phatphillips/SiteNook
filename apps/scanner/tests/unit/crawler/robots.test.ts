@@ -1,9 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import {
   checkAiBotStatus,
+  isDisallowedByRobots,
   isPathDisallowedForAgent,
-  parseRobotsTxt
+  parseRobotsTxt,
+  pathMatchesRule
 } from '../../../src/crawler/robots.js'
+
+/** Same filtering as loadRobotsDisallows (wildcard * groups only). */
+function disallowsForWildcardAgent(text: string): string[] {
+  const parsed = parseRobotsTxt(text)
+  const paths: string[] = []
+  for (const group of parsed.groups) {
+    if (!group.agents.includes('*')) continue
+    for (const rule of group.rules) {
+      if (rule.type === 'disallow' && rule.path) paths.push(rule.path)
+    }
+  }
+  return paths
+}
 
 describe('parseRobotsTxt', () => {
   it('extracts Sitemap directives', () => {
@@ -59,5 +74,34 @@ Allow: /public/
 `)
     expect(isPathDisallowedForAgent('/public/page', 'Googlebot', parsed)).toBe(false)
     expect(isPathDisallowedForAgent('/private', 'Googlebot', parsed)).toBe(true)
+  })
+})
+
+describe('pathMatchesRule', () => {
+  it('matches Drupal-style trailing wildcards', () => {
+    expect(pathMatchesRule('/user/login', '/user/*')).toBe(true)
+    expect(pathMatchesRule('/about', '/user/*')).toBe(false)
+    expect(pathMatchesRule('/', '/')).toBe(true)
+  })
+})
+
+describe('isDisallowedByRobots / wildcard-only disallows', () => {
+  it('does not apply bot-specific Disallow: / to the scanner (GovCMS-style)', () => {
+    const govcmsLike = `
+User-agent: *
+Disallow: /core/
+Disallow: /admin/*
+Disallow: /user/*
+
+User-agent: DeepSeekBot
+Disallow: /
+User-agent: DeepSeek
+Disallow: /
+`
+    const disallows = disallowsForWildcardAgent(govcmsLike)
+    expect(disallows).not.toContain('/')
+    expect(isDisallowedByRobots('https://www.govcms.gov.au/', disallows)).toBe(false)
+    expect(isDisallowedByRobots('https://www.govcms.gov.au/user/login', disallows)).toBe(true)
+    expect(isDisallowedByRobots('https://www.govcms.gov.au/about', disallows)).toBe(false)
   })
 })

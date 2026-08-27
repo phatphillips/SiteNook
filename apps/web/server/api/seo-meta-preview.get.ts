@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'AccessIQ-SeoPreview/1.0' }
+      headers: { 'User-Agent': 'SiteNook-SeoPreview/1.0' }
     })
     if (!res.ok) {
       throw createError({ statusCode: 502, statusMessage: `Page returned HTTP ${res.status}` })

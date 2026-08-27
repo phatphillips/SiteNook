@@ -1,7 +1,7 @@
 import type PocketBase from 'pocketbase'
 import type Stripe from 'stripe'
 import type { H3Event } from 'h3'
-import type { Organization } from '~/types/accessiq'
+import type { Organization } from '~/types/sitenook'
 import {
   computePurgeScheduledAt,
   isOrganizationInChurnRetention,

@@ -39,6 +39,35 @@ describe('crawlDiagnostics', () => {
     log.mockRestore()
   })
 
+  it('records 403 and challenge URLs as unscanned', () => {
+    const diag = new CrawlDiagnostics(false)
+    diag.recordHttpError(403, 'https://example.com/a')
+    diag.recordHttpError(404, 'https://example.com/missing')
+    diag.recordUnscanned('https://example.com/challenge')
+    expect(diag.unscannedUrls).toEqual([
+      'https://example.com/a',
+      'https://example.com/challenge'
+    ])
+  })
+
+  it('tips when the start URL is blocked by robots.txt', () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const diag = new CrawlDiagnostics(false)
+    diag.recordSeed(1)
+    diag.recordDequeueSkip('robots')
+    diag.finish({
+      stopReason: 'queue_empty',
+      queueRemaining: 0,
+      visitedCount: 0,
+      resultsCount: 0,
+      maxPages: 10
+    })
+    const output = log.mock.calls.map(c => String(c[0])).join('\n')
+    expect(output).toContain('blocked by robots.txt')
+    expect(output).toContain('Respect robots.txt')
+    log.mockRestore()
+  })
+
   it('respects SCANNER_CRAWL_DEBUG env', () => {
     process.env.SCANNER_CRAWL_DEBUG = '1'
     expect(isCrawlDebugEnabled()).toBe(true)

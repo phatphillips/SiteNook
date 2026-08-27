@@ -10,6 +10,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   return resolveStartAccess(event, {
     plan: query.plan,
-    checkout: query.checkout
+    checkout: query.checkout,
+    trial: query.trial
   })
 })

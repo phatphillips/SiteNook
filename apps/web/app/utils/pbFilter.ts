@@ -7,6 +7,11 @@ export function pbRelation(field: string, id: string): string {
   return `${field} = "${id}"`
 }
 
+/** Match an unset optional relation (PocketBase stores empty as NULL). */
+export function pbEmptyRelation(field: string): string {
+  return `${field} = null`
+}
+
 export function pbSelect(field: string, value: string): string {
   return `${field} = '${value}'`
 }

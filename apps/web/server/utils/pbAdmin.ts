@@ -34,15 +34,23 @@ export async function getPbAdmin(event?: H3Event): Promise<PocketBase> {
     })
   }
 
-  if (!cachedClient) {
-    cachedClient = new PocketBase(resolveServerPbUrl(event))
+  const serverUrl = resolveServerPbUrl(event)
+
+  if (!cachedClient || cachedClient.baseUrl.replace(/\/$/, '') !== serverUrl.replace(/\/$/, '')) {
+    cachedClient = new PocketBase(serverUrl)
+    cachedClient.autoCancellation(false)
     attachPocketBaseFetchTimeout(cachedClient)
   }
 
-  if (!cachedClient.authStore.isValid) {
+  async function ensureAuth(force = false) {
+    if (!force && cachedClient!.authStore.isValid) return
+
     if (!authInFlight) {
+      if (force) {
+        cachedClient!.authStore.clear()
+      }
       authInFlight = withTimeout(
-        cachedClient.collection('_superusers').authWithPassword(email, password),
+        cachedClient!.collection('_superusers').authWithPassword(email, password),
         PB_FETCH_TIMEOUT_MS,
         'PocketBase admin auth'
       )
@@ -58,5 +66,13 @@ export async function getPbAdmin(event?: H3Event): Promise<PocketBase> {
     await authInFlight
   }
 
+  await ensureAuth()
   return cachedClient
+}
+
+/** Drop cached admin session (e.g. after PocketBase restart / auth failure). */
+export function clearPbAdminCache() {
+  cachedClient?.authStore.clear()
+  cachedClient = null
+  authInFlight = null
 }

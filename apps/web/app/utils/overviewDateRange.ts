@@ -1,5 +1,5 @@
 import { endOfDay, startOfDay, subDays } from 'date-fns'
-import type { Scan } from '~/types/accessiq'
+import type { Scan } from '~/types/sitenook'
 import { scanTimestamp } from '~/utils/scanDisplay'
 
 export type OverviewRangePreset = 30 | 90 | 'custom'

@@ -52,6 +52,11 @@ fi
 /pb/patch-site-settings.sh || true
 /pb/patch-score-denominators.sh || true
 /pb/patch-scan-log-events.sh || true
+/pb/patch-pages-html-size.sh || true
+/pb/patch-pages-rendered-html.sh || true
+/pb/patch-qa-inventory-asset-category.sh || true
+/pb/patch-qa-inventory-refs.sh || true
+/pb/patch-a11y-issue-actions.sh || true
 /pb/patch-rules.sh || true
 
 wait "$PB_PID"

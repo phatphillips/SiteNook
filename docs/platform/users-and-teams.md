@@ -1,6 +1,6 @@
 # Users and team management
 
-This document describes how **dashboard users** are modeled, authorized, and managed in AccessIQ. It covers the PocketBase `users` collection, organization-scoped roles, billing contacts, the Team Members UI, and how org roles relate to site data access.
+This document describes how **dashboard users** are modeled, authorized, and managed in SiteNook. It covers the PocketBase `users` collection, organization-scoped roles, billing contacts, the Team Members UI, and how org roles relate to site data access.
 
 For sign-in, tokens, and guest routes, see [authentication.md](./authentication.md). For provisioning new organizations, see [onboarding.md](./onboarding.md).
 
@@ -8,7 +8,7 @@ For sign-in, tokens, and guest routes, see [authentication.md](./authentication.
 
 ## 1. Overview
 
-AccessIQ users are PocketBase auth records in the built-in **`users`** collection. Each user belongs to exactly one **organization** and has an org-level **role** that controls team administration and write access to org resources.
+SiteNook users are PocketBase auth records in the built-in **`users`** collection. Each user belongs to exactly one **organization** and has an org-level **role** that controls team administration and write access to org resources.
 
 | Concern | Where it lives |
 |---------|----------------|
@@ -29,7 +29,7 @@ Legacy `owner` and `analyst` role values are migrated to `admin` / `viewer` on b
 
 ### `users` collection
 
-PocketBase ships the auth collection as `users` (`_pb_users_auth_`). AccessIQ extends it with:
+PocketBase ships the auth collection as `users` (`_pb_users_auth_`). SiteNook extends it with:
 
 | Field | Type | Purpose |
 |-------|------|---------|

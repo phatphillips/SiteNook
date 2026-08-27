@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PdfIssue } from '~/types/accessiq'
+import type { PdfIssue } from '~/types/sitenook'
 import { formatPdfIssueEvidence, getPdfIssueGuidance } from '~/utils/pdfIssueGuidance'
 
 const props = defineProps<{

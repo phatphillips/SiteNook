@@ -1,6 +1,6 @@
 # Scans and crawl pipeline
 
-AccessIQ runs site crawls asynchronously: the **web dashboard** enqueues work in PocketBase, and the **scanner worker** claims jobs, crawls with Playwright + axe-core, and writes results back. This document describes the queue, active scans, history, configuration, cancellation, scheduling, and live logging end to end.
+SiteNook runs site crawls asynchronously: the **web dashboard** enqueues work in PocketBase, and the **scanner worker** claims jobs, crawls with Playwright + axe-core, and writes results back. This document describes the queue, active scans, history, configuration, cancellation, scheduling, and live logging end to end.
 
 ## Architecture overview
 
@@ -85,6 +85,7 @@ Schema is defined in `services/pocketbase/pb_migrations/` and applied on Docker 
 | `scan_type` | Mirrors queue item |
 | `pages_crawled` | Updated during crawl and background retries |
 | `started_at` / `completed_at` | Run timing (`completed_at` set when scan reaches a terminal status) |
+| `queued_at` / `crawl_finished_at` | Queue wait and primary crawl phase boundaries (set by scanner worker) |
 | `wcag_version`, `score_overall`, `score_a`, `score_aa`, `score_aaa`, `score_best_practices`, `score_qa` | Aggregated results (from primary crawl; not recomputed after background) |
 | `raw_config` | Config snapshot used for the run (cleared on retention prune) |
 | `diff_summary` | Optional comparison vs previous complete scan |
@@ -200,14 +201,20 @@ Background retries are handled by `processBackgroundScanStep()` in `apps/scanner
 
 **Module:** `apps/scanner/src/scheduler/scanScheduler.ts`
 
+All sites use a fixed **`every_5d`** cadence (`crawl_schedule = 'every_5d'`). Users cannot change the schedule from the dashboard; the **Next scan** column is read-only.
+
 - Tick interval: `SCHEDULER_TICK_MS` (default 60s).
-- Loads sites where `crawl_schedule` is not `manual`.
+- Loads sites where `crawl_schedule` is not `manual` (all active sites after migration).
 - **On worker startup**, `reconcileSchedulesOnStartup()` runs first: initializes missing `schedule_next_run_at`, and for sites that are overdue but idle, rolls the next run forward **without** enqueueing (avoids a burst of scans after container restart).
 - The first scheduler tick is deferred by one interval so reconcile completes before any enqueue.
 - For each due site (`schedule_next_run_at`), if not busy, calls `enqueueScheduledScan()`.
-- Creates queue row with site's `default_scan_config`; updates `schedule_last_enqueued_at` and `schedule_next_run_at`.
+- **`isSiteBusy`** treats `running` and `background_scan` as active; scheduled scans will not enqueue while either is in progress.
+- **`skipScheduledRunIfWithinMinGap`** skips enqueue when the latest scan started or finished within the last **hour** (`MIN_SCAN_GAP_MS`), and pushes `schedule_next_run_at` forward.
+- Creates queue row with site's `default_scan_config`; updates `schedule_last_enqueued_at` and `schedule_next_run_at` (+5 days from enqueue by default).
 - `isSiteDue()` returns false when `schedule_next_run_at` is missing (not treated as immediately due).
 - Schedule math is shared with the web app via `scheduleNextRun` utils (scanner + `apps/web/app/utils/scheduleNextRun.ts`).
+
+**New sites:** the add-site wizard queues the first scan immediately and sets `schedule_next_run_at` to five days after that enqueue (with the same minimum gap helper).
 
 ### Stale job recovery
 
@@ -225,7 +232,7 @@ Rows in `background_scan` are **not** reset on worker restart; they resume when 
 
 ## Background scan (WAF retries)
 
-Government and enterprise sites often return **HTTP 403** from a Web Application Firewall (WAF) when crawlers request pages too quickly. Users may see a block page in a browser that clears after waiting and refreshing—AccessIQ models that with **in-crawl retries** and a **background phase**.
+Government and enterprise sites often return **HTTP 403** from a Web Application Firewall (WAF) when crawlers request pages too quickly. Users may see a block page in a browser that clears after waiting and refreshing—SiteNook models that with **in-crawl retries** and a **background phase**.
 
 ### In-crawl WAF handling
 
@@ -482,7 +489,7 @@ Per-site run list lives under **Sites** on the same page:
 
 - Expand a site row → `ScanRunsList.vue` loads up to 50 scans via `loadScansForSite()`.
 - Actions: view results (for `complete` and `complete_with_errors`), rerun (re-queue with same config), delete scan, open detail modal.
-- Detail modal accordion includes **Pages we couldn't scan** when `unscanned_urls` is non-empty.
+- Detail modal accordion includes **Scan details** (queue / crawl / processing / total timing) and **Pages we couldn't scan** when `unscanned_urls` is non-empty.
 - **Latest scan** summary for the site row comes from `fetchLatestScansSummary()` (up to 500 recent scans, client-side “latest per site” maps).
 
 ### Paginated history API (`fetchHistory`)
@@ -502,6 +509,7 @@ Supports `siteFilter` state for scoping. **Not currently wired to a dedicated pa
 | Entry point | Flow |
 |-------------|------|
 | **New scan** / **Scan** button | `ScanTriggerButton` → `ScanConfigModal` → `queueScanWithConfig()` |
+| **Add site** (two-step wizard) | `AddSiteWizard` → site info → scan config → `createSiteAndQueueScan()` |
 | **Configure** on site row | Opens modal with site defaults |
 | **Rescan** from run list | `openRescan()` with prior `raw_config` |
 | **Start again** | `restartScan()` merges config and queues |

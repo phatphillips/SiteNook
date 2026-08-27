@@ -1,6 +1,6 @@
 import type PocketBase from 'pocketbase'
 import type { A11ySummary } from '~/utils/a11ySummary'
-import type { AccessibilityIssue, Scan } from '~/types/accessiq'
+import type { AccessibilityIssue, Scan } from '~/types/sitenook'
 import {
   attachPageMetaToIssues,
   pageUrlMapFromRows,

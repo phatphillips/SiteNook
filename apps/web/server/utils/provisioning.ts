@@ -1,10 +1,11 @@
 import { randomBytes } from 'node:crypto'
 import type PocketBase from 'pocketbase'
 import { ClientResponseError } from 'pocketbase'
-import type { OrganizationPlan } from '~/types/accessiq'
+import type { OrganizationPlan } from '~/types/sitenook'
 import { isOrganizationPlan } from '~/utils/planPricing'
 import { normalizeOrganizationPlan } from '~/utils/planLimits'
 import { RESERVED_SUBDOMAINS } from '~/utils/subdomain'
+import { buildTeamTrialProvisionFields } from './teamTrial'
 
 export type OrganizationCreatedVia = 'self_service' | 'provision_api'
 
@@ -14,6 +15,8 @@ export interface ProvisionOrganizationInput {
   ownerName: string
   ownerEmail: string
   plan?: string
+  /** When true with plan team, provision a 30-day app-managed Team trial. */
+  teamTrial?: boolean
 }
 
 export interface ProvisionOrganizationOptions {
@@ -208,6 +211,18 @@ export async function provisionOrganization(
   }
   if (options.createdVia) {
     organizationPayload.created_via = options.createdVia
+  }
+  if (input.teamTrial && plan === 'team') {
+    Object.assign(organizationPayload, buildTeamTrialProvisionFields())
+  } else {
+    organizationPayload.onboarding_state = {
+      dismissed: false,
+      siteAdded: false,
+      firstScanStarted: false,
+      ahaSeen: false,
+      teammateInvited: false,
+      scheduleEnabled: false
+    }
   }
 
   const organization = await pb.collection('organizations').create(organizationPayload)

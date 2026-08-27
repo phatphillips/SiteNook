@@ -1,9 +1,12 @@
-import type { Scan } from '~/types/accessiq'
+import type { Scan } from '~/types/sitenook'
 import { pbOr, pbRelation, pbSelect } from '~/utils/pbFilter'
 import { compareTimestampsDesc } from '~/utils/sortTimestamps'
 
 export const TERMINAL_SCAN_STATUSES = ['complete', 'complete_with_errors', 'failed', 'cancelled'] as const
 export const ACTIVE_SCAN_STATUSES = ['running', 'background_scan'] as const
+
+/** PocketBase list sort for scans — `created` is not sortable on this collection (returns 400). */
+export const SCAN_LIST_SORT = '-completed_at,-started_at' as const
 
 /** Statuses the user can stop from the active scans UI. */
 export const STOPPABLE_ACTIVE_SCAN_STATUSES = [
@@ -118,6 +121,25 @@ export function pickLatestScan(scans: Scan[]): Scan | null {
   if (!scans.length) return null
   const sorted = sortScansForDisplay(scans)
   return sorted[0] ?? null
+}
+
+export function isTrustedScan(scan: Pick<Scan, 'scan_quality'>): boolean {
+  return scan.scan_quality?.trusted !== false
+}
+
+/** Latest complete scan that is allowed to drive site scores. */
+export function pickLatestTrustedScan(scans: Scan[]): Scan | null {
+  const candidates = scans.filter(s =>
+    (s.status === 'complete' || s.status === 'complete_with_errors') && isTrustedScan(s)
+  )
+  if (candidates.length) {
+    return candidates.slice().sort((a, b) =>
+      compareTimestampsDesc(scanTimestamp(a), scanTimestamp(b))
+    )[0] ?? null
+  }
+  return pickLatestScan(
+    scans.filter(s => s.status === 'complete' || s.status === 'complete_with_errors')
+  )
 }
 
 /** Latest completed scan for scores / baseline data (ignores failed/cancelled orphans). */

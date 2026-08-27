@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { formatDistanceToNow } from 'date-fns'
-import type { ActiveScanRow, Scan } from '~/types/accessiq'
+import type { ActiveScanRow, Scan } from '~/types/sitenook'
 import {
   canStopActiveScanRow,
   scanActiveStatusLabel,

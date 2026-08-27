@@ -244,8 +244,16 @@ export async function loadLatestPagesPerUrlKey(
   pb: PocketBase,
   siteId: string
 ): Promise<PageRow[]> {
+  const latest = await pb.collection('scans').getList(1, 1, {
+    filter: `site = "${siteId}" && (status = "complete" || status = "complete_with_errors")`,
+    sort: '-completed_at',
+    fields: 'id'
+  })
+  const scanId = latest.items[0]?.id
+  if (!scanId) return []
+
   const pages = await pb.collection('pages').getFullList({
-    filter: `site = "${siteId}"`,
+    filter: `scan = "${scanId}"`,
     expand: 'scan',
     fields: 'id,site,url,title,html_snapshot,created'
   }) as unknown as PageRow[]

@@ -1,6 +1,6 @@
-# Authentication in AccessIQ
+# Authentication in SiteNook
 
-This document describes how user sign-in works in the AccessIQ dashboard. It covers the web app only. The scanner worker uses a separate admin credential flow (documented briefly at the end).
+This document describes how user sign-in works in the SiteNook dashboard. It covers the web app only. The scanner worker uses a separate admin credential flow (documented briefly at the end).
 
 ### Implementation status (2026-06-13)
 
@@ -19,11 +19,11 @@ Task tracking: [CURRENT_TASK.MD](../CURRENT_TASK.MD).
 
 ## 1. Overview
 
-AccessIQ uses **PocketBase** as its identity provider. There is no custom auth server, no OAuth providers, and no Nuxt server-side session. The browser talks directly to PocketBase over HTTP, and the PocketBase JavaScript SDK manages the login token.
+SiteNook uses **PocketBase** as its identity provider. There is no custom auth server, no OAuth providers, and no Nuxt server-side session. The browser talks directly to PocketBase over HTTP, and the PocketBase JavaScript SDK manages the login token.
 
 **Multi-tenancy:** Data is partitioned by **organization**. Each user belongs to one organization; sites and all scan/issue data are scoped to that organization via PocketBase API rules. **Read** access is org-wide (any member sees all sites/data in their org). **Write** access requires org **`admin`** (`viewer` is read-only). The legacy `site_access` join collection remains in the schema but is no longer used in API rules.
 
-**Subdomain routing (Phase B):** The dashboard resolves the tenant from the request host (`agency.accessiq.com` → `organizations.subdomain`). See [multi-tenancy.md](./multi-tenancy.md). Apex hosts (`localhost`, `accessiq.com`) allow any org member to log in; tenant hosts restrict login to users in that org. Unknown subdomains show `/account-not-found`.
+**Subdomain routing (Phase B):** The dashboard resolves the tenant from the request host (`agency.sitenook.com` → `organizations.subdomain`). See [multi-tenancy.md](./multi-tenancy.md). Apex hosts (`localhost`, `sitenook.com`) allow any org member to log in; tenant hosts restrict login to users in that org. Unknown subdomains show `/account-not-found`.
 
 **Phase C:** Public `users` creation is blocked at the API (`createRule` requires org admin). New orgs are provisioned via `POST /api/provision` (Nitro + API key). Org admins invite colleagues at `/settings/users` with account setup email. `/signup` is an invite-only contact page.
 
@@ -117,14 +117,14 @@ There is no Pinia auth store. Feature composables (`useSites`, `useScans`, etc.)
 |----------|---------|------------------|
 | `NUXT_PUBLIC_POCKETBASE_URL` | PocketBase API base URL for the browser | `http://localhost:8090` (dev only); **required in production** (validated at startup) |
 | `NUXT_PUBLIC_APP_URL` | Public app URL | `http://localhost:3000` |
-| `NUXT_PUBLIC_APP_DOMAIN` | Base domain for tenant subdomain parsing | `localhost` (dev) / `accessiq.com` (prod) |
+| `NUXT_PUBLIC_APP_DOMAIN` | Base domain for tenant subdomain parsing | `localhost` (dev) / `sitenook.com` (prod) |
 | `NUXT_POCKETBASE_URL` | Server-side PocketBase URL (Nitro only) | `http://pocketbase:8090` in Docker |
 | `NUXT_PB_ADMIN_EMAIL` / `NUXT_PB_ADMIN_PASSWORD` | Superuser creds for Nitro admin routes | Same as `PB_ADMIN_*` |
 | `NUXT_PROVISION_API_KEY` | Shared secret for `POST /api/provision` (server only) | Unset = provisioning API returns 503 |
 | `NUXT_PUBLIC_SUPPORT_EMAIL` | Contact on `/signup` invite-only page | Placeholder in `.env.example` |
 | `NUXT_PUBLIC_TENANT_ONLY` | Prod: apex host → `/sign-in` (localhost apex exempt) | `false` |
 | `APP_DASHBOARD_URL` | PocketBase container: base URL in password-reset email template | `http://localhost:3000` (dev) |
-| `APP_PUBLIC_DOMAIN` | PocketBase container: tenant subdomain suffix for mail hook | `localhost` / `accessiq.com` |
+| `APP_PUBLIC_DOMAIN` | PocketBase container: tenant subdomain suffix for mail hook | `localhost` / `sitenook.com` |
 
 The browser does **not** use admin credentials. The **Nuxt server** uses `NUXT_PB_ADMIN_*` for `/api/org-context`, `/api/org-login-url`, and `/api/provision`. PocketBase bootstrap and the scanner use `PB_ADMIN_*` separately.
 
@@ -534,4 +534,4 @@ This is service-to-service auth, not end-user login. See `apps/scanner/src/db/po
 
 ## Summary
 
-AccessIQ authentication is **PocketBase email/password auth in the browser**, with tokens in **localStorage**, **client-side route guards**, **immediate session restore + background token refresh** (with redirect on failed refresh), **401 refresh-and-retry**, **subdomain tenant routing** (Phase B), **production apex tenant-only mode** (`NUXT_PUBLIC_TENANT_ONLY` — [multi-tenancy.md](./multi-tenancy.md), [go-live.md](../operations/go-live.md)), **invite-only provisioning** (Phase C — [onboarding.md](./onboarding.md)), **tenant-aware reset/invite emails** (`mailer_tenant_reset.pb.js`), **org-scoped collection rules** (`admin` write; all members read), and a **`users` security hook** (self-escalation block, last-admin / last-billing-contact safeguards, activity logging). Team management is in-app at `/settings/users` with email invites. Nitro admin routes (`/api/provision`, `/api/org-context`, `/api/org-login-url`) use superuser credentials server-side. Account switching updates the UI immediately via reactive `sessionUser` (`pb-user` ref). Password-reset / invite email delivery requires SMTP — see [onboarding.md](./onboarding.md) § Email deliverability and [go-live.md](../operations/go-live.md).
+SiteNook authentication is **PocketBase email/password auth in the browser**, with tokens in **localStorage**, **client-side route guards**, **immediate session restore + background token refresh** (with redirect on failed refresh), **401 refresh-and-retry**, **subdomain tenant routing** (Phase B), **production apex tenant-only mode** (`NUXT_PUBLIC_TENANT_ONLY` — [multi-tenancy.md](./multi-tenancy.md), [go-live.md](../operations/go-live.md)), **invite-only provisioning** (Phase C — [onboarding.md](./onboarding.md)), **tenant-aware reset/invite emails** (`mailer_tenant_reset.pb.js`), **org-scoped collection rules** (`admin` write; all members read), and a **`users` security hook** (self-escalation block, last-admin / last-billing-contact safeguards, activity logging). Team management is in-app at `/settings/users` with email invites. Nitro admin routes (`/api/provision`, `/api/org-context`, `/api/org-login-url`) use superuser credentials server-side. Account switching updates the UI immediately via reactive `sessionUser` (`pb-user` ref). Password-reset / invite email delivery requires SMTP — see [onboarding.md](./onboarding.md) § Email deliverability and [go-live.md](../operations/go-live.md).

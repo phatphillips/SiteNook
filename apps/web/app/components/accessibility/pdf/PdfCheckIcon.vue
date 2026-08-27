@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PdfDocumentStatus } from '~/types/accessiq'
+import type { PdfDocumentStatus } from '~/types/sitenook'
 import { pdfCheckPassed } from '~/utils/pdfStatus'
 
 const props = defineProps<{

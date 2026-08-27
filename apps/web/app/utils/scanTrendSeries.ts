@@ -1,6 +1,7 @@
 import { eachDayOfInterval, format, startOfDay, subDays } from 'date-fns'
-import type { Scan } from '~/types/accessiq'
+import type { Scan } from '~/types/sitenook'
 import type { DateRangeBounds } from '~/utils/overviewDateRange'
+import { averageScore } from '~/utils/dashboardAggregates'
 import { scanTimestamp } from '~/utils/scanDisplay'
 
 export interface TrendPoint {
@@ -59,6 +60,83 @@ export function buildDailyTrendSeries(
   return points
 }
 
+/**
+ * Org-level average of per-site carried-forward scores for each day.
+ * Days where no site has a known score yet are null.
+ */
+export function buildOrgAverageDailyTrend(
+  scans: Scan[],
+  readValue: (scan: Scan) => number | null | undefined,
+  daysOrBounds: number | DateRangeBounds = 30
+): TrendPoint[] {
+  const days = eachDayInRange(daysOrBounds)
+  if (!days.length) return []
+
+  const bySite = new Map<string, Scan[]>()
+  for (const scan of scans) {
+    const siteId = typeof scan.site === 'string' ? scan.site : ''
+    if (!siteId) continue
+    const list = bySite.get(siteId)
+    if (list) list.push(scan)
+    else bySite.set(siteId, [scan])
+  }
+
+  if (!bySite.size) {
+    return days.map(day => ({ label: format(day, 'MMM d'), value: null }))
+  }
+
+  const siteSeries = [...bySite.values()].map(siteScans =>
+    buildDailyTrendSeries(siteScans, readValue, daysOrBounds)
+  )
+
+  return days.map((day, index) => {
+    const dayValues = siteSeries.map(series => series[index]?.value ?? null)
+    return {
+      label: format(day, 'MMM d'),
+      value: averageScore(dayValues)
+    }
+  })
+}
+
+/**
+ * Org-level sum of per-site carried-forward values for each day (e.g. open issue counts).
+ * Days where no site has a known value yet are null.
+ */
+export function buildOrgSumDailyTrend(
+  scans: Scan[],
+  readValue: (scan: Scan) => number | null | undefined,
+  daysOrBounds: number | DateRangeBounds = 30
+): TrendPoint[] {
+  const days = eachDayInRange(daysOrBounds)
+  if (!days.length) return []
+
+  const bySite = new Map<string, Scan[]>()
+  for (const scan of scans) {
+    const siteId = typeof scan.site === 'string' ? scan.site : ''
+    if (!siteId) continue
+    const list = bySite.get(siteId)
+    if (list) list.push(scan)
+    else bySite.set(siteId, [scan])
+  }
+
+  if (!bySite.size) {
+    return days.map(day => ({ label: format(day, 'MMM d'), value: null }))
+  }
+
+  const siteSeries = [...bySite.values()].map(siteScans =>
+    buildDailyTrendSeries(siteScans, readValue, daysOrBounds)
+  )
+
+  return days.map((day, index) => {
+    const dayValues = siteSeries.map(series => series[index]?.value ?? null)
+    const known = dayValues.filter((v): v is number => v != null)
+    return {
+      label: format(day, 'MMM d'),
+      value: known.length ? known.reduce((sum, n) => sum + n, 0) : null
+    }
+  })
+}
+
 function eachDayInRange(daysOrBounds: number | DateRangeBounds): Date[] {
   if (typeof daysOrBounds === 'number') {
     const result: Date[] = []
@@ -71,6 +149,34 @@ function eachDayInRange(daysOrBounds: number | DateRangeBounds): Date[] {
     start: startOfDay(daysOrBounds.start),
     end: startOfDay(daysOrBounds.end)
   })
+}
+
+/**
+ * Per-day event counts (zeros when none). Unlike score trends, values are not carried forward.
+ */
+export function buildDailyEventCountSeries(
+  events: Array<{ loggedAt: string, count?: number }>,
+  daysOrBounds: number | DateRangeBounds = 30
+): TrendPoint[] {
+  const days = eachDayInRange(daysOrBounds)
+  const byDay = new Map<number, number>()
+
+  for (const event of events) {
+    const ms = Date.parse(event.loggedAt)
+    if (!Number.isFinite(ms)) continue
+    const dayMs = startOfDay(new Date(ms)).getTime()
+    const add = event.count != null && event.count > 0 ? event.count : 1
+    byDay.set(dayMs, (byDay.get(dayMs) ?? 0) + add)
+  }
+
+  return days.map(day => ({
+    label: format(day, 'MMM d'),
+    value: byDay.get(day.getTime()) ?? 0
+  }))
+}
+
+export function sumTrendValues(points: TrendPoint[]): number {
+  return points.reduce((sum, point) => sum + (point.value ?? 0), 0)
 }
 
 export function trendDelta(points: TrendPoint[]): number | null {

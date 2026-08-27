@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { format } from 'date-fns'
-import type { PdfDocument, PdfIssue } from '~/types/accessiq'
+import type { PdfDocument, PdfIssue } from '~/types/sitenook'
 
 definePageMeta({
   layout: 'marketing',

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SeoIssue } from '~/types/accessiq'
+import type { SeoIssue } from '~/types/sitenook'
 import {
   linkedAxeRule,
   ruleFixExample,
@@ -25,7 +25,7 @@ const openModel = computed({
 const accordionOpen = ref<string | undefined>('overview')
 
 const siteIdRef = computed(() => props.siteId ?? '')
-const { latestScan, fetchSEOData } = useSEO(siteIdRef)
+const { latestScan, fetchSEOData } = useSEO(siteIdRef, { summary: false, parts: ['issues'] })
 const { sites, triggerScan } = useSites()
 const toast = useToast()
 

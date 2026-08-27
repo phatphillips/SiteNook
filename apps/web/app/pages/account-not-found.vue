@@ -23,7 +23,7 @@ const apexUrl = computed(() => {
     <div class="space-y-4 text-sm text-muted">
       <p>
         Check the link you were given, or ask your administrator for the correct sign-in URL
-        (it usually looks like <span class="font-mono text-default">your-agency.accessiq.com</span>).
+        (it usually looks like <span class="font-mono text-default">your-agency.sitenook.com</span>).
       </p>
       <UButton :to="apexUrl" block size="lg" variant="soft">
         Go to main site

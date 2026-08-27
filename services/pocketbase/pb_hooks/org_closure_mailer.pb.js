@@ -4,7 +4,7 @@
  * Send closure emails to billing contacts (called from Nitro after org enters closing).
  * Requires PocketBase SMTP in Settings → Mail settings.
  */
-routerAdd('POST', '/api/accessiq/notify-org-closure', (c) => {
+routerAdd('POST', '/api/sitenook/notify-org-closure', (c) => {
   const body = $apis.requestInfo(c).data || {}
   const organizationId = String(body.organizationId || '').trim()
   if (!organizationId) {
@@ -23,7 +23,7 @@ routerAdd('POST', '/api/accessiq/notify-org-closure', (c) => {
   return c.json(200, { sent })
 }, $apis.requireSuperuserAuth())
 
-routerAdd('POST', '/api/accessiq/notify-org-churn', (c) => {
+routerAdd('POST', '/api/sitenook/notify-org-churn', (c) => {
   const body = $apis.requestInfo(c).data || {}
   const organizationId = String(body.organizationId || '').trim()
   if (!organizationId) {

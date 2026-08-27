@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   formatCrawlLogLinesAsText,
+  mergeCrawlLogLines,
   summarizeCrawlLogErrors,
   trimLogLinesToRecent,
   type CrawlLogLine
@@ -43,5 +44,26 @@ describe('crawlLog display helpers', () => {
     ]
     expect(summarizeCrawlLogErrors(lines)).toBe('2 × HTTP 503')
     expect(summarizeCrawlLogErrors([])).toBeNull()
+  })
+
+  it('mergeCrawlLogLines dedupes SUCCESS lines for the same URL', () => {
+    const merged = mergeCrawlLogLines(
+      [{
+        id: 'evt-1',
+        ts: 1,
+        level: 'success',
+        message: 'Crawled https://example.com/a',
+        url: 'https://example.com/a'
+      }],
+      [{
+        id: 'page-1',
+        ts: 1,
+        level: 'success',
+        message: 'Crawled Title — https://example.com/a',
+        url: 'https://example.com/a'
+      }],
+      true
+    )
+    expect(merged.filter(line => line.level === 'success')).toHaveLength(1)
   })
 })

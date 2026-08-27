@@ -1,6 +1,6 @@
-# AccessIQ documentation
+# SiteNook documentation
 
-Living reference for operators, developers, and agents working on AccessIQ. For stack overview and test commands, start with [AGENTS.md](../AGENTS.md) and [CLAUDE.md](../CLAUDE.md).
+Living reference for operators, developers, and agents working on SiteNook. For stack overview and test commands, start with [AGENTS.md](../AGENTS.md) and [CLAUDE.md](../CLAUDE.md).
 
 **Status snapshot:** [platform-status.md](./platform-status.md) — what ships today, known gaps, and pre-launch checklist.
 
@@ -30,6 +30,7 @@ When adding a doc, pick the folder that matches its primary audience. Link relat
 | [operations/commands.md](./operations/commands.md) | Docker, npm scripts, tests, curl examples |
 | [operations/dev-operations.md](./operations/dev-operations.md) | Purge closed orgs, reset tenants, env var mapping |
 | [operations/go-live.md](./operations/go-live.md) | Production DNS, SMTP, Stripe live, E2E hardening |
+| [operations/v1-release.md](./operations/v1-release.md) | Private-repo v1 (Plex model): Polar, GHCR, no domain |
 
 ---
 
@@ -43,8 +44,11 @@ When adding a doc, pick the folder that matches its primary audience. Link relat
 | [platform/onboarding.md](./platform/onboarding.md) | Provisioning API, self-service signup, SMTP |
 | [platform/stripe-setup.md](./platform/stripe-setup.md) | Stripe Checkout, plans, webhooks |
 | [platform/account-closure.md](./platform/account-closure.md) | Close org, Customer Portal, 30-day purge |
-| [platform/licence-api.md](./platform/licence-api.md) | Enterprise self-hosted licence validation |
+| [platform/licence-api.md](./platform/licence-api.md) | Community / Self-host / Enterprise licence validation |
+| [platform/public-sku-sheet.md](./platform/public-sku-sheet.md) | Dual-track SKUs (hosted + appliance) |
+| [platform/self-host-operator-setup.md](./platform/self-host-operator-setup.md) | Manual Stripe / GHCR operator checklist |
 | [platform/litestream-backup.md](./platform/litestream-backup.md) | PocketBase SQLite backup to S3 |
+| [platform/analytics-integrations.md](./platform/analytics-integrations.md) | Third-party analytics connections + sync |
 
 ---
 
@@ -57,7 +61,9 @@ When adding a doc, pick the folder that matches its primary audience. Link relat
 | [product/accessibility-site-target.md](./product/accessibility-site-target.md) | Site target vs scan config |
 | [product/seo.md](./product/seo.md) | SEO rules, site pass, dashboard routes |
 | [product/global-search.md](./product/global-search.md) | Typesense index and search API |
-| [product/pdf-accessibility.md](./product/pdf-accessibility.md) | PDF crawl, VeraPDF validation, reports |
+| [product/pdf-accessibility.md](./product/pdf-accessibility.md) | PDF Inspector: VeraPDF + OpenDataLoader structure/tags + export packs |
+| [architecture/pdf-remediation-spike.md](./architecture/pdf-remediation-spike.md) | Phase 0 go/no-go notes for PDF remediation |
+| [product/policies.md](./product/policies.md) | Custom content rules and policy matches |
 
 ---
 

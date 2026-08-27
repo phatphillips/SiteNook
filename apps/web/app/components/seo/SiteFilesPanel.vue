@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { SeoIssue } from '~/types/accessiq'
+import type { SeoIssue } from '~/types/sitenook'
 import type { SiteFileRow } from '~/utils/crawlAuditDisplay'
 import { buildSiteFileRows } from '~/utils/crawlAuditDisplay'
-import type { SeoCrawlAudit } from '~/types/accessiq'
+import type { SeoCrawlAudit } from '~/types/sitenook'
 
 const props = defineProps<{
   audit?: SeoCrawlAudit | null

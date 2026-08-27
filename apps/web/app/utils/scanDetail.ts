@@ -1,12 +1,11 @@
 import { format } from 'date-fns'
-import type { Scan } from '~/types/accessiq'
+import type { Scan } from '~/types/sitenook'
 import {
   browserSummary,
   parseScanConfig,
   scheduleSummary,
   scopeSummary
 } from '~/utils/scanConfig'
-import { formatScanChangesCompact } from '~/utils/scanLog'
 import { scanTimestamp } from '~/utils/scanDisplay'
 
 export function scanSiteName(scan: Scan): string {
@@ -80,8 +79,7 @@ export function scanSummaryLines(scan: Scan): ScanConfigLine[] {
           : '—'
     },
     { label: 'Level AA', value: scan.score_aa != null ? `${scan.score_aa}%` : '—' },
-    { label: 'QA score', value: scan.score_qa != null ? `${scan.score_qa}%` : '—' },
-    { label: 'Changes', value: formatScanChangesCompact(scan) }
+    { label: 'QA score', value: scan.score_qa != null ? `${scan.score_qa}%` : '—' }
   ]
 }
 

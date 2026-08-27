@@ -15,6 +15,8 @@ import {
   getPrimaryReadabilityMethod
 
 } from '~/utils/readabilityMethods'
+import { bucketForScore } from '~/utils/readabilityDistribution'
+import { buildReadabilityCsv } from '~/utils/export/readabilityExport'
 
 
 
@@ -57,6 +59,7 @@ const selectedPage = ref<ReadabilityPageRow | null>(null)
 const tableSearch = ref('')
 
 const tableRef = useTemplateRef('tableRef')
+const selectedBreakdownBucketId = ref<string | null>(null)
 
 
 
@@ -86,22 +89,33 @@ const averageScore = computed(() =>
 
 const footerSummary = computed(() => {
 
-  const total = pages.value.length
+  const total = filteredPages.value.length
 
   if (!total) return ''
 
-  return `Showing ${total} ${total === 1 ? 'page' : 'pages'} from latest scan`
+  const suffix = selectedBreakdownBucketId.value ? ' (filtered by selected breakdown range)' : ''
+  return `Showing ${total} ${total === 1 ? 'page' : 'pages'} from latest scan${suffix}`
 
+})
+
+const filteredPages = computed(() => {
+  const methodId = activeMethodId.value
+  const bucketId = selectedBreakdownBucketId.value
+  if (!methodId || !bucketId) return pages.value
+  return pages.value.filter((page) => {
+    const bucket = bucketForScore(methodId, page.scores[methodId])
+    return bucket?.id === bucketId
+  })
 })
 
 
 
-onMounted(() => {
-
+watch(siteId, () => {
   activeSiteId.value = siteId.value
+}, { immediate: true })
 
-  fetchReadabilityData()
-
+watch(activeMethodId, (next, prev) => {
+  if (next !== prev) selectedBreakdownBucketId.value = null
 })
 
 
@@ -121,6 +135,31 @@ function onSelectPage(page: ReadabilityPageRow) {
   showPageDetail.value = true
 
 }
+
+const exportPage = ref(1)
+const exportPageSize = ref(1)
+watch(filteredPages, (rows) => {
+  exportPageSize.value = Math.max(1, rows.length)
+})
+
+const {
+  exportModalOpen,
+  exportConfig,
+  exporting,
+  progressMessage,
+  runExport
+} = useSimpleTableCsvExport({
+  total: computed(() => filteredPages.value.length),
+  page: exportPage,
+  pageSize: exportPageSize,
+  currentRows: filteredPages,
+  feature: 'readability',
+  scopeLabel: siteId,
+  fetchAllRows: async () => filteredPages.value,
+  buildCsv: rows => buildReadabilityCsv(rows, siteSettings.value.readabilityMethods, {
+    columnVisibility: tableRef.value?.getColumnVisibility?.()
+  })
+})
 
 </script>
 
@@ -148,19 +187,7 @@ function onSelectPage(page: ReadabilityPageRow) {
 
     <template #body>
 
-      <SitePageToolbar class="mb-2" />
-
-      <div v-if="loading" class="flex justify-center py-12">
-
-        <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin" />
-
-      </div>
-
-
-
-      <template v-else>
-
-        <UAlert
+      <UAlert
           v-if="error"
           class="mb-4"
           color="error"
@@ -207,6 +234,8 @@ function onSelectPage(page: ReadabilityPageRow) {
             :method-id="activeMethodId"
 
             :pages="pages"
+            :selected-bucket-id="selectedBreakdownBucketId"
+            @update:selected-bucket-id="(bucketId) => { selectedBreakdownBucketId = bucketId }"
 
           />
 
@@ -227,7 +256,7 @@ function onSelectPage(page: ReadabilityPageRow) {
 
           <DataTableToolbar>
 
-            <template #actions>
+            <template #leading>
 
               <TableSearchInput
 
@@ -247,7 +276,25 @@ function onSelectPage(page: ReadabilityPageRow) {
 
             </template>
 
+            <template #actions>
+              <UButton
+                icon="i-lucide-download"
+                label="Export to CSV"
+                color="neutral"
+                variant="outline"
+                @click="exportModalOpen = true"
+              />
+            </template>
+
           </DataTableToolbar>
+
+          <TableExportModal
+            v-model:open="exportModalOpen"
+            :config="exportConfig"
+            :exporting="exporting"
+            :progress-message="progressMessage"
+            @export="runExport"
+          />
 
 
 
@@ -257,7 +304,9 @@ function onSelectPage(page: ReadabilityPageRow) {
 
             v-model:search="tableSearch"
 
-            :pages="pages"
+            :pages="filteredPages"
+
+            :loading="loading"
 
             :enabled-methods="siteSettings.readabilityMethods"
 
@@ -269,18 +318,11 @@ function onSelectPage(page: ReadabilityPageRow) {
 
         </div>
 
-      </template>
-
-
-
       <AccessibilityReadabilityMethodPicker
-
+        v-if="site"
         v-model:open="showMethodPicker"
-
         :site="site"
-
         @saved="handleMethodsSaved"
-
       />
 
 

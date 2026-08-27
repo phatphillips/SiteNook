@@ -152,7 +152,7 @@ export async function auditSitemap(
     visited.add(url)
 
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'AccessIQ-Scanner/1.0' }
+      headers: { 'User-Agent': 'SiteNook-Scanner/1.0' }
     })
     status = res.status
     if (!res.ok) {

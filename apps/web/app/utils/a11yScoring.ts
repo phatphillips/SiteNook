@@ -1,4 +1,5 @@
-import type { AccessibilityIssue } from '~/types/accessiq'
+import type { AccessibilityIssue } from '~/types/sitenook'
+import type { A11yCheckStats } from '~/utils/a11yCheckStats'
 import {
   calculateSiteimproveScores,
   formatAccessibilityScore,
@@ -28,11 +29,12 @@ export function scoreableIssues(issues: AccessibilityIssue[]): AccessibilityIssu
 
 export function calculateAccessibilityScores(
   issues: AccessibilityIssue[],
-  elementTotals?: ElementTotals
+  elementTotals?: ElementTotals,
+  checkStats?: A11yCheckStats | null
 ): SiteimproveScores {
   const scoreIssues = toScoreIssues(scoreableIssues(issues))
   const totals = resolveElementTotals(elementTotals, scoreIssues)
-  return calculateSiteimproveScores(scoreIssues, totals)
+  return calculateSiteimproveScores(scoreIssues, totals, checkStats)
 }
 
 export function calculateAccessibilityScore(issues: AccessibilityIssue[]): number {
@@ -47,33 +49,36 @@ export function calculateAccessibilityScoreRaw(issues: AccessibilityIssue[]): nu
 export function calculatePointsToGain(
   issues: AccessibilityIssue[],
   ruleId: string,
-  elementTotals?: ElementTotals
+  elementTotals?: ElementTotals,
+  checkStats?: A11yCheckStats | null
 ): number {
   const scoreIssues = toScoreIssues(scoreableIssues(issues))
   const totals = resolveElementTotals(elementTotals, scoreIssues)
-  return pointsToGainIfAllResolvedForRule(scoreIssues, totals, ruleId)
+  return pointsToGainIfAllResolvedForRule(scoreIssues, totals, ruleId, checkStats)
 }
 
 export function calculateMarginalPointsToGain(
   issues: AccessibilityIssue[],
   ruleId: string,
-  elementTotals?: ElementTotals
+  elementTotals?: ElementTotals,
+  checkStats?: A11yCheckStats | null
 ): number {
   const scoreIssues = toScoreIssues(scoreableIssues(issues))
   const totals = resolveElementTotals(elementTotals, scoreIssues)
-  return pointsToGainForRule(scoreIssues, totals, ruleId)
+  return pointsToGainForRule(scoreIssues, totals, ruleId, checkStats)
 }
 
 export function buildPointsToGainByRule(
   issues: AccessibilityIssue[],
-  elementTotals?: ElementTotals
+  elementTotals?: ElementTotals,
+  checkStats?: A11yCheckStats | null
 ): Map<string, number> {
   const scoreIssues = toScoreIssues(scoreableIssues(issues))
   const totals = resolveElementTotals(elementTotals, scoreIssues)
   const ruleIds = new Set(scoreIssues.map(i => i.rule_id))
   const map = new Map<string, number>()
   for (const ruleId of ruleIds) {
-    map.set(ruleId, pointsToGainIfAllResolvedForRule(scoreIssues, totals, ruleId))
+    map.set(ruleId, pointsToGainIfAllResolvedForRule(scoreIssues, totals, ruleId, checkStats))
   }
   return map
 }

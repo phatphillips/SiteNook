@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { Organization } from '~/types/accessiq'
+import type { Organization } from '~/types/sitenook'
 import type { PlanChangeAssessment, OrganizationPlanUsage } from '~/utils/planEligibility'
 import type { UsageBreakdownRow, UsageLimitSummary } from '~/utils/planUsageBreakdown'
-import { getPlanOffering, formatPlanPrice } from '~/utils/planPricing'
+import { getPlanOffering, formatPlanPrice, TEAM_TRIAL_CTA } from '~/utils/planPricing'
 import { isPaidCheckoutPlan, normalizeOrganizationPlan } from '~/utils/planLimits'
 import { isOrgAdmin } from '~/utils/orgAccess'
 import { formatPbClientError } from '~/utils/pbClientError'
+import { trackFunnelEvent } from '~/utils/funnelAnalytics'
 import type { BillingInvoiceSummary, BillingSubscriptionSummary } from '~/utils/billingTypes'
 
 definePageMeta({ middleware: 'auth' })
@@ -58,6 +59,16 @@ const canResubscribe = computed(() =>
   && !hasActiveSubscription.value
   && Boolean(org.value?.stripe_customer_id?.trim() || isPaidPlan.value)
 )
+
+const canStartTeamTrial = computed(() =>
+  canManageBilling.value
+  && !isOrgClosing.value
+  && normalizedPlan.value === 'free'
+  && org.value?.trial_nudge_stage !== -1
+  && org.value?.subscription_status !== 'trialing'
+)
+
+const trialLoading = ref(false)
 
 const canManageBilling = computed(() => pageReady.value && isOrgAdmin(sessionUser.value))
 
@@ -360,6 +371,40 @@ function showCheckoutResultToast(retentionStarted = false) {
 
 function openAdjustPlan() {
   adjustPlanOpen.value = true
+  trackFunnelEvent('upgrade_click', {
+    organizationId: org.value?.id,
+    source: 'billing_adjust_plan'
+  })
+}
+
+async function startTeamTrial() {
+  if (!pb?.authStore.token || !canStartTeamTrial.value) return
+  trialLoading.value = true
+  try {
+    const result = await $fetch<{ organization: Organization }>('/api/billing/start-trial', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${pb.authStore.token}` }
+    })
+    org.value = result.organization
+    trackFunnelEvent('trial_start', {
+      organizationId: result.organization.id,
+      source: 'billing'
+    })
+    toast.add({
+      title: 'Team trial started',
+      description: TEAM_TRIAL_CTA.subcopy,
+      color: 'success'
+    })
+    await loadBillingSummary()
+  } catch (error) {
+    toast.add({
+      title: 'Could not start trial',
+      description: formatPbClientError(error),
+      color: 'error'
+    })
+  } finally {
+    trialLoading.value = false
+  }
 }
 
 onMounted(async () => {
@@ -518,17 +563,28 @@ watch(() => route.query.portal, async (portal) => {
                 </p>
               </template>
               <template
-                v-if="canChangePlan"
+                v-if="canChangePlan || canStartTeamTrial"
                 #action
               >
-                <UButton
-                  variant="outline"
-                  color="neutral"
-                  size="sm"
-                  @click="openAdjustPlan"
-                >
-                  Adjust plan
-                </UButton>
+                <div class="flex flex-wrap gap-2">
+                  <UButton
+                    v-if="canStartTeamTrial"
+                    size="sm"
+                    :loading="trialLoading"
+                    @click="startTeamTrial"
+                  >
+                    Start 30-day Team trial
+                  </UButton>
+                  <UButton
+                    v-if="canChangePlan"
+                    variant="outline"
+                    color="neutral"
+                    size="sm"
+                    @click="openAdjustPlan"
+                  >
+                    Adjust plan
+                  </UButton>
+                </div>
               </template>
             </BillingSection>
 

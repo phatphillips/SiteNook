@@ -1,6 +1,6 @@
 # Account closure and billing lifecycle
 
-AccessIQ supports organization closure (churn/offboarding), Stripe Customer Portal billing management, and automatic data purge after a retention period.
+SiteNook supports organization closure (churn/offboarding), Stripe Customer Portal billing management, and automatic data purge after a retention period.
 
 For signup and paid onboarding, see [onboarding.md](./onboarding.md) and [stripe-setup.md](./stripe-setup.md). For team member removal (not org closure), see [users-and-teams.md](./users-and-teams.md).
 

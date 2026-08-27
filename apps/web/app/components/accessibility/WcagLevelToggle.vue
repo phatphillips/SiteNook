@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { WcagLevelFilter } from '~/types/accessiq'
+import type { WcagLevelFilter } from '~/types/sitenook'
 
 defineProps<{
   modelValue: WcagLevelFilter

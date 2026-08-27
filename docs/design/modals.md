@@ -1,6 +1,6 @@
 # Modals
 
-AccessIQ dashboard modals use Nuxt UI `UModal` with a consistent **header**, scrollable **body**, and **footer** action bar. Use this pattern for any new settings or detail dialogs.
+SiteNook dashboard modals use Nuxt UI `UModal` with a consistent **header**, scrollable **body**, and **footer** action bar. Use this pattern for any new settings or detail dialogs.
 
 ## Reference implementations
 

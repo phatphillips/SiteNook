@@ -17,7 +17,7 @@ function mockSession(overrides: Partial<Stripe.Checkout.Session> = {}): Stripe.C
     status: 'complete',
     payment_status: 'paid',
     mode: 'subscription',
-    metadata: { accessiq_plan: 'team' },
+    metadata: { sitenook_plan: 'team' },
     customer_details: { email: 'buyer@example.com' },
     customer: 'cus_test',
     subscription: 'sub_test',
@@ -48,14 +48,14 @@ describe('stripeCheckoutRecord', () => {
 
   it('resolves plan from metadata with team fallback', () => {
     expect(resolveCheckoutPlanFromSession(mockSession())).toBe('team')
-    expect(resolveCheckoutPlanFromSession(mockSession({ metadata: { accessiq_plan: 'standard' } }))).toBe('team')
+    expect(resolveCheckoutPlanFromSession(mockSession({ metadata: { sitenook_plan: 'standard' } }))).toBe('team')
     expect(resolveCheckoutPlanFromSession(mockSession({ metadata: {} }))).toBe('team')
   })
 
   it('resolves organization id from metadata', () => {
     expect(resolveCheckoutOrganizationId(mockSession())).toBeUndefined()
     expect(resolveCheckoutOrganizationId(mockSession({
-      metadata: { accessiq_plan: 'team', organization_id: 'org_abc' }
+      metadata: { sitenook_plan: 'team', organization_id: 'org_abc' }
     }))).toBe('org_abc')
   })
 

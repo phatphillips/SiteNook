@@ -1,6 +1,6 @@
 # Score calculation
 
-How AccessIQ computes the scores shown on the **Accessibility** and **Quality Assurance** overview pages.
+How SiteNook computes the scores shown on the **Accessibility** and **Quality Assurance** overview pages.
 
 Core logic: `apps/web/app/utils/siteimproveScore.ts` (mirrored in `apps/scanner/src/accessibility/siteimproveScore.ts`). Scan aggregation: `apps/scanner/src/crawler/siteCrawler.ts` → `aggregateScores()`.
 

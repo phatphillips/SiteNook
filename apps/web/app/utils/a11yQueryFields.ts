@@ -7,7 +7,7 @@ export const A11Y_ISSUE_LIST_FIELDS =
   'id,scan,page,rule_id,wcag_level,wcag_sc,wcag_version,impact,type,element_type,responsible_role,help_url,description,css_selector,status,dismissed_at,dismiss_reason,updated,created'
 
 export const A11Y_SCAN_LIST_FIELDS =
-  'id,site,status,started_at,completed_at,created,score_overall,score_a,score_aa,score_aaa,score_best_practices,score_qa,score_denominators,open_issue_count,pages_crawled'
+  'id,site,status,started_at,completed_at,created,score_overall,score_a,score_aa,score_aaa,score_best_practices,score_qa,score_denominators,a11y_check_stats,open_issue_count,pages_crawled,scan_quality'
 
 /** PocketBase OR filter batches (avoid oversized filter strings). */
 export const A11Y_PAGE_ID_BATCH_SIZE = 80

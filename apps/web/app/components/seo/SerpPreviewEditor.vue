@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SeoIssue } from '~/types/accessiq'
+import type { SeoIssue } from '~/types/sitenook'
 import type { SerpDevice } from '~/utils/serpPreview'
 import { ruleLabel } from '~/utils/seoRules'
 import { isOverSerpLimit, serpLimitsForDevice } from '~/utils/serpPreview'

@@ -72,8 +72,8 @@ describe('buildTenantLoginUrl', () => {
   })
 
   it('builds production tenant URLs', () => {
-    expect(buildTenantLoginUrl('acme', 'accessiq.com', 'https://accessiq.com'))
-      .toBe('https://acme.accessiq.com/login')
+    expect(buildTenantLoginUrl('acme', 'sitenook.com', 'https://sitenook.com'))
+      .toBe('https://acme.sitenook.com/login')
   })
 
   it('builds tenant app origin without login path', () => {

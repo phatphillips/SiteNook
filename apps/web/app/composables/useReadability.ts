@@ -1,4 +1,4 @@
-import type { PageRecord, Scan } from '~/types/accessiq'
+import type { PageRecord, Scan } from '~/types/sitenook'
 import type { ReadabilityPageRow } from '~/utils/readabilityMethods'
 import { pbRelation } from '~/utils/pbFilter'
 import { createDebouncedReload } from '~/utils/reloadScheduler'
@@ -88,7 +88,9 @@ export function useReadability(siteId: Ref<string> | string) {
   }
 
   async function fetchReadabilityData(options?: { silent?: boolean }) {
-    if (!id.value) return
+    if (!import.meta.client || !id.value || !pb) return
+
+    const generation = ++fetchGeneration
     if (!options?.silent) {
       loading.value = true
     }
@@ -98,15 +100,20 @@ export function useReadability(siteId: Ref<string> | string) {
         filter: buildDisplayScansFilter(id.value)
       }) as unknown as Scan[]
 
+      if (generation !== fetchGeneration) return
+
       const result = await resolveScanWithPages(scanList)
+      if (generation !== fetchGeneration) return
+
       latestScan.value = result.scan
       rawPages.value = result.pages
     } catch (e) {
+      if (generation !== fetchGeneration) return
       error.value = pocketBaseErrorMessage(e)
       latestScan.value = null
       rawPages.value = []
     } finally {
-      if (!options?.silent) {
+      if (generation === fetchGeneration && !options?.silent) {
         loading.value = false
       }
     }
@@ -123,6 +130,7 @@ export function useReadability(siteId: Ref<string> | string) {
   let unsubscribeScans: (() => void) | null = null
   let unsubscribePages: (() => void) | null = null
   let subscribeGeneration = 0
+  let fetchGeneration = 0
 
   function unsubscribeReadability() {
     if (unsubscribeScans) {
@@ -137,6 +145,7 @@ export function useReadability(siteId: Ref<string> | string) {
   }
 
   async function subscribeReadabilityUpdates() {
+    if (!import.meta.client || !pb) return
     const generation = ++subscribeGeneration
     unsubscribeReadability()
     if (!id.value) return
@@ -171,8 +180,12 @@ export function useReadability(siteId: Ref<string> | string) {
   }
 
   watch(id, () => {
-    fetchReadabilityData()
-    subscribeReadabilityUpdates()
+    if (!import.meta.client) return
+    fetchGeneration += 1
+    subscribeGeneration += 1
+    unsubscribeReadability()
+    void fetchReadabilityData()
+    void subscribeReadabilityUpdates()
   }, { immediate: true })
 
   onUnmounted(() => {

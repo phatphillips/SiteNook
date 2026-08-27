@@ -31,7 +31,7 @@ const signInPath = '/sign-in'
             Create an organization
           </p>
           <p class="mt-1 text-sm text-muted">
-            Choose a plan and set up a new AccessIQ workspace for your team.
+            Choose a plan and set up a new SiteNook workspace for your team.
           </p>
         </div>
       </NuxtLink>
@@ -57,7 +57,7 @@ const signInPath = '/sign-in'
     <div v-else class="space-y-5">
       <div class="rounded-xl border border-default bg-elevated/30 p-4 text-sm leading-relaxed text-muted">
         <p>
-          New AccessIQ accounts are created by an organization admin. If you need access, reach out to your team lead or IT contact.
+          New SiteNook accounts are created by an organization admin. If you need access, reach out to your team lead or IT contact.
         </p>
       </div>
 

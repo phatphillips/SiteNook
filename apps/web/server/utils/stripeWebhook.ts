@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import type Stripe from 'stripe'
 import { ClientResponseError } from 'pocketbase'
-import type { Organization } from '~/types/accessiq'
+import type { Organization } from '~/types/sitenook'
 import { buildPaidCheckoutUpsertInput, resolveCheckoutOrganizationId } from './stripeCheckoutRecord'
 import { markCheckoutSessionConsumed, upsertPaidCheckoutSession } from './stripeCheckoutStore'
 import {
@@ -16,7 +16,20 @@ import {
 import { closeOrganizationFromStripeSubscription } from './closeOrganization'
 import { notifyOrgChurnEmails } from './orgClosureNotify'
 import { isOrganizationPlan } from '~/utils/planPricing'
-import { readStripeServerConfig, resolvePlanFromStripePriceId } from './stripeConfig'
+import {
+  isSelfHostStripePriceId,
+  readStripeServerConfig,
+  resolvePlanFromStripePriceId
+} from './stripeConfig'
+import {
+  extractSelfHostCheckoutEmail,
+  isSelfHostCheckoutSession,
+  issueSelfHostLicenceFromCheckout,
+  renewLicenceExpiryForSubscription,
+  revokeLicencesForStripeSubscription,
+  defaultSelfHostExpiry
+} from './licenceIssuance'
+import { notifySelfHostLicenceEmail } from './licenceNotify'
 
 export function assertStripeWebhookConfigured(webhookSecret: string): void {
   if (!webhookSecret.trim()) {
@@ -57,6 +70,11 @@ async function handleCheckoutSessionCompleted(
   event: H3Event,
   session: Stripe.Checkout.Session
 ): Promise<void> {
+  if (isSelfHostCheckoutSession(session)) {
+    await handleSelfHostCheckoutCompleted(event, session)
+    return
+  }
+
   const upsertInput = buildPaidCheckoutUpsertInput(session)
   if (!upsertInput) return
 
@@ -102,10 +120,67 @@ async function handleCheckoutSessionCompleted(
   })
 }
 
+export async function handleSelfHostCheckoutCompleted(
+  event: H3Event,
+  session: Stripe.Checkout.Session
+): Promise<{ licenceKey?: string, created: boolean }> {
+  const email = extractSelfHostCheckoutEmail(session)
+  const subscriptionId = typeof session.subscription === 'string'
+    ? session.subscription
+    : session.subscription?.id || ''
+  const customerId = typeof session.customer === 'string'
+    ? session.customer
+    : session.customer?.id || ''
+
+  if (!email) {
+    console.warn('[stripeWebhook] Self-host checkout missing customer email', session.id)
+    return { created: false }
+  }
+
+  const pb = await getPbAdmin(event)
+  const interval = String(session.metadata?.sitenook_interval || 'monthly').toLowerCase()
+  const expiresAt = defaultSelfHostExpiry(interval === 'annual' ? 12 : 1)
+
+  const { licence, created } = await issueSelfHostLicenceFromCheckout(pb, {
+    customerEmail: email,
+    stripeSubscriptionId: subscriptionId,
+    stripeCheckoutSessionId: session.id,
+    stripeCustomerId: customerId,
+    expiresAt
+  })
+
+  if (created) {
+    await notifySelfHostLicenceEmail(event, {
+      email,
+      licenceKey: licence.key,
+      expiresAt: String(licence.expires_at || expiresAt)
+    })
+  }
+
+  return { licenceKey: licence.key, created }
+}
+
 async function handleSubscriptionUpdated(
   event: H3Event,
   subscription: Stripe.Subscription
 ): Promise<void> {
+  const config = useRuntimeConfig(event)
+  const stripeConfig = readStripeServerConfig(config)
+  const priceId = subscription.items.data[0]?.price?.id
+  const productMeta = String(subscription.metadata?.sitenook_product || '').toLowerCase()
+  if (productMeta === 'selfhost' || isSelfHostStripePriceId(stripeConfig, priceId)) {
+    const pb = await getPbAdmin(event)
+    const periodEnd = subscription.items.data[0]?.current_period_end
+      ?? (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end
+    const expiresAt = periodEnd
+      ? new Date(Number(periodEnd) * 1000).toISOString()
+      : defaultSelfHostExpiry(1)
+    if (subscription.status === 'active' || subscription.status === 'trialing') {
+      await renewLicenceExpiryForSubscription(pb, subscription.id, expiresAt)
+    }
+    return
+  }
+
   const pb = await getPbAdmin(event)
   const customerId = typeof subscription.customer === 'string'
     ? subscription.customer
@@ -132,12 +207,9 @@ async function handleSubscriptionUpdated(
 
   if (org.status === 'closing') return
 
-  const metadataPlan = subscription.metadata?.accessiq_plan
+  const metadataPlan = subscription.metadata?.sitenook_plan
   let plan = isOrganizationPlan(metadataPlan) ? metadataPlan : undefined
   if (!plan) {
-    const config = useRuntimeConfig(event)
-    const stripeConfig = readStripeServerConfig(config)
-    const priceId = subscription.items.data[0]?.price?.id
     plan = resolvePlanFromStripePriceId(
       stripeConfig,
       priceId,
@@ -166,6 +238,16 @@ async function handleSubscriptionDeleted(
   event: H3Event,
   subscription: Stripe.Subscription
 ): Promise<void> {
+  const config = useRuntimeConfig(event)
+  const stripeConfig = readStripeServerConfig(config)
+  const priceId = subscription.items.data[0]?.price?.id
+  const productMeta = String(subscription.metadata?.sitenook_product || '').toLowerCase()
+  if (productMeta === 'selfhost' || isSelfHostStripePriceId(stripeConfig, priceId)) {
+    const pb = await getPbAdmin(event)
+    await revokeLicencesForStripeSubscription(pb, subscription.id)
+    return
+  }
+
   const pb = await getPbAdmin(event)
   const customerId = typeof subscription.customer === 'string'
     ? subscription.customer

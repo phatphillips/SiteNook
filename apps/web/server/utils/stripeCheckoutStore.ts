@@ -1,6 +1,6 @@
 import type PocketBase from 'pocketbase'
 import { ClientResponseError } from 'pocketbase'
-import type { OrganizationPlan } from '~/types/accessiq'
+import type { OrganizationPlan } from '~/types/sitenook'
 import { pbSelect } from '~/utils/pbFilter'
 import { linkStripeBillingToOrganization } from './orgBilling'
 import type {

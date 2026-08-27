@@ -7,7 +7,8 @@ export const TENANT_ONLY_APEX_PATHS = new Set([
   '/signup',
   '/start',
   '/account-not-found',
-  '/reset-password'
+  '/reset-password',
+  '/download'
 ])
 
 export function parseTenantOnlyFlag(value: unknown): boolean {
@@ -54,6 +55,6 @@ export function shouldEnforceTenantOnlyApex(
 }
 
 export function formatTenantLoginExample(appDomain: string): string {
-  const domain = appDomain.trim().toLowerCase() || 'accessiq.com'
+  const domain = appDomain.trim().toLowerCase() || 'sitenook.com'
   return `your-organization.${domain}`
 }

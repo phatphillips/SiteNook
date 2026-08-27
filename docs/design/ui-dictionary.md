@@ -1,4 +1,4 @@
-# AccessIQ UI Dictionary
+# SiteNook UI Dictionary
 
 Canonical names for dashboard UI elements. Use these labels when discussing changes so agents and humans refer to the same thing.
 
@@ -27,11 +27,13 @@ Canonical names for dashboard UI elements. Use these labels when discussing chan
 | **Accessibility → Overview** | `/sites/:id/accessibility` |
 | **Accessibility → Issues** | `/sites/:id/accessibility/issues` |
 | **Accessibility → Readability** | `/sites/:id/accessibility/readability` |
-| **Accessibility → PDFs** | `/sites/:id/accessibility/pdfs` |
+| **Accessibility → PDFs** | `/sites/:id/accessibility/pdfs` (library) |
+| **Accessibility → PDF Inspector** | `/sites/:id/accessibility/pdfs/:documentId` — breadcrumb `PDFs / PDF Inspector` |
 | **Quality Assurance** (group) | — |
 | **QA → Overview** | `/sites/:id/qa` |
 | **QA → Broken Links** | `/sites/:id/qa/links` |
 | **QA → Spelling** | `/sites/:id/qa/spelling` |
+| **QA → Policies** | `/sites/:id/qa/policies` |
 | **QA → Inventory** | `/sites/:id/qa/inventory` |
 | **SEO** (group) | — |
 | **SEO → Overview** | `/sites/:id/seo` |
@@ -41,7 +43,7 @@ Canonical names for dashboard UI elements. Use these labels when discussing chan
 | **Search** | `/search` |
 | **Scans** | `/scans` |
 | **Reports** | `/reports` *(stub — page not implemented)* |
-| **Policies** | `/policies` |
+| **Policies** | `/policies` (rules); `/qa/policies` (matches) |
 | **Settings** | `/settings` |
 
 ---
@@ -156,6 +158,19 @@ Main score and trend dashboard for one site.
 
 ---
 
+## Accessibility — PDF Inspector (`/sites/:id/accessibility/pdfs/:documentId`)
+
+| Name | Description |
+|------|-------------|
+| **PDF Inspector** | Document studio (Audit / Convert / Compare). Breadcrumb uses literal `/`: `PDFs / PDF Inspector`. `sites/.../pdfs/[documentId].vue` |
+| **Pages rail** | Left column of page thumbnails. `PdfPageThumbnails` |
+| **Preview pane** | Middle column — PDF preview only. `PdfPreviewViewer` |
+| **Issues context** | Audit right pane — issue list + guidance. `PdfAuditContext` |
+| **Content context** | Convert right pane — copyable Markdown/HTML/JSON/Gutenberg/Images. `PdfConvertContext` |
+| **Inspector shell** | Shared `Pages \| Preview \| Context` layout. `PdfInspectorShell` |
+
+---
+
 ## Quality Assurance
 
 ### QA overview (`/sites/:id/qa`)
@@ -198,11 +213,12 @@ Main score and trend dashboard for one site.
 
 ---
 
-## Policies (`/policies`)
+## Policies (`/policies` + `/qa/policies`)
 
 | Name | Description |
 |------|-------------|
-| **Policies list** | Custom content policy rules and match status. |
+| **Policies list** | Custom content policy rules (CRUD) at `/policies`. |
+| **Policy matches** | Findings triage under QA (`/qa/policies` and site equivalent). |
 
 ---
 

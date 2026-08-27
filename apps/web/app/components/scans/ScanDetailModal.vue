@@ -1,18 +1,16 @@
 <script setup lang="ts">
-import type { Scan } from '~/types/accessiq'
+import type { Scan } from '~/types/sitenook'
 import {
   formatScanModalTitle,
   formatScanTypeLabel,
   scanSiteUrl,
   scanConfigLines,
-  scanDiffFixedLines,
-  scanDiffNewLines,
   scanSummaryLines,
   scanUnscannedUrls,
-  showScanChangesSection,
   showScanErrorSection,
   showUnscannedPagesSection
 } from '~/utils/scanDetail'
+import { scanTimingPhaseRows, showScanDetailsSection } from '~/utils/scanTiming'
 import { buildFullScanLogDownload, triggerScanLogDownload } from '~/utils/scanLogExport'
 
 const props = defineProps<{
@@ -63,8 +61,8 @@ const accordionItems = computed(() => {
     { label: 'Summary', value: 'summary', slot: 'summary' }
   ]
 
-  if (showScanChangesSection(scan)) {
-    items.push({ label: 'Changes since previous scan', value: 'changes', slot: 'changes' })
+  if (showScanDetailsSection(scan)) {
+    items.push({ label: 'Scan details', value: 'details', slot: 'details' })
   }
 
   items.push({ label: 'Configuration', value: 'configuration', slot: 'configuration' })
@@ -85,9 +83,7 @@ const accordionItems = computed(() => {
 })
 
 const unscannedUrls = computed(() => (props.scan ? scanUnscannedUrls(props.scan) : []))
-
-const newIssueLines = computed(() => (props.scan ? scanDiffNewLines(props.scan) : []))
-const fixedIssueLines = computed(() => (props.scan ? scanDiffFixedLines(props.scan) : []))
+const timingPhases = computed(() => (props.scan ? scanTimingPhaseRows(props.scan) : []))
 
 watch(
   () => props.scan?.id,
@@ -195,42 +191,21 @@ async function downloadFullLog() {
             </dl>
           </template>
 
-          <template #changes-body>
-            <div class="pt-2 space-y-4">
-              <p
-                v-if="!newIssueLines.length && !fixedIssueLines.length"
-                class="text-sm text-muted"
-              >
-                No issue changes compared to the previous completed scan.
+          <template #details-body>
+            <div class="pt-2 space-y-5">
+              <p v-if="!timingPhases.length" class="text-sm text-muted">
+                Timing details are not available for this scan.
               </p>
-              <div v-if="fixedIssueLines.length">
-                <p class="text-xs font-medium text-muted mb-2">
-                  Fixed ({{ scan.diff_summary?.fixed_issues ?? fixedIssueLines.length }})
-                </p>
-                <ul class="space-y-1.5">
-                  <li
-                    v-for="(line, idx) in fixedIssueLines"
-                    :key="`fixed-${idx}`"
-                    class="text-sm text-success"
-                  >
-                    {{ line }}
-                  </li>
-                </ul>
-              </div>
-              <div v-if="newIssueLines.length">
-                <p class="text-xs font-medium text-muted mb-2">
-                  New ({{ scan.diff_summary?.new_issues ?? newIssueLines.length }})
-                </p>
-                <ul class="space-y-1.5">
-                  <li
-                    v-for="(line, idx) in newIssueLines"
-                    :key="`new-${idx}`"
-                    class="text-sm text-warning"
-                  >
-                    {{ line }}
-                  </li>
-                </ul>
-              </div>
+              <section
+                v-for="phase in timingPhases"
+                :key="phase.label"
+                class="space-y-1"
+              >
+                <p class="text-sm font-semibold">{{ phase.label }}</p>
+                <p class="text-sm">{{ phase.duration }}</p>
+                <p class="text-sm text-muted">Started: {{ phase.started }}</p>
+                <p class="text-sm text-muted">Finished: {{ phase.finished }}</p>
+              </section>
             </div>
           </template>
 

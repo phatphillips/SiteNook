@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { Organization } from '~/types/accessiq'
+import type { Organization } from '~/types/sitenook'
 import { syncStripeOrganizationBilling } from '../../../server/utils/syncStripeBilling'
 
 vi.mock('../../../server/utils/orgClosureNotify', () => ({

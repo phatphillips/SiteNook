@@ -1,6 +1,6 @@
 # Platform status (June 2026)
 
-High-level map of what AccessIQ supports today, known gaps, and pre-launch work. For doc index see [README.md](./README.md). Active todos: [CURRENT_TASK.MD](../CURRENT_TASK.MD).
+High-level map of what SiteNook supports today, known gaps, and pre-launch work. For doc index see [README.md](./README.md). Active todos: [CURRENT_TASK.MD](../CURRENT_TASK.MD).
 
 ---
 
@@ -67,7 +67,7 @@ Legacy alias: `/find-account` redirects to `/sign-in`.
 - **Org-wide access** — all members see all sites in their org.
 - **Roles** — `admin` (read/write) and `viewer` (read-only).
 - **Billing contact** — flag on admins; not a separate role.
-- **Tenant login** — `{subdomain}.localhost:3000/login` (dev) or `{subdomain}.accessiq.com` (prod).
+- **Tenant login** — `{subdomain}.localhost:3000/login` (dev) or `{subdomain}.sitenook.com` (prod).
 - **Apex** — marketing, pricing, `/sign-in`, signup wizard; not the day-to-day dashboard.
 - **Production apex** — with `NUXT_PUBLIC_TENANT_ONLY=true`, apex dashboard/login blocked; users use `/sign-in` then tenant URL (localhost apex exempt in dev).
 
@@ -102,7 +102,7 @@ Docs: [stripe-setup.md](./platform/stripe-setup.md), [account-closure.md](./plat
 | SEO | ✅ Overview, Technical, Content, SERP preview | ✅ Site + page pass | [seo.md](./product/seo.md) |
 | Global search | ✅ `/search` | ✅ Typesense indexer | [global-search.md](./product/global-search.md) |
 | Scans & scheduling | ✅ `/scans` | ✅ Queue + scheduler | [scans.md](./product/scans.md) |
-| Policies | ✅ `/policies` | ✅ Content match | — |
+| Policies | ✅ Rules `/policies` + matches under QA | ✅ Content match + `runPolicies` gate | [policies.md](./product/policies.md) |
 | Billing & plans | ✅ Settings → Billing | — | [stripe-setup.md](./platform/stripe-setup.md) |
 
 ---
@@ -124,7 +124,8 @@ Use this section when prioritizing features or onboarding agents. Items marked *
 | Gap | Priority | Notes |
 |-----|----------|-------|
 | Issue dismiss / fixed workflow | Removed | Open issues only; resolved routes redirect to issues |
-| Jira / ticket integration | **stub** | Settings → Integrations placeholder |
+| Jira / ticket integration | **stub** | Still out of scope |
+| Analytics provider integrations | Shipped (connect + sync) | Settings → Integrations; snapshots cached — no dashboard cards yet |
 | Scan completion email | Medium | `notifyEmail` stored in site settings; delivery not wired |
 | Manual WCAG test guides | — | No assisted manual testing module |
 | Developer/designer/editor issue roles | — | Not implemented |
@@ -165,13 +166,17 @@ Use this section when prioritizing features or onboarding agents. Items marked *
 | Typesense GPL review | Legal | Required for closed-source appliance distribution |
 | PocketBase horizontal scale | — | Single SQLite writer; Litestream for DR only |
 
-### Enterprise self-hosted
+### Enterprise / Community self-hosted
 
 | Gap | Priority | Notes |
 |-----|----------|-------|
-| Licence validation API | ✅ Implemented | [licence-api.md](./platform/licence-api.md) |
+| Licence validation API | ✅ Implemented | [licence-api.md](./platform/licence-api.md) — tiers: community, selfhost, enterprise |
+| Self-host Stripe issuance | ✅ Implemented | `/download` + webhook → `licences` + email |
+| Appliance Free caps | ✅ Implemented | `SITENOOK_DEPLOYMENT_MODE=appliance` |
+| Community compose + GHCR publish | ✅ Implemented | `deploy/community/`, `.github/workflows/publish-ghcr.yml` |
 | Air-gapped heartbeat | Partial | Signed offline token; weekly heartbeat documented |
-| Private image distribution | Sales | Not in public repo workflow |
+| Private image distribution | Sales | GHCR publish on tag; make packages public at launch |
+| Typesense GPL | Mitigated | Upstream-only optional profile in Community compose |
 
 ---
 
@@ -199,6 +204,7 @@ Use this section when prioritizing features or onboarding agents. Items marked *
 3. **Closed org with empty `stripe_*`** — expected for free/dev-bypass signups.
 4. **Stripe return on localhost subdomains** — billing portal uses a `localhost` bridge redirect in dev.
 5. **Legacy plan alias** — `NUXT_STRIPE_STANDARD_PRICE_ID` maps to Team tier for old installs.
+6. **Accessibility simulator previews** — vision/tab-order simulation uses crawl-time screenshots (`pages.preview_image` + `tab_order`). Pages scanned before that capture exist will show an empty preview until re-scanned.
 
 ---
 

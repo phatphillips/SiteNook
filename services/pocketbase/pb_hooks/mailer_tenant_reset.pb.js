@@ -10,7 +10,7 @@
 onMailerRecordPasswordResetSend((e) => {
   const mailer = require(`${__hooks}/mailer_tenant_reset_lib.js`)
 
-  const appName = String($os.getenv('APP_NAME') || 'AccessIQ').trim() || 'AccessIQ'
+  const appName = String($os.getenv('APP_NAME') || 'SiteNook').trim() || 'SiteNook'
   const isInvite = !e.record.get('verified')
   const dashboardUrl = String($os.getenv('APP_DASHBOARD_URL') || 'http://localhost:3000').replace(/\/$/, '')
 

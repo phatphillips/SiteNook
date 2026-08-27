@@ -1,6 +1,7 @@
 import { getPocketBase } from './pocketbaseClient.js'
 import { getPlanLimits } from '../config/planLimits.js'
 import { deleteWebpageSearchDocsByPageIds } from '../search/searchIndexer.js'
+import { deleteContentObservationsForScan, detachContentObservationsFromPages } from './contentRetention.js'
 
 const PAGE_DELETE_BATCH = 50
 const CHILD_DELETE_COLLECTIONS = [
@@ -79,6 +80,7 @@ export async function pruneScanDetail(scanId: string): Promise<void> {
     })
     if (!batch.items.length) break
     const pageIds = batch.items.map(item => item.id)
+    await detachContentObservationsFromPages(pageIds)
     await deleteWebpageSearchDocsByPageIds(pageIds).catch(err => {
       console.warn(`Search index delete failed for scan ${scanId}:`, err instanceof Error ? err.message : err)
     })
@@ -205,6 +207,7 @@ export async function deleteScanRecord(scanId: string): Promise<void> {
   const pb = getPocketBase()
   await pruneScanDetail(scanId)
   await deleteChildRecordsForScan(scanId)
+  await deleteContentObservationsForScan(scanId)
   await pb.collection('scans').delete(scanId)
 }
 
