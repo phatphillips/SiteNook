@@ -1,29 +1,35 @@
-# SiteNook Community compose
+# SiteNook — run locally
 
-Run SiteNook locally. Application **source stays private**; this folder only pulls images and configures them.
+You are **not** downloading the SiteNook source code. These files only start published Docker images on your machine.
 
-## Quick start
+## Requirements
+
+Docker Desktop (or Docker Compose). About 8 GB RAM. Port 80 free.
+
+## Install
 
 ```bash
 cp .env.example .env
-# Set strong PB_ADMIN_* passwords
+# Set PB_ADMIN_* and APP_USER_* passwords
 docker compose up -d
 ```
 
-Open http://localhost
+Open http://localhost and sign in with `APP_USER_EMAIL` / `APP_USER_PASSWORD`.
 
-- **No licence key** → Free limits (1 site, 20 pages/scan)
-- **Paid key** → paste into `SITENOOK_LICENCE_KEY` and restart
+1. **Sites** → **Add Site**
+2. **Scan Now**
 
-Buy a Self-host licence: https://buy.polar.sh/polar_cl_q4q6ftpkyLbwOxv4SDOu2akpXYdFqE7V9RqdE48k67j
+Leave `SITENOOK_LICENCE_KEY` empty for Free (1 site, 20 pages/scan).
 
-Images default to `ghcr.io/phatphillips/sitenook-*` (published from the private monorepo when you tag `v*`).
+## Licence
+
+Buy: https://buy.polar.sh/polar_cl_q4q6ftpkyLbwOxv4SDOu2akpXYdFqE7V9RqdE48k67j
+
+Paste the emailed key into `SITENOOK_LICENCE_KEY` and restart. Scanning does **not** use a SiteNook cloud API; crawls run on this machine. Polar is only for the paid key (not wired in the first snapshot).
 
 ## Optional search
 
-Typesense is an upstream image (GPL). Off by default:
-
 ```bash
-# In .env: TYPESENSE_ENABLED=1 and a strong TYPESENSE_API_KEY
+# TYPESENSE_ENABLED=1 and a strong TYPESENSE_API_KEY in .env
 docker compose --profile search up -d
 ```

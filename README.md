@@ -1,87 +1,104 @@
 # SiteNook
 
-Self-hosted web accessibility, QA, and SEO monitoring. Crawl sites with Playwright and axe-core. Data stays on the machine that runs Docker.
+Self-hosted accessibility, QA, and SEO monitoring. You run it on your machine with Docker. Crawls use Playwright and axe-core against sites you add. Scan data stays local.
 
-**This repository is private.** It is the product source (Plex model): users can self-host the app; full limits require a paid Polar licence. Do not make this git repo public.
+Like Plex: **install is free** (1 site, 20 pages per scan). A **Polar licence key** is meant to unlock full limits. You do not need a SiteNook domain.
 
-v1 path: [docs/operations/v1-release.md](docs/operations/v1-release.md).
+**Users do not clone this GitHub repository.** It is private source. You download the app as Docker images, not as git.
 
-## How v1 ships
+---
 
-| Who | What they use |
-|-----|----------------|
-| You (development) | This repo + `docker compose` with build contexts |
-| Customers | Pre-built images + [`deploy/community/`](deploy/community/) compose — **no source** |
-| Free | No licence key → 1 site, 20 pages per scan |
-| Paid | Polar licence key → higher site/page caps and paid modules |
+## For users — install and use
 
-Buy link (Polar): https://buy.polar.sh/polar_cl_q4q6ftpkyLbwOxv4SDOu2akpXYdFqE7V9RqdE48k67j
+### What you need
 
-Checkout stays blocked until Polar **Finance → Account** (payout + identity) is complete.
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/Mac) or Docker Engine + Compose (Linux)
+- About 8 GB RAM (the scanner runs a real browser)
+- Port 80 free (`http://localhost`)
 
-## Architecture
+### 1. Get the compose files (not the source)
 
-```
-Browser → Nginx (port 80)
-            ├── /           → Nuxt dashboard (apps/web)
-            ├── /api/       → PocketBase REST API
-            └── /_/         → PocketBase admin UI
+When images are published, use only the files in [`deploy/community/`](deploy/community/):
 
-Scanner worker (apps/scanner) polls scan_queue and runs Playwright + axe-core crawls.
-```
+- `docker-compose.yml`
+- `.env.example`
 
-| Service | Tech | Purpose |
-|---------|------|---------|
-| `web` | Nuxt 4 + Nuxt UI | Dashboard |
-| `scanner` | Node.js + Playwright + axe | WCAG, QA, SEO |
-| `pocketbase` | PocketBase + SQLite | DB, auth, realtime |
-| `nginx` | Nginx Alpine | Reverse proxy |
+Copy those two files into a folder on your computer. You never need the rest of this repo.
 
-## Development
+Until `v0.1.0` images exist on GHCR, `docker compose up` cannot pull `ghcr.io/phatphillips/sitenook-*` yet. That is the next release step.
+
+### 2. Configure
 
 ```bash
 cp .env.example .env
-# Set PB_ADMIN_EMAIL and PB_ADMIN_PASSWORD
-
-docker compose -f docker-compose.yml -f docker-compose.override.yml up
 ```
 
-- Nuxt: http://localhost:3000
-- PocketBase: http://localhost:8090/_/
+Edit `.env`:
+
+| Variable | What to set |
+|----------|-------------|
+| `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` | Your admin login for PocketBase |
+| `APP_USER_EMAIL` / `APP_USER_PASSWORD` | Dashboard login (first user) |
+| `SITENOOK_LICENCE_KEY` | Leave **empty** for Free. After Polar works, paste the key you are emailed. |
+
+### 3. Start
 
 ```bash
-cd apps/web && npm install && npm run dev
-cd apps/scanner && npm install && npm run dev
-```
-
-### First local scan
-
-1. Create a user in PocketBase admin (`/_/` → users) or use seeded `APP_USER_*`.
-2. Sign in at http://localhost:3000/login
-3. **Sites** → **Add Site** → **Scan Now**
-
-## Customer install (after images are published)
-
-From [`deploy/community/`](deploy/community/):
-
-```bash
-cp .env.example .env
 docker compose up -d
 ```
 
-Open http://localhost. Leave `SITENOOK_LICENCE_KEY` empty for Free caps.
+Open **http://localhost** and sign in with `APP_USER_EMAIL` / `APP_USER_PASSWORD`.
 
-## Tests
+First scan:
 
-| Scope | Command |
-|-------|---------|
-| Web unit | `cd apps/web && npm test` |
-| Scanner unit | `cd apps/scanner && npm test` |
-| Scanner integration | `cd apps/scanner && npm run test:integration` |
-| Web E2E | `cd apps/web && npm run test:e2e` |
+1. **Sites** → **Add Site** → enter a public URL (e.g. `https://example.com`)
+2. **Scan Now**
+3. Wait for the crawl, then open **Accessibility** / **QA** / **SEO**
 
-Docs index: [docs/README.md](docs/README.md). Agent notes: [AGENTS.md](AGENTS.md).
+Stop: `docker compose down`. Data stays in the Docker volume `pb_data`.
+
+### 4. Licence (paid)
+
+[Buy a Self-host licence on Polar](https://buy.polar.sh/polar_cl_q4q6ftpkyLbwOxv4SDOu2akpXYdFqE7V9RqdE48k67j). After payment, Polar emails a key (`AIQ_…`). Put it in `.env` as `SITENOOK_LICENCE_KEY` and run `docker compose up -d` again.
+
+**v1 status:** Polar checkout is not taking cards until Finance/payout is finished. The app also does **not** call Polar yet to unlock limits — a key in `.env` will not raise caps until that wiring ships. Until then every self-host install behaves as Free.
+
+---
+
+## Is there an API in v1?
+
+**No SiteNook cloud API is required to scan.** The scanner on your machine crawls the site directly. Nothing is sent to a SiteNook server for axe/QA/SEO.
+
+| API | In v1? | What it is |
+|-----|--------|------------|
+| Polar licence validate | **Not connected yet** | Future: check the paid key and raise limits |
+| Local PocketBase (`/api`) | Yes, on your Docker | Dashboard ↔ local database. Not a public product API |
+| MCP / org API keys | Optional, local | Settings → Integrations — for Cursor on *your* instance |
+| Hosted SaaS (`sitenook.com`) | **Not v1** | No hosted tenant cloud in this release |
+
+You do not create a SiteNook account in the cloud to use the self-hosted app.
+
+---
+
+## For developers (this private repo)
+
+Do not make this git repo public. Customers get images + compose only. Release checklist: [docs/operations/v1-release.md](docs/operations/v1-release.md).
+
+```bash
+cp .env.example .env
+docker compose -f docker-compose.yml -f docker-compose.override.yml up
+```
+
+- Dashboard: http://localhost:3000
+- PocketBase: http://localhost:8090/_/
+
+```bash
+cd apps/web && npm test
+cd apps/scanner && npm test
+```
+
+Docs: [docs/README.md](docs/README.md).
 
 ## License
 
-Proprietary. Source in this private repo is not an open-source grant. Nuxt UI template files under `apps/web` retain their upstream MIT notice.
+Proprietary. This private repository is not an open-source grant. Upstream Nuxt UI files under `apps/web` keep their MIT notice.
