@@ -31,6 +31,7 @@ export interface Organization {
   closed_at?: string
   purge_scheduled_at?: string
   closed_by?: string
+  licence_key?: string
   created: string
   updated: string
 }

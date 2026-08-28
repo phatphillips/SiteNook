@@ -131,6 +131,15 @@ export default defineNuxtConfig({
         && process.env.NUXT_STRIPE_SELFHOST_PRICE_ID?.trim()
       ) ? 'true' : 'false',
       deploymentMode: process.env.SITENOOK_DEPLOYMENT_MODE || process.env.ACCESSIQ_DEPLOYMENT_MODE || 'cloud',
+      polarCheckoutUrl: process.env.NUXT_PUBLIC_POLAR_CHECKOUT_URL
+        || process.env.SITENOOK_POLAR_CHECKOUT_URL
+        || 'https://buy.polar.sh/polar_cl_q4q6ftpkyLbwOxv4SDOu2akpXYdFqE7V9RqdE48k67j',
+      polarOrganizationId: process.env.NUXT_PUBLIC_POLAR_ORGANIZATION_ID
+        || process.env.SITENOOK_POLAR_ORGANIZATION_ID
+        || '',
+      polarApiUrl: process.env.NUXT_PUBLIC_POLAR_API_URL
+        || process.env.SITENOOK_POLAR_API_URL
+        || 'https://api.polar.sh',
       maxPagesPerScan: Number(process.env.NUXT_PUBLIC_MAX_PAGES || process.env.MAX_PAGES || 500),
       dashboardRollupsRead: process.env.NUXT_PUBLIC_DASHBOARD_ROLLUPS_READ || 'false'
     }

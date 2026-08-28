@@ -7,4 +7,8 @@ export type ApplianceLicenceStatusDto = {
   maxPagesPerScan: number | null
   upgradeRequired: boolean
   message: string
+  keyConfigured?: boolean
+  keyHint?: string
+  polarConfigured?: boolean
+  checkoutUrl?: string
 }

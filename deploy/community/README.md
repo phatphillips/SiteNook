@@ -25,7 +25,10 @@ Leave `SITENOOK_LICENCE_KEY` empty for Free (1 site, 20 pages/scan).
 
 Buy: https://buy.polar.sh/polar_cl_q4q6ftpkyLbwOxv4SDOu2akpXYdFqE7V9RqdE48k67j
 
-Paste the emailed key into `SITENOOK_LICENCE_KEY` and restart. Scanning does **not** use a SiteNook cloud API; crawls run on this machine. Polar is only for the paid key (not wired in the first snapshot).
+In the app: **Settings → Billing & Invoices** → paste the emailed key → **Activate**.  
+Or set `SITENOOK_LICENCE_KEY` in `.env` and restart.
+
+`SITENOOK_POLAR_ORGANIZATION_ID` must be the SiteNook Polar org UUID (shipped in `.env.example`). Scanning does not use a SiteNook cloud API.
 
 ## Optional search
 

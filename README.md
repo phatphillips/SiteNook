@@ -25,7 +25,7 @@ When images are published, use only the files in [`deploy/community/`](deploy/co
 
 Copy those two files into a folder on your computer. You never need the rest of this repo.
 
-Until `v0.1.0` images exist on GHCR, `docker compose up` cannot pull `ghcr.io/phatphillips/sitenook-*` yet. That is the next release step.
+Until `v0.1.0` images exist on GHCR, `docker compose up` cannot pull `ghcr.io/phatphillips/sitenook-*` yet.
 
 ### 2. Configure
 
@@ -39,7 +39,8 @@ Edit `.env`:
 |----------|-------------|
 | `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` | Your admin login for PocketBase |
 | `APP_USER_EMAIL` / `APP_USER_PASSWORD` | Dashboard login (first user) |
-| `SITENOOK_LICENCE_KEY` | Leave **empty** for Free. After Polar works, paste the key you are emailed. |
+| `SITENOOK_LICENCE_KEY` | Leave **empty** for Free, or paste the Polar key |
+| `SITENOOK_POLAR_ORGANIZATION_ID` | Set by the SiteNook publisher (Polar org UUID). Do not invent one. |
 
 ### 3. Start
 
@@ -59,22 +60,25 @@ Stop: `docker compose down`. Data stays in the Docker volume `pb_data`.
 
 ### 4. Licence (paid)
 
-[Buy a Self-host licence on Polar](https://buy.polar.sh/polar_cl_q4q6ftpkyLbwOxv4SDOu2akpXYdFqE7V9RqdE48k67j). After payment, Polar emails a key (`AIQ_…`). Put it in `.env` as `SITENOOK_LICENCE_KEY` and run `docker compose up -d` again.
+1. [Buy a Self-host licence on Polar](https://buy.polar.sh/polar_cl_q4q6ftpkyLbwOxv4SDOu2akpXYdFqE7V9RqdE48k67j).
+2. Copy the key Polar emails (`AIQ_…`).
+3. In the dashboard: **Settings → Billing & Invoices** → paste the key → **Activate**.  
+   Or set `SITENOOK_LICENCE_KEY` in `.env` and restart: `docker compose up -d`.
 
-**v1 status:** Polar checkout is not taking cards until Finance/payout is finished. The app also does **not** call Polar yet to unlock limits — a key in `.env` will not raise caps until that wiring ships. Until then every self-host install behaves as Free.
+Polar checkout takes cards only after the seller finishes Polar **Finance → Account**. The app checks keys against Polar’s licence API (not a SiteNook cloud). If Polar is unreachable, a previously activated key keeps working until the next successful check.
 
 ---
 
 ## Is there an API in v1?
 
-**No SiteNook cloud API is required to scan.** The scanner on your machine crawls the site directly. Nothing is sent to a SiteNook server for axe/QA/SEO.
+**No SiteNook cloud API is required to scan.** The scanner on your machine crawls the site directly.
 
 | API | In v1? | What it is |
 |-----|--------|------------|
-| Polar licence validate | **Not connected yet** | Future: check the paid key and raise limits |
-| Local PocketBase (`/api`) | Yes, on your Docker | Dashboard ↔ local database. Not a public product API |
+| Polar licence validate | Yes (paid unlock) | Confirms your key; no scan traffic goes to Polar |
+| Local PocketBase (`/api`) | Yes, on your Docker | Dashboard ↔ local database |
 | MCP / org API keys | Optional, local | Settings → Integrations — for Cursor on *your* instance |
-| Hosted SaaS (`sitenook.com`) | **Not v1** | No hosted tenant cloud in this release |
+| Hosted SaaS | **Not v1** | No `sitenook.com` tenant cloud |
 
 You do not create a SiteNook account in the cloud to use the self-hosted app.
 

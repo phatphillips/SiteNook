@@ -8,6 +8,7 @@ import {
   normalizeLicenceTier,
   type LicenceTier
 } from '../config/licenceTiers.js'
+import { validatePolarLicenseKey } from './polarLicence.js'
 
 export interface LicenceValidateResponse {
   valid: boolean
@@ -69,6 +70,7 @@ function communityState(error: string | null = null): ApplianceLicenceState {
 }
 
 let cachedState: ApplianceLicenceState | null = null
+let lastResolvedKey = ''
 
 export function getCachedApplianceLicenceState(): ApplianceLicenceState | null {
   return cachedState
@@ -80,6 +82,7 @@ export function setCachedApplianceLicenceState(state: ApplianceLicenceState): vo
 
 export function clearCachedApplianceLicenceState(): void {
   cachedState = null
+  lastResolvedKey = ''
 }
 
 export function effectiveOrgPlanForScan(orgPlan: unknown): OrganizationPlan {
@@ -93,10 +96,34 @@ export function effectiveOrgPlanForScan(orgPlan: unknown): OrganizationPlan {
   return state.plan
 }
 
+export async function resolveLicenceKeyFromPocketBase(
+  pb?: {
+    collection: (name: string) => {
+      getFullList: (opts?: object) => Promise<Array<{ licence_key?: string }>>
+    }
+  }
+): Promise<string> {
+  const fromEnv = env('SITENOOK_LICENCE_KEY')
+  if (fromEnv) return fromEnv
+  if (!pb) return ''
+  try {
+    const orgs = await pb.collection('organizations').getFullList({ fields: 'licence_key' })
+    for (const org of orgs) {
+      const key = String(org.licence_key || '').trim()
+      if (key) return key
+    }
+  } catch {
+    // field may not exist yet
+  }
+  return ''
+}
+
 export async function validateApplianceLicence(options?: {
   fetchImpl?: typeof fetch
   licenceKey?: string
   serverUrl?: string
+  polarOrganizationId?: string
+  polarApiBase?: string
 }): Promise<ApplianceLicenceState> {
   if (!isApplianceDeploymentMode()) {
     const cloud: ApplianceLicenceState = {
@@ -112,17 +139,61 @@ export async function validateApplianceLicence(options?: {
     return cloud
   }
 
-  const key = (options?.licenceKey ?? env('SITENOOK_LICENCE_KEY')).trim()
+  const key = (options?.licenceKey || env('SITENOOK_LICENCE_KEY') || lastResolvedKey).trim()
+  if (key) lastResolvedKey = key
+  const polarOrganizationId = (
+    options?.polarOrganizationId
+    || env('SITENOOK_POLAR_ORGANIZATION_ID')
+    || env('NUXT_PUBLIC_POLAR_ORGANIZATION_ID')
+  ).trim()
+  const polarApiBase = options?.polarApiBase ?? env('SITENOOK_POLAR_API_URL')
   const serverUrl = (options?.serverUrl ?? env('SITENOOK_LICENCE_SERVER_URL')).replace(/\/$/, '')
-  if (!key || !serverUrl) {
+  const fetchImpl = options?.fetchImpl ?? fetch
+
+  if (!key) {
+    const state = communityState('No licence key — running Community Free caps')
+    cachedState = state
+    return state
+  }
+
+  if (polarOrganizationId) {
+    const polar = await validatePolarLicenseKey({
+      key,
+      organizationId: polarOrganizationId,
+      apiBase: polarApiBase,
+      fetchImpl
+    })
+    if (polar.valid) {
+      const state: ApplianceLicenceState = {
+        mode: 'appliance',
+        licenceValid: true,
+        tier: 'selfhost',
+        plan: getApplianceEffectivePlan({ licenceValid: true, tier: 'selfhost' }),
+        signedToken: `polar:${polar.payload?.id || 'granted'}`,
+        expiresAt: polar.expiresAt,
+        lastError: null
+      }
+      cachedState = state
+      return state
+    }
+    const networkError = /network|fetch|ECONN|ENOTFOUND|unreachable/i.test(polar.error || '')
+    if (networkError && cachedState?.licenceValid && cachedState.signedToken) {
+      cachedState = { ...cachedState, lastError: polar.error }
+      return cachedState
+    }
+    const state = communityState(polar.error || 'Polar licence invalid')
+    cachedState = state
+    return state
+  }
+
+  if (!serverUrl) {
     const state = communityState(
-      key ? 'SITENOOK_LICENCE_SERVER_URL is not set' : 'No licence key — running Community Free caps'
+      'SITENOOK_POLAR_ORGANIZATION_ID is not set — running Community Free caps'
     )
     cachedState = state
     return state
   }
 
-  const fetchImpl = options?.fetchImpl ?? fetch
   try {
     const response = await fetchImpl(`${serverUrl}/api/licence/validate`, {
       method: 'POST',
@@ -182,6 +253,9 @@ export async function heartbeatApplianceLicence(options?: {
   }
 
   const token = cachedState?.signedToken
+  if (token?.startsWith('polar:')) {
+    return validateApplianceLicence(options)
+  }
   const serverUrl = (options?.serverUrl ?? env('SITENOOK_LICENCE_SERVER_URL')).replace(/\/$/, '')
   if (!token || !serverUrl) {
     return validateApplianceLicence(options)

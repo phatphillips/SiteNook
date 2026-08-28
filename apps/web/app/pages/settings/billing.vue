@@ -72,6 +72,11 @@ const trialLoading = ref(false)
 
 const canManageBilling = computed(() => pageReady.value && isOrgAdmin(sessionUser.value))
 
+const isAppliance = computed(() => {
+  const mode = String(config.public.deploymentMode || '').toLowerCase()
+  return mode === 'appliance' || mode === 'selfhost' || mode === 'community'
+})
+
 const normalizedPlan = computed(() => normalizeOrganizationPlan(org.value?.plan))
 
 const planOffering = computed(() => getPlanOffering(normalizedPlan.value))
@@ -411,6 +416,10 @@ onMounted(async () => {
   await awaitAuthReady()
   syncAuth()
   pageReady.value = true
+  if (isAppliance.value) {
+    loading.value = false
+    return
+  }
   if (route.query.portal === 'returned') {
     await handlePortalReturnFlow()
     await clearPortalQueryParams()
@@ -442,7 +451,19 @@ watch(() => route.query.portal, async (portal) => {
       <DashboardPageNavbar title="Billing & Invoices" />
     </template>
     <template #body>
-      <div v-if="!canManageBilling" class="space-y-4">
+      <div
+        v-if="isAppliance"
+        class="max-w-3xl space-y-4"
+      >
+        <UCard v-if="!canManageBilling">
+          <p class="text-muted text-sm">
+            Only organization admins can manage the self-host licence.
+          </p>
+        </UCard>
+        <ApplianceLicencePanel v-else />
+      </div>
+
+      <div v-else-if="!canManageBilling" class="space-y-4">
         <UCard>
           <p class="text-muted text-sm">
             Only organization admins can view billing settings.

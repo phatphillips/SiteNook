@@ -12,11 +12,14 @@ describe('applianceLicence', () => {
   const prevKey = process.env.SITENOOK_LICENCE_KEY
   const prevServer = process.env.SITENOOK_LICENCE_SERVER_URL
 
+  const prevPolar = process.env.SITENOOK_POLAR_ORGANIZATION_ID
+
   beforeEach(() => {
     clearCachedApplianceLicenceState()
     delete process.env.SITENOOK_DEPLOYMENT_MODE
     delete process.env.SITENOOK_LICENCE_KEY
     delete process.env.SITENOOK_LICENCE_SERVER_URL
+    delete process.env.SITENOOK_POLAR_ORGANIZATION_ID
   })
 
   afterEach(() => {
@@ -27,6 +30,8 @@ describe('applianceLicence', () => {
     else process.env.SITENOOK_LICENCE_KEY = prevKey
     if (prevServer === undefined) delete process.env.SITENOOK_LICENCE_SERVER_URL
     else process.env.SITENOOK_LICENCE_SERVER_URL = prevServer
+    if (prevPolar === undefined) delete process.env.SITENOOK_POLAR_ORGANIZATION_ID
+    else process.env.SITENOOK_POLAR_ORGANIZATION_ID = prevPolar
   })
 
   it('detects appliance mode', () => {
@@ -67,6 +72,26 @@ describe('applianceLicence', () => {
     expect(state.licenceValid).toBe(true)
     expect(state.plan).toBe('business')
     expect(getMaxPages(state.plan)).toBe(5_000)
+  })
+
+  it('unlocks business plan via Polar granted key', async () => {
+    process.env.SITENOOK_DEPLOYMENT_MODE = 'appliance'
+    process.env.SITENOOK_LICENCE_KEY = 'AIQ_test'
+    process.env.SITENOOK_POLAR_ORGANIZATION_ID = '11111111-1111-4111-8111-111111111111'
+
+    const fetchImpl = async () => ({
+      ok: true,
+      text: async () => JSON.stringify({
+        status: 'granted',
+        id: 'lk_1',
+        expires_at: '2099-01-01T00:00:00.000Z'
+      })
+    }) as unknown as typeof fetch
+
+    const state = await validateApplianceLicence({ fetchImpl })
+    expect(state.licenceValid).toBe(true)
+    expect(state.plan).toBe('business')
+    expect(state.tier).toBe('selfhost')
   })
 
   it('keeps cached paid licence on network failure', async () => {

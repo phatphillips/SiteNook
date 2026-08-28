@@ -46,6 +46,7 @@ import {
   effectiveOrgPlanForScan,
   heartbeatApplianceLicence,
   isApplianceDeploymentMode,
+  resolveLicenceKeyFromPocketBase,
   syncApplianceOrgPlans,
   validateApplianceLicence
 } from './licence/applianceLicence.js'
@@ -828,8 +829,10 @@ async function main() {
   await authenticateAdmin()
   console.log('Authenticated with PocketBase')
 
+  const pb = getPocketBase()
   if (isApplianceDeploymentMode()) {
-    const licence = await validateApplianceLicence()
+    const licenceKey = await resolveLicenceKeyFromPocketBase(pb)
+    const licence = await validateApplianceLicence({ licenceKey })
     console.log(
       `Appliance licence: tier=${licence.tier} plan=${licence.plan} valid=${licence.licenceValid}`
       + (licence.lastError ? ` (${licence.lastError})` : '')
@@ -843,7 +846,6 @@ async function main() {
   }
 
   await recoverStaleJobs()
-  const pb = getPocketBase()
   if (isApplianceDeploymentMode()) {
     try {
       const plan = effectiveOrgPlanForScan('free')

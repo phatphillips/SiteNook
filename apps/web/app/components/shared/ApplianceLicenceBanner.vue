@@ -36,8 +36,7 @@ const showBanner = computed(() =>
       <UButton
         size="xs"
         color="primary"
-        to="/download"
-        external
+        to="/settings/billing"
       >
         Activate licence
       </UButton>
