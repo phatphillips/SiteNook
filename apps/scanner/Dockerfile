@@ -10,7 +10,8 @@ CMD ["sh", "-c", "npm install && npm run dev"]
 
 FROM base AS production
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+# Need TypeScript (devDependency) to compile; prune before runtime.
+RUN npm ci
 COPY . .
-RUN npm run build
+RUN npm run build && npm prune --omit=dev
 CMD ["npm", "start"]
