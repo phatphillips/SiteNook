@@ -1,10 +1,10 @@
 # SiteNook
 
-Self-hosted accessibility, QA, and SEO monitoring for websites you care about.
+**The free, self-hosted alternative to expensive accessibility tools like SiteImprove.**
 
-SiteNook crawls your sites with Playwright and axe-core, stores results in PocketBase on your machine, and shows WCAG issues, broken links, spelling, policies, and scan history in a Nuxt dashboard. You run it with Docker — no SiteNook cloud account required.
+Website accessibility matters. Tools that check it shouldn't cost a fortune. SiteNook scans your sites for accessibility, SEO, and quality issues, runs entirely on your own server, and never asks for a monthly invoice.
 
-**Licence:** [MIT](LICENSE)
+> **Work in progress.** SiteNook is under active development. Things may break, change, or move. Use it, poke at it, tell us what's wrong.
 
 ---
 
@@ -20,28 +20,47 @@ SiteNook crawls your sites with Playwright and axe-core, stores results in Pocke
 
 ---
 
-## Key features
+## Why SiteNook?
 
-- **Accessibility** — axe-core WCAG findings with pages, severity, and history
-- **QA** — broken links, spelling, inventory
-- **SEO** — on-page and crawl-based checks
-- **Policies** — custom content rules and matches
-- **Scheduled scans** — recurring crawls on a timetable you choose
-- **Self-hosted** — data stays in your Docker volume
+Good accessibility tools exist. They also charge a lot for something you could run yourself.
 
-By default this open-source build runs **without billing caps** (unlimited sites/pages). Optional Stripe / Polar commercial code remains in the tree and can be turned on later — see [docs/commercial.md](docs/commercial.md).
+SiteNook gives you the same core power for free:
+
+- **You own the data.** It lives on your server, not someone else's cloud.
+- **No subscription required.** Self-host it and pay nothing.
+- **Build on it.** It's open source, so change it, extend it, connect it to your own tools.
+- **Runs securely on your own infrastructure.** Nothing leaves your network unless you want it to.
+
+---
+
+## What it does
+
+One scan, five ways to use it:
+
+- **Accessibility** — Finds WCAG issues (the industry-standard checks) with a simple 0 to 100 score, so you know what to fix first
+- **SEO** — Checks the technical and content stuff that helps pages get found
+- **QA** — Catches broken links, spelling mistakes, and messy content
+- **PDF accessibility** — Checks your PDFs too, not just web pages
+- **Content Explorer** — Browse everything your site crawled and export it
+
+A few other things worth knowing:
+
+- Scans run automatically on a schedule, or whenever you want
+- A simulator lets you preview pages the way people with vision impairments see them
+- Reports export as PDF or CSV, so you can share results with anyone
+- Runs in Docker. One command and it's up
 
 ---
 
 ## Quickstart
 
-### Requirements
+### What you need
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/Mac) or Docker Engine + Compose (Linux)
-- About 8 GB RAM (the scanner runs a real browser)
-- Port **80** free for http://localhost
+- About 8 GB of RAM (it runs a real browser to scan pages)
+- Port **80** free on your machine
 
-### Install from this repository
+### Install
 
 ```bash
 git clone https://github.com/phatphillips/SiteNook.git
@@ -49,12 +68,12 @@ cd SiteNook
 cp .env.example .env
 ```
 
-Edit `.env` and set at least:
+Open `.env` and set these two:
 
-| Variable | Purpose |
-|----------|---------|
-| `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` | PocketBase admin |
-| `APP_USER_EMAIL` / `APP_USER_PASSWORD` | First dashboard login |
+| Variable | What it's for |
+|----------|----------------|
+| `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` | Admin login for the database |
+| `APP_USER_EMAIL` / `APP_USER_PASSWORD` | Your first login to the dashboard |
 
 Then:
 
@@ -62,72 +81,63 @@ Then:
 docker compose up -d --build
 ```
 
-Open **http://localhost** and sign in with `APP_USER_EMAIL` / `APP_USER_PASSWORD`.
+Go to **http://localhost** and sign in.
 
-> On this repo, `docker-compose.override.yml` is auto-merged for local development (Nuxt also on http://localhost:3500, PocketBase on :8090). To run only the production-style file: `docker compose -f docker-compose.yml up -d --build`.
+> First build can take a few minutes — it's downloading a real browser to scan with.
 
-First scan:
+### Your first scan
 
-1. **Sites** → **Add Site** → enter a public URL (e.g. `https://example.com`)
-2. **Scan Now**
-3. Open **Accessibility** / **QA** / **SEO** when the crawl finishes
+1. **Sites** → **Add Site** → enter a public URL
+2. Hit **Scan Now**
+3. Once it's done, check **Accessibility**, **QA**, or **SEO**
 
-Stop: `docker compose down`. Scan data stays in the Docker volume `pb_data`.
-
-> First build can take several minutes (scanner image includes Playwright browsers).
+Done scanning for now? `docker compose down`. Your data stays put in the `pb_data` volume.
 
 ### Optional extras
 
 ```bash
-# Global search (Typesense is already in the default compose stack)
-# Set TYPESENSE_ENABLED=1 in .env (default in .env.example)
+# Turn on full-text search (Typesense is already included)
+# Set TYPESENSE_ENABLED=1 in .env (this is the default)
 
-# PDF accessibility sidecars (veraPDF + OpenDataLoader)
+# Add PDF accessibility checking
 docker compose --profile pdf up -d --build
 ```
 
-### Hot-reload development
+### Developing locally
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.override.yml up
 ```
 
-- Nuxt: http://localhost:3500
-- PocketBase: http://localhost:8090
+- Dashboard: http://localhost:3500
+- Database: http://localhost:8090
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for tests and package managers (`pnpm` for web, `npm` for scanner).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run tests and which package manager goes where.
 
 ---
 
-## Tech stack
+## Built with
 
-| Layer | Technology |
-|-------|------------|
+| Layer | Tech |
+|-------|------|
 | Dashboard | Vue 3 + Nuxt 4, Nuxt UI |
 | Scanner | Node.js, TypeScript, Playwright, axe-core |
-| Database / API | PocketBase |
+| Database | PocketBase |
 | Infra | Docker Compose + Nginx |
 
 ---
 
-## Documentation
+## More docs
 
-- [CONTRIBUTING.md](CONTRIBUTING.md) — local setup and PRs
-- [SECURITY.md](SECURITY.md) — how to report vulnerabilities
-- [docs/README.md](docs/README.md) — full documentation index
-- [docs/commercial.md](docs/commercial.md) — optional Stripe / Polar commercial module
-- [AGENTS.md](AGENTS.md) — architecture notes for contributors and agents
+- [CONTRIBUTING.md](CONTRIBUTING.md) — local setup and how to send a PR
+- [SECURITY.md](SECURITY.md) — how to report a security issue
+- [docs/README.md](docs/README.md) — full documentation
+- [AGENTS.md](AGENTS.md) — notes for contributors and coding agents
 
 ---
 
 ## Licence
 
-SiteNook is released under the [MIT License](LICENSE).
+SiteNook is released under the [MIT License](LICENSE). Free to use, free to change, free to build on.
 
-Dependencies keep their own licences (MIT, Apache-2.0, MPL-2.0, etc.). Typesense **Server** is GPL-3.0 and is only pulled as an optional Docker image — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-Marketing site (GitHub Pages brochure — not part of the Docker download): https://phatphillips.github.io/SiteNook/
-
-What ships where (OSS app vs github.io vs paid Nuxt landing): [docs/oss-launch-surface.md](docs/oss-launch-surface.md)
-
-Third-party notices: Nuxt UI’s licence lives under `apps/web/LICENSE`. Typesense and veraPDF are optional upstream images; see compose profiles and docs before redistributing binaries.
+Dependencies keep their own licences (MIT, Apache-2.0, MPL-2.0, etc). Typesense Server is GPL-3.0 and is only pulled in as an optional extra — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
