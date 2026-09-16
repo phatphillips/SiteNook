@@ -12,14 +12,14 @@ migrate((app) => {
   }
 
   if (!scans.fields.getByName('unscanned_urls')) {
-    scans.fields.add(new JsonField({
+    scans.fields.add(new JSONField({
       name: 'unscanned_urls',
       required: false
     }))
   }
 
   if (!scans.fields.getByName('background_retry')) {
-    scans.fields.add(new JsonField({
+    scans.fields.add(new JSONField({
       name: 'background_retry',
       required: false
     }))
