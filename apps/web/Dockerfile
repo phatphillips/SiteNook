@@ -14,6 +14,11 @@ RUN corepack enable && corepack prepare pnpm@11.1.3 --activate
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --no-frozen-lockfile --dangerously-allow-all-builds
 COPY . .
+# Baked into the client bundle; nginx proxies /api → PocketBase in the default stack.
+ARG NUXT_PUBLIC_POCKETBASE_URL=/api
+ARG NUXT_PUBLIC_APP_URL=http://localhost
+ENV NUXT_PUBLIC_POCKETBASE_URL=$NUXT_PUBLIC_POCKETBASE_URL \
+    NUXT_PUBLIC_APP_URL=$NUXT_PUBLIC_APP_URL
 RUN pnpm run build
 EXPOSE 3000
 CMD ["node", ".output/server/index.mjs"]
