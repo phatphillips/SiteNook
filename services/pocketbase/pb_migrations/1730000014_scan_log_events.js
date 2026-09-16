@@ -37,7 +37,9 @@ migrate((app) => {
         values: ['info', 'success', 'warn', 'error']
       },
       { name: 'message', type: 'text', required: true, max: 2000 },
-      { name: 'url', type: 'url' }
+      { name: 'url', type: 'url' },
+      { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
+      { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true }
     ],
     indexes: [
       'CREATE INDEX idx_scan_log_scan ON scan_log_events (scan)',
