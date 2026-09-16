@@ -16,6 +16,7 @@ import {
 import type { TeamActivityLogEntry } from '~/utils/teamActivityLog'
 import { generateInvitePassword } from '~/utils/inviteUser'
 import { tryRefreshAuthSession } from '~/utils/sessionRefresh'
+import { isCommercialEnabled } from '~/utils/commercial'
 
 export interface TeamMember {
   id: string
@@ -89,7 +90,9 @@ function _useTeamMembers() {
       throw new Error('Only organization admins can add team members.')
     }
 
-    const plan = normalizeOrganizationPlan(tenantOrganization.value?.plan)
+    const plan = isCommercialEnabled()
+      ? normalizeOrganizationPlan(tenantOrganization.value?.plan)
+      : 'enterprise'
     const limits = getPlanLimits(plan)
     if (members.value.length >= limits.maxTeamMembers) {
       throw new Error(describePlanLimitExceeded('teamMembers', plan))

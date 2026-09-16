@@ -77,6 +77,11 @@ const isAppliance = computed(() => {
   return mode === 'appliance' || mode === 'selfhost' || mode === 'community'
 })
 
+const commercialEnabled = computed(() => {
+  const value = String(config.public.commercialEnabled ?? '').trim().toLowerCase()
+  return value === 'true' || value === '1' || value === 'yes' || value === 'on'
+})
+
 const normalizedPlan = computed(() => normalizeOrganizationPlan(org.value?.plan))
 
 const planOffering = computed(() => getPlanOffering(normalizedPlan.value))
@@ -416,6 +421,10 @@ onMounted(async () => {
   await awaitAuthReady()
   syncAuth()
   pageReady.value = true
+  if (!commercialEnabled.value) {
+    loading.value = false
+    return
+  }
   if (isAppliance.value) {
     loading.value = false
     return
@@ -452,7 +461,28 @@ watch(() => route.query.portal, async (portal) => {
     </template>
     <template #body>
       <div
-        v-if="isAppliance"
+        v-if="!commercialEnabled"
+        class="max-w-3xl space-y-4"
+      >
+        <UCard>
+          <div class="space-y-2">
+            <h2 class="text-base font-semibold text-highlighted">
+              Self-hosted open source
+            </h2>
+            <p class="text-muted text-sm">
+              This SiteNook instance runs without Stripe or Polar billing.
+              Local limits are unlimited. To enable the commercial module, set
+              <code class="text-xs">SITENOOK_COMMERCIAL=1</code>
+              and configure Stripe or Polar — see
+              <span class="font-medium text-default">docs/commercial.md</span>
+              in the repository.
+            </p>
+          </div>
+        </UCard>
+      </div>
+
+      <div
+        v-else-if="isAppliance"
         class="max-w-3xl space-y-4"
       >
         <UCard v-if="!canManageBilling">

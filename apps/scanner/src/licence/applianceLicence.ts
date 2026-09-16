@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { isCommercialEnabled } from '../config/commercial.js'
 import {
   normalizeOrganizationPlan,
   type OrganizationPlan
@@ -86,6 +87,10 @@ export function clearCachedApplianceLicenceState(): void {
 }
 
 export function effectiveOrgPlanForScan(orgPlan: unknown): OrganizationPlan {
+  // OSS / commercial-off: unlimited (enterprise). Caps only apply when commercial is on.
+  if (!isCommercialEnabled()) {
+    return 'enterprise'
+  }
   if (!isApplianceDeploymentMode()) {
     return normalizeOrganizationPlan(orgPlan)
   }
@@ -125,9 +130,9 @@ export async function validateApplianceLicence(options?: {
   polarOrganizationId?: string
   polarApiBase?: string
 }): Promise<ApplianceLicenceState> {
-  if (!isApplianceDeploymentMode()) {
+  if (!isCommercialEnabled() || !isApplianceDeploymentMode()) {
     const cloud: ApplianceLicenceState = {
-      mode: 'cloud',
+      mode: isApplianceDeploymentMode() ? 'appliance' : 'cloud',
       licenceValid: true,
       tier: 'enterprise',
       plan: 'enterprise',

@@ -4,7 +4,9 @@ You are joining an existing repo. Help implement and fix features **without brea
 
 ## Project overview
 
-**SiteNook** is a self-hosted web accessibility and QA monitoring platform (an open-source SiteImprove-style replacement). It crawls registered sites with **Playwright** and **axe-core**, stores results in **PocketBase**, and exposes a **Nuxt dashboard** for WCAG issues, broken links, spelling, policies, and scan management.
+**SiteNook** is a self-hosted web accessibility and QA monitoring platform (an open-source SiteImprove-style replacement under the MIT License). It crawls registered sites with **Playwright** and **axe-core**, stores results in **PocketBase**, and exposes a **Nuxt dashboard** for WCAG issues, broken links, spelling, policies, and scan management.
+
+Billing (Stripe / Polar) is optional and off by default (`SITENOOK_COMMERCIAL=0`). See [docs/commercial.md](docs/commercial.md).
 
 ## Stack
 
@@ -116,13 +118,13 @@ docker compose up -d --build
 docker compose -f docker-compose.yml -f docker-compose.override.yml up
 ```
 
-- Nuxt: http://localhost:3000
+- Nuxt: http://localhost:3500 (docker-compose.override.yml)
 - PocketBase: http://localhost:8090
 
 **Local without Docker:**
 
 ```bash
-cd apps/web && npm install && npm run dev
+cd apps/web && pnpm install && pnpm run dev
 cd apps/scanner && npm install && npm run dev
 ```
 

@@ -50,6 +50,10 @@ tests/fixtures/pb_data/data.db-shm
 tests/fixtures/pb_data/data.db-wal
 tests/fixtures/pb_data/logs/
 
+# Secrets / keys (never commit)
+credentials.json
+*.pem
+
 # Logs & OS
 *.log
 .DS_Store

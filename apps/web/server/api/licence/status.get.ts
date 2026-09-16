@@ -1,10 +1,10 @@
-import { getPbAdmin } from '../utils/pbAdmin'
+import { getPbAdmin } from '../../utils/pbAdmin'
 import {
   buildCommunityApplianceStatus,
   buildLicensedApplianceStatus,
   isApplianceDeploymentMode
-} from '../utils/applianceLicenceStatus'
-import { DEFAULT_POLAR_API_BASE, hintLicenceKey, validatePolarLicenseKey } from '../utils/polarLicence'
+} from '../../utils/applianceLicenceStatus'
+import { DEFAULT_POLAR_API_BASE, hintLicenceKey, validatePolarLicenseKey } from '../../utils/polarLicence'
 import { normalizeLicenceTier } from '~/utils/licenceTiers'
 import type { ApplianceLicenceStatusDto } from '~/types/applianceLicence'
 

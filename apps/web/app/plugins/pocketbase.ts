@@ -52,7 +52,7 @@ export default defineNuxtPlugin({
     const path = window.location.pathname
     if (GUEST_AUTH_PATHS.has(path)) return
     // Marketing landing/pricing must remain public even when a stale token expires.
-    if (isAnonymousMarketingPath(path, config.public.marketingSite)) return
+    if (isAnonymousMarketingPath(path, config.public.marketingSite, config.public.commercialEnabled)) return
 
     const redirect = resolveLoginRedirectPath(path + window.location.search, '/')
     void navigateTo({ path: '/login', query: { redirect }, replace: true })

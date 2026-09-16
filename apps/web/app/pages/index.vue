@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { parseMarketingSiteFlag } from '~/utils/marketingSite'
+import { isMarketingSiteActive } from '~/utils/marketingSite'
 
 definePageMeta({
   middleware: 'home'
@@ -11,7 +11,8 @@ const { isApexHost } = useTenantOrg()
 const { isAuthenticated } = usePocketBase()
 
 const marketingApex = computed(() =>
-  parseMarketingSiteFlag(config.public.marketingSite) && isApexHost.value
+  isMarketingSiteActive(config.public.marketingSite, config.public.commercialEnabled)
+  && isApexHost.value
 )
 
 /** Guests on marketing apex always see the public landing — including after session expiry. */

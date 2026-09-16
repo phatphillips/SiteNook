@@ -1,5 +1,5 @@
 import { isUserRecord } from '~/utils/pbAuth'
-import { parseMarketingSiteFlag } from '~/utils/marketingSite'
+import { isMarketingSiteActive } from '~/utils/marketingSite'
 import { buildLoginNavigation } from '~/utils/authRoute'
 
 export default defineNuxtRouteMiddleware(async (to) => {
@@ -14,7 +14,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
     }
   }
 
-  const marketingApex = parseMarketingSiteFlag(config.public.marketingSite) && isApexHost.value
+  const marketingApex = isMarketingSiteActive(
+    config.public.marketingSite,
+    config.public.commercialEnabled
+  ) && isApexHost.value
 
   if (!marketingApex) {
     if (import.meta.server) return

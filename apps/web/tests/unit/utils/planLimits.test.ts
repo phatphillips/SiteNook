@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import {
   getPlanLimits,
   normalizeOrganizationPlan,
@@ -7,16 +7,33 @@ import {
 } from '~/utils/planLimits'
 
 describe('planLimits', () => {
+  const prevCommercial = process.env.SITENOOK_COMMERCIAL
+
+  beforeEach(() => {
+    process.env.SITENOOK_COMMERCIAL = '1'
+  })
+
+  afterEach(() => {
+    if (prevCommercial === undefined) delete process.env.SITENOOK_COMMERCIAL
+    else process.env.SITENOOK_COMMERCIAL = prevCommercial
+  })
+
   it('normalizes legacy standard slug to team', () => {
     expect(normalizeOrganizationPlan('standard')).toBe('team')
   })
 
-  it('returns free limits for unknown plans', () => {
+  it('returns free limits for unknown plans when commercial is on', () => {
     expect(getPlanLimits('unknown').maxSites).toBe(1)
   })
 
-  it('caps free pages per scan at 20', () => {
+  it('caps free pages per scan at 20 when commercial is on', () => {
     expect(getPlanLimits('free').maxPagesPerScan).toBe(20)
+  })
+
+  it('uses enterprise limits when commercial is off', () => {
+    process.env.SITENOOK_COMMERCIAL = '0'
+    expect(getPlanLimits('free').maxPagesPerScan).toBe(50_000)
+    expect(planHasFeature('free', 'seoModule')).toBe(true)
   })
 
   it('gates scheduled scans to team and above', () => {

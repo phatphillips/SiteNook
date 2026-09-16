@@ -19,6 +19,25 @@ export function parseMarketingSiteFlag(value: unknown): boolean {
   return normalized === 'true' || normalized === '1' || normalized === 'yes'
 }
 
+function parseCommercialFlag(value: unknown): boolean {
+  if (value === true) return true
+  const raw = String(value ?? '').trim().toLowerCase()
+  return raw === '1' || raw === 'true' || raw === 'on' || raw === 'yes'
+}
+
+/**
+ * Paid / hosted apex marketing (Nuxt landing, pricing, trial CTAs).
+ * Requires NUXT_PUBLIC_MARKETING_SITE and SITENOOK_COMMERCIAL.
+ * OSS downloads use github.io for marketing — not this flag alone.
+ * See docs/oss-launch-surface.md
+ */
+export function isMarketingSiteActive(
+  marketingSite: unknown,
+  commercialEnabled: unknown
+): boolean {
+  return parseMarketingSiteFlag(marketingSite) && parseCommercialFlag(commercialEnabled)
+}
+
 export function isMarketingApexPath(path: string): boolean {
   if (MARKETING_APEX_EXACT_PATHS.has(path)) return true
   return MARKETING_APEX_PREFIXES.some(
@@ -27,6 +46,10 @@ export function isMarketingApexPath(path: string): boolean {
 }
 
 /** Public apex paths that must stay reachable without a PocketBase session. */
-export function isAnonymousMarketingPath(path: string, marketingSite: unknown): boolean {
-  return parseMarketingSiteFlag(marketingSite) && isMarketingApexPath(path)
+export function isAnonymousMarketingPath(
+  path: string,
+  marketingSite: unknown,
+  commercialEnabled: unknown = true
+): boolean {
+  return isMarketingSiteActive(marketingSite, commercialEnabled) && isMarketingApexPath(path)
 }

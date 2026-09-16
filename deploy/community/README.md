@@ -1,12 +1,22 @@
-# SiteNook — run locally
+# SiteNook — run from published images
 
-You are **not** downloading the SiteNook source code. These files only start published Docker images on your machine.
+Optional path that pulls pre-built images from GHCR (`ghcr.io/phatphillips/sitenook-*`).
+
+For most users, prefer cloning the main repository and running:
+
+```bash
+docker compose up -d --build
+```
+
+See the root [README.md](../../README.md).
 
 ## Requirements
 
 Docker Desktop (or Docker Compose). About 8 GB RAM. Port 80 free.
 
-## Install
+## Install (images)
+
+Images must already exist on GHCR (published via a `v*` tag on the main repo).
 
 ```bash
 cp .env.example .env
@@ -16,19 +26,7 @@ docker compose up -d
 
 Open http://localhost and sign in with `APP_USER_EMAIL` / `APP_USER_PASSWORD`.
 
-1. **Sites** → **Add Site**
-2. **Scan Now**
-
-Leave `SITENOOK_LICENCE_KEY` empty for Free (1 site, 20 pages/scan).
-
-## Licence
-
-Buy: https://buy.polar.sh/polar_cl_q4q6ftpkyLbwOxv4SDOu2akpXYdFqE7V9RqdE48k67j
-
-In the app: **Settings → Billing & Invoices** → paste the emailed key → **Activate**.  
-Or set `SITENOOK_LICENCE_KEY` in `.env` and restart.
-
-`SITENOOK_POLAR_ORGANIZATION_ID` must be the SiteNook Polar org UUID (shipped in `.env.example`). Scanning does not use a SiteNook cloud API.
+`SITENOOK_COMMERCIAL` defaults to `0` (unlimited OSS). Set to `1` only if you configure Polar/Stripe — see [docs/commercial.md](../../docs/commercial.md).
 
 ## Optional search
 

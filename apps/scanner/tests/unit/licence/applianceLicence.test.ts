@@ -11,8 +11,8 @@ describe('applianceLicence', () => {
   const prevMode = process.env.SITENOOK_DEPLOYMENT_MODE
   const prevKey = process.env.SITENOOK_LICENCE_KEY
   const prevServer = process.env.SITENOOK_LICENCE_SERVER_URL
-
   const prevPolar = process.env.SITENOOK_POLAR_ORGANIZATION_ID
+  const prevCommercial = process.env.SITENOOK_COMMERCIAL
 
   beforeEach(() => {
     clearCachedApplianceLicenceState()
@@ -20,6 +20,8 @@ describe('applianceLicence', () => {
     delete process.env.SITENOOK_LICENCE_KEY
     delete process.env.SITENOOK_LICENCE_SERVER_URL
     delete process.env.SITENOOK_POLAR_ORGANIZATION_ID
+    // Commercial on so Free-cap / Polar paths remain testable
+    process.env.SITENOOK_COMMERCIAL = '1'
   })
 
   afterEach(() => {
@@ -32,6 +34,8 @@ describe('applianceLicence', () => {
     else process.env.SITENOOK_LICENCE_SERVER_URL = prevServer
     if (prevPolar === undefined) delete process.env.SITENOOK_POLAR_ORGANIZATION_ID
     else process.env.SITENOOK_POLAR_ORGANIZATION_ID = prevPolar
+    if (prevCommercial === undefined) delete process.env.SITENOOK_COMMERCIAL
+    else process.env.SITENOOK_COMMERCIAL = prevCommercial
   })
 
   it('detects appliance mode', () => {
@@ -39,8 +43,14 @@ describe('applianceLicence', () => {
     expect(isApplianceDeploymentMode('appliance')).toBe(true)
   })
 
-  it('uses org plan in cloud mode', () => {
+  it('uses org plan in cloud mode when commercial is on', () => {
     expect(effectiveOrgPlanForScan('team')).toBe('team')
+  })
+
+  it('treats commercial-off as unlimited enterprise', () => {
+    process.env.SITENOOK_COMMERCIAL = '0'
+    process.env.SITENOOK_DEPLOYMENT_MODE = 'appliance'
+    expect(effectiveOrgPlanForScan('free')).toBe('enterprise')
   })
 
   it('caps at free without licence in appliance mode', async () => {

@@ -35,7 +35,15 @@ const PLAN_LIMITS = {
   enterprise: { maxSites: 999999, maxTeamMembers: 999999, scanHistoryDays: 365, scheduledScans: true, policies: true }
 }
 
+function isCommercialEnabled() {
+  const raw = String($os.getenv('SITENOOK_COMMERCIAL') || '').trim().toLowerCase()
+  return raw === '1' || raw === 'true' || raw === 'on' || raw === 'yes'
+}
+
 function getLimitsForOrg(app, orgId) {
+  if (!isCommercialEnabled()) {
+    return PLAN_LIMITS.enterprise
+  }
   const id = normalizeOrgId(orgId)
   if (!id) return PLAN_LIMITS.free
   try {
@@ -139,6 +147,7 @@ function enforcePolicyCreateLimit(e) {
 }
 
 function enforceOrganizationUpdateLock(e) {
+  if (!isCommercialEnabled()) return
   const record = e.record
   const original = record.original()
   const lockedFields = [

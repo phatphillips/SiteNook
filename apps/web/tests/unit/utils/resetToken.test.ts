@@ -4,12 +4,12 @@ import { decodePasswordResetTokenEmail } from '~/utils/resetToken'
 describe('decodePasswordResetTokenEmail', () => {
   it('extracts email from a PocketBase password-reset JWT payload', () => {
     const payload = btoa(JSON.stringify({
-      email: 'puffinpopstop@gmail.com',
+      email: 'user@example.com',
       type: 'passwordReset'
     }))
     const token = `header.${payload}.signature`
 
-    expect(decodePasswordResetTokenEmail(token)).toBe('puffinpopstop@gmail.com')
+    expect(decodePasswordResetTokenEmail(token)).toBe('user@example.com')
   })
 
   it('returns null for invalid tokens', () => {

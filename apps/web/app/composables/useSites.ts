@@ -22,6 +22,7 @@ import {
   normalizeOrganizationPlan
 } from '~/utils/planLimits'
 import { queuePriorityForPlan } from '~/utils/planQueuePriority'
+import { isCommercialEnabled } from '~/utils/commercial'
 
 export const ALL_SITES = '__all__' as const
 
@@ -121,6 +122,7 @@ function _useSites() {
   }
 
   function currentOrgPlan() {
+    if (!isCommercialEnabled()) return 'enterprise' as const
     return normalizeOrganizationPlan(organization.value?.plan)
   }
 

@@ -18,8 +18,13 @@ withDefaults(
 )
 
 const route = useRoute()
+const config = useRuntimeConfig()
 const featureBanner = computed(() => resolveFeaturePageBanner(route.path))
 const featureBannerLoading = inject<Ref<boolean>>('featurePageBannerLoading', ref(false))
+const commercialEnabled = computed(() => {
+  const value = String(config.public.commercialEnabled ?? '').trim().toLowerCase()
+  return value === 'true' || value === '1' || value === 'yes' || value === 'on'
+})
 </script>
 
 <template>
@@ -33,9 +38,11 @@ const featureBannerLoading = inject<Ref<boolean>>('featurePageBannerLoading', re
         class="dashboard-panel-body mx-auto flex w-full min-w-0 flex-col gap-4 sm:gap-6"
         :class="fluid ? undefined : fullWidth ? 'max-w-[1200px]' : 'lg:max-w-[70rem]'"
       >
-        <RetentionBanner />
-        <TrialBanner />
-        <BillingUsageLimitBanner />
+        <template v-if="commercialEnabled">
+          <RetentionBanner />
+          <TrialBanner />
+          <BillingUsageLimitBanner />
+        </template>
         <OnboardingChecklist />
         <FeaturePageBannerSkeleton
           v-if="!hideFeatureBanner && featureBanner && featureBannerLoading"

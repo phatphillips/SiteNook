@@ -31,6 +31,8 @@ When adding a doc, pick the folder that matches its primary audience. Link relat
 | [operations/dev-operations.md](./operations/dev-operations.md) | Purge closed orgs, reset tenants, env var mapping |
 | [operations/go-live.md](./operations/go-live.md) | Production DNS, SMTP, Stripe live, E2E hardening |
 | [operations/v1-release.md](./operations/v1-release.md) | Private-repo v1 (Plex model): Polar, GHCR, no domain |
+| [commercial.md](./commercial.md) | Optional Stripe / Polar module (`SITENOOK_COMMERCIAL`) |
+| [oss-launch-surface.md](./oss-launch-surface.md) | github.io vs OSS app vs paid Nuxt landing — what to ship |
 
 ---
 

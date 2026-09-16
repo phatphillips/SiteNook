@@ -9,6 +9,12 @@ defineProps<{
 
 const colorMode = useColorMode()
 const { sessionUser, logout } = usePocketBase()
+const config = useRuntimeConfig()
+
+const commercialEnabled = computed(() => {
+  const value = String(config.public.commercialEnabled ?? '').trim().toLowerCase()
+  return value === 'true' || value === '1' || value === 'yes' || value === 'on'
+})
 
 const displayName = computed(() => sessionUser.value?.name || sessionUser.value?.email || 'User')
 const displayEmail = computed(() => {
@@ -31,28 +37,33 @@ function setColorMode(mode: AppColorMode) {
   colorMode.preference = mode
 }
 
-const settingsChildren: DropdownMenuItem[] = [
-  {
-    label: 'General',
-    icon: 'i-lucide-settings-2',
-    to: '/settings'
-  },
-  {
-    label: 'Team',
-    icon: 'i-lucide-users',
-    to: '/settings/users'
-  },
-  {
-    label: 'Billing & Invoices',
-    icon: 'i-lucide-credit-card',
-    to: '/settings/billing'
-  },
-  {
+const settingsChildren = computed<DropdownMenuItem[]>(() => {
+  const items: DropdownMenuItem[] = [
+    {
+      label: 'General',
+      icon: 'i-lucide-settings-2',
+      to: '/settings'
+    },
+    {
+      label: 'Team',
+      icon: 'i-lucide-users',
+      to: '/settings/users'
+    }
+  ]
+  if (commercialEnabled.value) {
+    items.push({
+      label: 'Billing & Invoices',
+      icon: 'i-lucide-credit-card',
+      to: '/settings/billing'
+    })
+  }
+  items.push({
     label: 'Integrations',
     icon: 'i-lucide-plug',
     to: '/settings/integrations'
-  }
-]
+  })
+  return items
+})
 
 const items = computed<DropdownMenuItem[][]>(() => [[{
   type: 'label',
@@ -65,7 +76,7 @@ const items = computed<DropdownMenuItem[][]>(() => [[{
 }, {
   label: 'Settings',
   icon: 'i-lucide-settings',
-  children: settingsChildren
+  children: settingsChildren.value
 }], [{
   label: 'Appearance',
   icon: 'i-lucide-sun-moon',
@@ -82,7 +93,9 @@ const items = computed<DropdownMenuItem[][]>(() => [[{
 }], [{
   label: 'Log out',
   icon: 'i-lucide-log-out',
-  onSelect: () => logout()
+  onSelect() {
+    logout()
+  }
 }]])
 </script>
 

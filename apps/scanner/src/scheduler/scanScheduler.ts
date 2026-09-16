@@ -1,6 +1,7 @@
 import type PocketBase from 'pocketbase'
 import { deriveScanTypeFromRaw } from '../config/scanConfig.js'
 import { queuePriorityForPlan } from '../config/planQueuePriority.js'
+import { isCommercialEnabled } from '../config/commercial.js'
 import { getPocketBase, isPocketBaseConnectionError, resetPocketBaseClient } from '../db/pocketbaseClient.js'
 import {
   computeScheduleNextRunAt,
@@ -12,7 +13,9 @@ import {
   rawConfigForEnqueue
 } from './scheduleNextRun.js'
 
-const ACTIVE_ORG_SITE_FILTER = "crawl_schedule != 'manual' && crawl_schedule != '' && organization.status != 'closing' && organization.subscription_status != 'canceled'"
+const ACTIVE_ORG_SITE_FILTER = isCommercialEnabled()
+  ? "crawl_schedule != 'manual' && crawl_schedule != '' && organization.status != 'closing' && organization.subscription_status != 'canceled'"
+  : "crawl_schedule != 'manual' && crawl_schedule != '' && organization.status != 'closing'"
 
 export const VERIFICATION_DELAY_MS = 24 * 60 * 60 * 1000
 

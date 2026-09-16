@@ -10,7 +10,7 @@ const pbUrl = process.env.NUXT_POCKETBASE_URL || 'http://127.0.0.1:8090'
 const webUrl = process.env.NUXT_PUBLIC_APP_URL || 'http://127.0.0.1:3000'
 const siteId = process.argv[2] || 'h2np44z48g96c0r'
 const assetUrl = process.argv[3] || 'http://decyp.tas.gov.au/'
-const userEmail = process.argv[4] || process.env.APP_USER_EMAIL || 'minimojo089@gmail.com'
+const userEmail = process.argv[4] || process.env.APP_USER_EMAIL || 'admin@example.com'
 const userPassword = process.argv[5] || process.env.APP_USER_PASSWORD
 
 if (!userPassword) {

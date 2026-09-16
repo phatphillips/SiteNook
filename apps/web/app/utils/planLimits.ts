@@ -1,4 +1,5 @@
 import type { OrganizationPlan } from '~/types/sitenook'
+import { isCommercialEnabled } from '~/utils/commercial'
 
 export const ORGANIZATION_PLANS: OrganizationPlan[] = [
   'free',
@@ -116,6 +117,9 @@ export function isPaidCheckoutPlan(value: unknown): value is PaidCheckoutPlan {
 }
 
 export function getPlanLimits(plan: unknown): PlanLimitSet {
+  if (!isCommercialEnabled()) {
+    return PLAN_LIMITS.enterprise
+  }
   return PLAN_LIMITS[normalizeOrganizationPlan(plan)]
 }
 

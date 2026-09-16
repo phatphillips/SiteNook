@@ -39,6 +39,13 @@ AUTH="Authorization: Bearer $TOKEN"
 DEFAULT_ORG_SUBDOMAIN="${DEFAULT_ORG_SUBDOMAIN:-default}"
 DEFAULT_ORG_NAME="${DEFAULT_ORG_NAME:-Default Organization}"
 
+# OSS default (SITENOOK_COMMERCIAL unset/0): enterprise. Commercial: free.
+COMMERCIAL_RAW=$(echo "${SITENOOK_COMMERCIAL:-0}" | tr '[:upper:]' '[:lower:]')
+case "$COMMERCIAL_RAW" in
+  1|true|on|yes) DEFAULT_ORG_PLAN="free" ;;
+  *) DEFAULT_ORG_PLAN="enterprise" ;;
+esac
+
 ORG_ID=""
 if [ "$(curl -s -o /dev/null -w '%{http_code}' "$PB_URL/api/collections/organizations" -H "$AUTH")" = "200" ]; then
   ORG_LIST=$(curl -sf "$PB_URL/api/collections/organizations/records?filter=(subdomain='$DEFAULT_ORG_SUBDOMAIN')&perPage=1" -H "$AUTH" || echo '{"items":[]}')
@@ -47,9 +54,9 @@ if [ "$(curl -s -o /dev/null -w '%{http_code}' "$PB_URL/api/collections/organiza
     ORG_RESP=$(curl -sf -X POST "$PB_URL/api/collections/organizations/records" \
       -H "Content-Type: application/json" \
       -H "$AUTH" \
-      -d "{\"name\":\"$DEFAULT_ORG_NAME\",\"subdomain\":\"$DEFAULT_ORG_SUBDOMAIN\",\"plan\":\"free\",\"status\":\"active\",\"subscription_status\":\"none\"}")
+      -d "{\"name\":\"$DEFAULT_ORG_NAME\",\"subdomain\":\"$DEFAULT_ORG_SUBDOMAIN\",\"plan\":\"$DEFAULT_ORG_PLAN\",\"status\":\"active\",\"subscription_status\":\"none\"}")
     ORG_ID=$(echo "$ORG_RESP" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
-    echo "Seed: created default organization ($DEFAULT_ORG_SUBDOMAIN)."
+    echo "Seed: created default organization ($DEFAULT_ORG_SUBDOMAIN) plan=$DEFAULT_ORG_PLAN."
   fi
 fi
 

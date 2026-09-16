@@ -27,54 +27,14 @@ const featureLinks = computed<NavigationMenuItem[]>(() => {
   return buildSiteFeatureNavLinks(activeSiteId.value, route.path, onClose)
 })
 
-const links = computed<NavigationMenuItem[][]>(() => [[{
-  label: 'Overview',
-  icon: 'i-lucide-house',
-  to: isAllSites.value || !activeSiteId.value ? '/' : `/sites/${activeSiteId.value}`,
-  active: isRootOverviewPath(route.path),
-  onSelect: () => { open.value = false }
-}, {
-  label: 'Sites',
-  icon: 'i-lucide-globe',
-  to: '/sites',
-  onSelect: () => { open.value = false }
-}, {
-  label: 'Search',
-  icon: 'i-lucide-search',
-  to: '/search',
-  onSelect: () => { open.value = false }
-}, {
-  label: 'Content',
-  icon: 'i-lucide-files',
-  to: isAllSites.value || !activeSiteId.value
-    ? '/content/explorer'
-    : `/sites/${activeSiteId.value}/content/explorer`,
-  active: route.path === '/content/explorer'
-    || /^\/sites\/[^/]+\/content\/explorer$/.test(route.path),
-  onSelect: () => { open.value = false }
-}, ...featureLinks.value, {
-  label: 'Scans',
-  icon: 'i-lucide-history',
-  to: '/scans',
-  slot: 'scans',
-  onSelect: () => { open.value = false }
-}, {
-  label: 'Reports',
-  icon: 'i-lucide-bar-chart-3',
-  to: '/reports',
-  onSelect: () => { open.value = false }
-}, {
-  label: 'Policies',
-  icon: 'i-lucide-clipboard-list',
-  to: '/policies',
-  onSelect: () => { open.value = false }
-}], [{
-  label: 'Settings',
-  to: '/settings',
-  icon: 'i-lucide-settings',
-  defaultOpen: route.path.startsWith('/settings'),
-  type: 'trigger',
-  children: [{
+const links = computed<NavigationMenuItem[][]>(() => {
+  const config = useRuntimeConfig()
+  const commercialOn = (() => {
+    const value = String(config.public.commercialEnabled ?? '').trim().toLowerCase()
+    return value === 'true' || value === '1' || value === 'yes' || value === 'on'
+  })()
+
+  const settingsChildren: NavigationMenuItem[] = [{
     label: 'General',
     to: '/settings',
     exact: true,
@@ -83,16 +43,70 @@ const links = computed<NavigationMenuItem[][]>(() => [[{
     label: 'Team',
     to: '/settings/users',
     onSelect: () => { open.value = false }
-  }, {
-    label: 'Billing & Invoices',
-    to: '/settings/billing',
-    onSelect: () => { open.value = false }
-  }, {
+  }]
+  if (commercialOn) {
+    settingsChildren.push({
+      label: 'Billing & Invoices',
+      to: '/settings/billing',
+      onSelect: () => { open.value = false }
+    })
+  }
+  settingsChildren.push({
     label: 'Integrations',
     to: '/settings/integrations',
     onSelect: () => { open.value = false }
-  }]
-}]])
+  })
+
+  return [[{
+    label: 'Overview',
+    icon: 'i-lucide-house',
+    to: isAllSites.value || !activeSiteId.value ? '/' : `/sites/${activeSiteId.value}`,
+    active: isRootOverviewPath(route.path),
+    onSelect: () => { open.value = false }
+  }, {
+    label: 'Sites',
+    icon: 'i-lucide-globe',
+    to: '/sites',
+    onSelect: () => { open.value = false }
+  }, {
+    label: 'Search',
+    icon: 'i-lucide-search',
+    to: '/search',
+    onSelect: () => { open.value = false }
+  }, {
+    label: 'Content',
+    icon: 'i-lucide-files',
+    to: isAllSites.value || !activeSiteId.value
+      ? '/content/explorer'
+      : `/sites/${activeSiteId.value}/content/explorer`,
+    active: route.path === '/content/explorer'
+      || /^\/sites\/[^/]+\/content\/explorer$/.test(route.path),
+    onSelect: () => { open.value = false }
+  }, ...featureLinks.value, {
+    label: 'Scans',
+    icon: 'i-lucide-history',
+    to: '/scans',
+    slot: 'scans',
+    onSelect: () => { open.value = false }
+  }, {
+    label: 'Reports',
+    icon: 'i-lucide-bar-chart-3',
+    to: '/reports',
+    onSelect: () => { open.value = false }
+  }, {
+    label: 'Policies',
+    icon: 'i-lucide-clipboard-list',
+    to: '/policies',
+    onSelect: () => { open.value = false }
+  }], [{
+    label: 'Settings',
+    to: '/settings',
+    icon: 'i-lucide-settings',
+    defaultOpen: route.path.startsWith('/settings'),
+    type: 'trigger',
+    children: settingsChildren
+  }]]
+})
 
 const groups = computed(() => [{
   id: 'links',

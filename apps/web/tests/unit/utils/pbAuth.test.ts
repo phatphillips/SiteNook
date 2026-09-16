@@ -37,10 +37,10 @@ describe('syncPbAuthState', () => {
     expect(isAuthenticated.value).toBe(true)
     expect(user.value?.name).toBe('Donkey')
 
-    pb.authStore.record = { id: 'minimojo', name: 'minimojo089', collectionName: 'users' }
+    pb.authStore.record = { id: 'user1', name: 'testuser', collectionName: 'users' }
     syncPbAuthState(pb as never, user, isAuthenticated)
-    expect(user.value?.name).toBe('minimojo089')
-    expect(user.value?.id).toBe('minimojo')
+    expect(user.value?.name).toBe('testuser')
+    expect(user.value?.id).toBe('user1')
   })
 
   it('clears reactive auth refs when the session is invalid', () => {

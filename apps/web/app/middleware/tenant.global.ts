@@ -1,7 +1,7 @@
 import { getUserOrganizationId } from '~/utils/orgAccess'
 import { isUserRecord } from '~/utils/pbAuth'
 import { resetAppSessionState } from '~/utils/sessionReset'
-import { parseMarketingSiteFlag } from '~/utils/marketingSite'
+import { isMarketingSiteActive } from '~/utils/marketingSite'
 import { isProtectedAppRoute, buildLoginNavigation } from '~/utils/authRoute'
 import { ensureAuthenticatedForRoute } from '~/utils/ensureAuthenticated'
 import {
@@ -57,7 +57,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     parseTenantOnlyFlag(config.public.tenantOnly),
     isApexHost.value,
     config.public.appDomain,
-    parseMarketingSiteFlag(config.public.marketingSite)
+    isMarketingSiteActive(config.public.marketingSite, config.public.commercialEnabled)
   )
   if (tenantOnlyRedirect) {
     return navigateTo(tenantOnlyRedirect, { replace: true })

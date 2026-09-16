@@ -7,10 +7,15 @@ const isAppliance = computed(() => {
   return mode === 'appliance' || mode === 'selfhost' || mode === 'community'
 })
 
+const commercialEnabled = computed(() => {
+  const value = String(config.public.commercialEnabled ?? '').trim().toLowerCase()
+  return value === 'true' || value === '1' || value === 'yes' || value === 'on'
+})
+
 const status = ref<ApplianceLicenceStatusDto | null>(null)
 
 onMounted(async () => {
-  if (!isAppliance.value) return
+  if (!commercialEnabled.value || !isAppliance.value) return
   try {
     status.value = await $fetch<ApplianceLicenceStatusDto>('/api/licence/status')
   } catch {
@@ -19,7 +24,7 @@ onMounted(async () => {
 })
 
 const showBanner = computed(() =>
-  isAppliance.value && status.value?.upgradeRequired === true
+  commercialEnabled.value && isAppliance.value && status.value?.upgradeRequired === true
 )
 </script>
 

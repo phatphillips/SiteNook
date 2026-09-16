@@ -42,6 +42,7 @@ import {
 } from './db/scanRetention.js'
 import { ScanLogWriter, type ScanLogEventInput } from './db/scanLogEvents.js'
 import { getMaxPagesPerScanForPlan, planHasFeature } from './config/planLimits.js'
+import { isCommercialEnabled } from './config/commercial.js'
 import {
   effectiveOrgPlanForScan,
   heartbeatApplianceLicence,
@@ -830,7 +831,7 @@ async function main() {
   console.log('Authenticated with PocketBase')
 
   const pb = getPocketBase()
-  if (isApplianceDeploymentMode()) {
+  if (isCommercialEnabled() && isApplianceDeploymentMode()) {
     const licenceKey = await resolveLicenceKeyFromPocketBase(pb)
     const licence = await validateApplianceLicence({ licenceKey })
     console.log(
@@ -843,10 +844,12 @@ async function main() {
         console.warn('Licence heartbeat failed:', err)
       })
     }, heartbeatMs)
+  } else if (!isCommercialEnabled()) {
+    console.log('Commercial module off (SITENOOK_COMMERCIAL) — unlimited local limits')
   }
 
   await recoverStaleJobs()
-  if (isApplianceDeploymentMode()) {
+  if (isCommercialEnabled() && isApplianceDeploymentMode()) {
     try {
       const plan = effectiveOrgPlanForScan('free')
       const updated = await syncApplianceOrgPlans(pb, plan)

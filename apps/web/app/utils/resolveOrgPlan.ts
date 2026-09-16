@@ -2,6 +2,7 @@ import type { OrganizationPlan } from '~/types/sitenook'
 import { normalizeOrganizationPlan } from '~/utils/planLimits'
 import { getUserOrganizationId } from '~/utils/orgAccess'
 import { AUTH_READY_TIMEOUT_MS, withTimeout } from '~/utils/fetchTimeout'
+import { isCommercialEnabled } from '~/utils/commercial'
 
 /** Prefer tenant subdomain org; fall back to the signed-in user's organization (apex / localhost dev). */
 export function resolvePlanFromSources(
@@ -16,6 +17,11 @@ export function resolvePlanFromSources(
 }
 
 export async function resolveEffectiveOrganizationPlan(): Promise<OrganizationPlan> {
+  // OSS / commercial-off: treat as enterprise so feature middleware and UI stay unlocked.
+  if (!isCommercialEnabled()) {
+    return 'enterprise'
+  }
+
   const { organization, loadTenantContext, ready } = useTenantOrg()
 
   if (!ready.value) {

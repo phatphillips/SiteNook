@@ -54,6 +54,7 @@ services:
       TYPESENSE_URL: ${TYPESENSE_URL:-http://typesense:8108}
       TYPESENSE_API_KEY: ${TYPESENSE_API_KEY:-dev-typesense-key-local-only}
       TYPESENSE_ENABLED: ${TYPESENSE_ENABLED:-1}
+      SITENOOK_COMMERCIAL: ${SITENOOK_COMMERCIAL:-0}
     depends_on:
       pocketbase:
         condition: service_healthy
@@ -73,6 +74,7 @@ services:
       # Opportunistic crawl-PDF file backfill hammers SQLite during scans; disable locally.
       SCANNER_PDF_STORE_BACKFILL: ${SCANNER_PDF_STORE_BACKFILL:-0}
       NODE_OPTIONS: ${NODE_OPTIONS:---max-old-space-size=4096}
+      SITENOOK_COMMERCIAL: ${SITENOOK_COMMERCIAL:-0}
 
   typesense:
     ports: !override
@@ -84,6 +86,7 @@ services:
     environment:
       APP_DASHBOARD_URL: ${APP_DASHBOARD_URL:-http://localhost:3500}
       APP_PUBLIC_DOMAIN: ${NUXT_PUBLIC_APP_DOMAIN:-localhost}
+      SITENOOK_COMMERCIAL: ${SITENOOK_COMMERCIAL:-0}
 
 volumes:
   scanner_node_modules:

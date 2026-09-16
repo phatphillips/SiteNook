@@ -131,6 +131,11 @@ export default defineNuxtConfig({
         && process.env.NUXT_STRIPE_SELFHOST_PRICE_ID?.trim()
       ) ? 'true' : 'false',
       deploymentMode: process.env.SITENOOK_DEPLOYMENT_MODE || process.env.ACCESSIQ_DEPLOYMENT_MODE || 'cloud',
+      // OSS default: commercial off. Set SITENOOK_COMMERCIAL=1 to enable Stripe/Polar/caps.
+      commercialEnabled: (() => {
+        const raw = String(process.env.SITENOOK_COMMERCIAL ?? '').trim().toLowerCase()
+        return raw === '1' || raw === 'true' || raw === 'on' || raw === 'yes' ? 'true' : 'false'
+      })(),
       polarCheckoutUrl: process.env.NUXT_PUBLIC_POLAR_CHECKOUT_URL
         || process.env.SITENOOK_POLAR_CHECKOUT_URL
         || 'https://buy.polar.sh/polar_cl_q4q6ftpkyLbwOxv4SDOu2akpXYdFqE7V9RqdE48k67j',

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SiteNook — self-hosted accessibility monitoring</title>
+  <meta name="description" content="SiteNook is open-source, self-hosted accessibility, QA, and SEO monitoring. Run it with Docker. MIT licensed." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./">SiteNook</a>
+    <nav>
+      <a href="https://github.com/phatphillips/SiteNook#quickstart">Install</a>
+      <a href="https://github.com/phatphillips/SiteNook">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Open source · Self-hosted · MIT</p>
+      <h1>Accessibility and QA monitoring you run yourself</h1>
+      <p class="lede">
+        SiteNook crawls your sites with Playwright and axe-core, stores results locally in PocketBase,
+        and shows WCAG issues, broken links, spelling, and SEO checks in a Nuxt dashboard.
+      </p>
+      <div class="actions">
+        <a class="btn primary" href="https://github.com/phatphillips/SiteNook#quickstart">Get started</a>
+        <a class="btn ghost" href="https://github.com/phatphillips/SiteNook">View on GitHub</a>
+      </div>
+    </section>
+
+    <section class="shots" aria-label="Product screenshots">
+      <figure>
+        <div class="shot-frame" data-label="Dashboard">[SCREENSHOT]</div>
+        <figcaption>Dashboard overview</figcaption>
+      </figure>
+      <figure>
+        <div class="shot-frame" data-label="Issues">[SCREENSHOT]</div>
+        <figcaption>Accessibility issues</figcaption>
+      </figure>
+      <figure>
+        <div class="shot-frame" data-label="Scan">[SCREENSHOT]</div>
+        <figcaption>Scan run</figcaption>
+      </figure>
+    </section>
+
+    <section class="features">
+      <h2>What you get</h2>
+      <ul>
+        <li><strong>Accessibility</strong> — axe-core WCAG findings with history</li>
+        <li><strong>QA</strong> — broken links, spelling, inventory</li>
+        <li><strong>SEO</strong> — crawl-based checks</li>
+        <li><strong>Policies</strong> — custom content rules</li>
+        <li><strong>Schedules</strong> — recurring scans on your timetable</li>
+        <li><strong>Your machine</strong> — data stays in your Docker volume</li>
+      </ul>
+    </section>
+
+    <section class="install">
+      <h2>Install</h2>
+      <pre><code>git clone https://github.com/phatphillips/SiteNook.git
+cd SiteNook
+cp .env.example .env
+# set PB_ADMIN_* and APP_USER_*
+docker compose up -d --build</code></pre>
+      <p>Open <a href="http://localhost">http://localhost</a> and sign in with your app user.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      Public brochure for GitHub Pages — not bundled into the Docker app.
+      MIT Licence ·
+      <a href="https://github.com/phatphillips/SiteNook/blob/master/THIRD_PARTY_NOTICES.md">Third-party notices</a>
+      ·
+      <a href="https://github.com/phatphillips/SiteNook/blob/master/docs/oss-launch-surface.md">What ships where</a>
+    </p>
+  </footer>
+</body>
+</html>

@@ -1,9 +1,10 @@
 import { isUserRecord } from '~/utils/pbAuth'
-import { parseMarketingSiteFlag } from '~/utils/marketingSite'
+import { isMarketingSiteActive } from '~/utils/marketingSite'
 
 /**
  * Public marketing content pages (blog, docs, product, pricing, etc.).
- * Only available on the marketing apex; guests get the marketing layout.
+ * Only on the paid marketing apex; guests get the marketing layout.
+ * See docs/oss-launch-surface.md
  */
 export default defineNuxtRouteMiddleware(async () => {
   const config = useRuntimeConfig()
@@ -17,7 +18,10 @@ export default defineNuxtRouteMiddleware(async () => {
     }
   }
 
-  const marketingApex = parseMarketingSiteFlag(config.public.marketingSite) && isApexHost.value
+  const marketingApex = isMarketingSiteActive(
+    config.public.marketingSite,
+    config.public.commercialEnabled
+  ) && isApexHost.value
 
   if (!marketingApex) {
     return navigateTo('/', { replace: true })

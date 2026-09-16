@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   isAnonymousMarketingPath,
   isMarketingApexPath,
+  isMarketingSiteActive,
   parseMarketingSiteFlag
 } from '~/utils/marketingSite'
 
@@ -15,6 +16,16 @@ describe('parseMarketingSiteFlag', () => {
   it('rejects falsey values', () => {
     expect(parseMarketingSiteFlag('false')).toBe(false)
     expect(parseMarketingSiteFlag('')).toBe(false)
+  })
+})
+
+describe('isMarketingSiteActive', () => {
+  it('requires both marketing flag and commercial', () => {
+    expect(isMarketingSiteActive(true, true)).toBe(true)
+    expect(isMarketingSiteActive('true', '1')).toBe(true)
+    expect(isMarketingSiteActive(true, false)).toBe(false)
+    expect(isMarketingSiteActive(true, '0')).toBe(false)
+    expect(isMarketingSiteActive(false, true)).toBe(false)
   })
 })
 
@@ -34,12 +45,13 @@ describe('isMarketingApexPath', () => {
 })
 
 describe('isAnonymousMarketingPath', () => {
-  it('allows apex marketing paths only when marketing site is enabled', () => {
-    expect(isAnonymousMarketingPath('/', true)).toBe(true)
-    expect(isAnonymousMarketingPath('/pricing', 'true')).toBe(true)
-    expect(isAnonymousMarketingPath('/blog/accessibility-score-trends', true)).toBe(true)
-    expect(isAnonymousMarketingPath('/help/getting-started/first-scan', true)).toBe(true)
-    expect(isAnonymousMarketingPath('/', false)).toBe(false)
-    expect(isAnonymousMarketingPath('/sites', true)).toBe(false)
+  it('allows apex marketing paths only when marketing + commercial are enabled', () => {
+    expect(isAnonymousMarketingPath('/', true, true)).toBe(true)
+    expect(isAnonymousMarketingPath('/pricing', 'true', '1')).toBe(true)
+    expect(isAnonymousMarketingPath('/blog/accessibility-score-trends', true, true)).toBe(true)
+    expect(isAnonymousMarketingPath('/', true, false)).toBe(false)
+    expect(isAnonymousMarketingPath('/', true, '0')).toBe(false)
+    expect(isAnonymousMarketingPath('/', false, true)).toBe(false)
+    expect(isAnonymousMarketingPath('/sites', true, true)).toBe(false)
   })
 })

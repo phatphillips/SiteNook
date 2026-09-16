@@ -56,17 +56,20 @@ services:
       TYPESENSE_URL: ${TYPESENSE_URL:-http://typesense:8108}
       TYPESENSE_API_KEY: ${TYPESENSE_API_KEY:-dev-typesense-key-local-only}
       TYPESENSE_ENABLED: ${TYPESENSE_ENABLED:-0}
+      SITENOOK_COMMERCIAL: ${SITENOOK_COMMERCIAL:-0}
     depends_on:
       - pocketbase
       - typesense
 
   verapdf:
+    profiles: ["pdf"]
     image: verapdf/rest:latest
     ports:
       - "8080:8080"
     restart: unless-stopped
 
   opendataloader:
+    profiles: ["pdf"]
     build: ./services/opendataloader
     ports:
       - "8095:8095"
@@ -107,13 +110,10 @@ services:
       TYPESENSE_URL: ${TYPESENSE_URL:-http://typesense:8108}
       TYPESENSE_API_KEY: ${TYPESENSE_API_KEY:-dev-typesense-key-local-only}
       TYPESENSE_ENABLED: ${TYPESENSE_ENABLED:-0}
+      SITENOOK_COMMERCIAL: ${SITENOOK_COMMERCIAL:-0}
     depends_on:
       pocketbase:
         condition: service_healthy
-      verapdf:
-        condition: service_started
-      opendataloader:
-        condition: service_started
       typesense:
         condition: service_started
       redis:
@@ -135,6 +135,7 @@ services:
       DEFAULT_ORG_NAME: ${DEFAULT_ORG_NAME:-Default Organization}
       APP_DASHBOARD_URL: ${APP_DASHBOARD_URL:-http://localhost:3000}
       APP_PUBLIC_DOMAIN: ${NUXT_PUBLIC_APP_DOMAIN:-localhost}
+      SITENOOK_COMMERCIAL: ${SITENOOK_COMMERCIAL:-0}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8090/api/health"]
       interval: 5s

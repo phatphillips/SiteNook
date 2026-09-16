@@ -2,6 +2,8 @@
  * Plan limits mirror apps/web/app/utils/planLimits.ts — keep values in sync.
  */
 
+import { isCommercialEnabled } from './commercial.js'
+
 export type OrganizationPlan = 'free' | 'starter' | 'team' | 'business' | 'enterprise'
 
 export type PlanFeature = 'scheduledScans' | 'seoModule' | 'policies' | 'inventory' | 'pdfAccessibility'
@@ -81,6 +83,9 @@ export function normalizeOrganizationPlan(plan: unknown): OrganizationPlan {
 }
 
 export function getPlanLimits(plan: unknown): PlanLimitSet {
+  if (!isCommercialEnabled()) {
+    return PLAN_LIMITS.enterprise
+  }
   return PLAN_LIMITS[normalizeOrganizationPlan(plan)]
 }
 
