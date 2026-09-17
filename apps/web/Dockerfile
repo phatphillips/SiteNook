@@ -8,7 +8,7 @@ COPY . .
 EXPOSE 3000
 CMD ["pnpm", "run", "dev", "--", "--host", "0.0.0.0"]
 
-FROM node:22-bookworm-slim AS production
+FROM node:22-bookworm-slim AS build
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@11.1.3 --activate
 COPY package.json pnpm-lock.yaml ./
@@ -19,7 +19,14 @@ ARG NUXT_PUBLIC_POCKETBASE_URL=/api
 ARG NUXT_PUBLIC_APP_URL=http://localhost
 ENV NUXT_PUBLIC_POCKETBASE_URL=$NUXT_PUBLIC_POCKETBASE_URL \
     NUXT_PUBLIC_APP_URL=$NUXT_PUBLIC_APP_URL \
-    NODE_OPTIONS=--max-old-space-size=4096
+    NUXT_TELEMETRY_DISABLED=1 \
+    NITRO_SOURCEMAP=false \
+    NODE_OPTIONS=--max-old-space-size=3072
 RUN pnpm run build
+
+FROM node:22-bookworm-slim AS production
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app/.output ./.output
 EXPOSE 3000
 CMD ["node", ".output/server/index.mjs"]
