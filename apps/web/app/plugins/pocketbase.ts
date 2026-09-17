@@ -2,6 +2,7 @@ import PocketBase from 'pocketbase'
 import { GUEST_AUTH_PATHS, resolveLoginRedirectPath, syncPbAuthState } from '~/utils/pbAuth'
 import { isAnonymousMarketingPath } from '~/utils/marketingSite'
 import { attachPocketBaseFetchTimeout, PB_FETCH_TIMEOUT_MS } from '~/utils/fetchTimeout'
+import { normalizePublicPocketBaseUrl } from '~/utils/normalizePublicPocketBaseUrl'
 import {
   attachPb401Retry,
   createRefreshAuthToken,
@@ -23,7 +24,10 @@ export default defineNuxtPlugin({
   }
 
   const config = useRuntimeConfig()
-  const pb = new PocketBase(config.public.pocketbaseUrl)
+  // Same-origin behind nginx: empty base → browser origin; SDK still calls /api/...
+  const pbBase = normalizePublicPocketBaseUrl(String(config.public.pocketbaseUrl || ''))
+    || window.location.origin
+  const pb = new PocketBase(pbBase)
   pb.autoCancellation(false)
 
   attachPocketBaseFetchTimeout(pb, PB_FETCH_TIMEOUT_MS)

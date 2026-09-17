@@ -15,7 +15,8 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --no-frozen-lockfile --dangerously-allow-all-builds
 COPY . .
 # Baked into the client bundle; nginx proxies /api → PocketBase in the default stack.
-ARG NUXT_PUBLIC_POCKETBASE_URL=/api
+# PocketBase JS SDK appends /api/... — use the site origin, not /api.
+ARG NUXT_PUBLIC_POCKETBASE_URL=http://localhost
 ARG NUXT_PUBLIC_APP_URL=http://localhost
 ENV NUXT_PUBLIC_POCKETBASE_URL=$NUXT_PUBLIC_POCKETBASE_URL \
     NUXT_PUBLIC_APP_URL=$NUXT_PUBLIC_APP_URL \

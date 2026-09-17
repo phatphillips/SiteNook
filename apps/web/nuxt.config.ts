@@ -7,7 +7,7 @@ const isProductionNuxtBuild = process.env.NODE_ENV === 'production'
 if (isProductionNuxtBuild && !pocketbaseUrl) {
   throw new Error(
     'NUXT_PUBLIC_POCKETBASE_URL must be set for production builds. '
-    + 'Example: NUXT_PUBLIC_POCKETBASE_URL=/api'
+    + 'Use the public site origin (SDK adds /api). Example: NUXT_PUBLIC_POCKETBASE_URL=http://localhost'
   )
 }
 

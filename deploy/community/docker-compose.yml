@@ -20,7 +20,7 @@ services:
   web:
     image: ${SITENOOK_WEB_IMAGE:-ghcr.io/phatphillips/sitenook-web:latest}
     environment:
-      NUXT_PUBLIC_POCKETBASE_URL: /api
+      NUXT_PUBLIC_POCKETBASE_URL: ${NUXT_PUBLIC_POCKETBASE_URL:-http://localhost}
       NUXT_PUBLIC_APP_URL: ${NUXT_PUBLIC_APP_URL:-http://localhost}
       NUXT_PUBLIC_APP_DOMAIN: ${NUXT_PUBLIC_APP_DOMAIN:-localhost}
       NUXT_POCKETBASE_URL: http://pocketbase:8090

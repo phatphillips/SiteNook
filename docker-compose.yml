@@ -14,7 +14,7 @@ services:
   web:
     build: ./apps/web
     environment:
-      NUXT_PUBLIC_POCKETBASE_URL: /api
+      NUXT_PUBLIC_POCKETBASE_URL: ${NUXT_PUBLIC_POCKETBASE_URL:-http://localhost}
       NUXT_PUBLIC_APP_URL: http://localhost
       NUXT_PUBLIC_APP_DOMAIN: localhost
       NUXT_POCKETBASE_URL: http://pocketbase:8090
