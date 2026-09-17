@@ -6,6 +6,7 @@ interface SignupOrganizationBody {
   subdomain?: string
   ownerName?: string
   ownerEmail?: string
+  ownerPassword?: string
   turnstileToken?: string
   acceptTerms?: boolean
   plan?: string
@@ -26,6 +27,14 @@ export default defineEventHandler(async (event) => {
   }
 
   const ownerEmail = String(body.ownerEmail ?? '').trim()
+  const ownerPassword = String(body.ownerPassword ?? '')
+  if (!ownerPassword || ownerPassword.length < 8) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Password must be at least 8 characters.'
+    })
+  }
+
   if (ownerEmail) {
     assertRateLimit(
       event,
@@ -66,6 +75,7 @@ export default defineEventHandler(async (event) => {
     subdomain: String(body.subdomain ?? ''),
     ownerName: String(body.ownerName ?? ''),
     ownerEmail,
+    ownerPassword,
     plan,
     teamTrial: teamTrial === true
   }

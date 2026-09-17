@@ -14,6 +14,8 @@ export interface ProvisionOrganizationInput {
   subdomain: string
   ownerName: string
   ownerEmail: string
+  /** When set (self-service), owner is verified and can sign in immediately. */
+  ownerPassword?: string
   plan?: string
   /** When true with plan team, provision a 30-day app-managed Team trial. */
   teamTrial?: boolean
@@ -30,6 +32,8 @@ export interface ProvisionOrganizationResult {
   owner: { id: string, email: string, name: string }
   loginUrl: string
   inviteEmailSent: boolean
+  /** True when the owner set a password during signup and can sign in now. */
+  accountReady: boolean
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -72,6 +76,13 @@ export function validateOwnerName(name: string): string | null {
   return null
 }
 
+export function validateOwnerPassword(password: string | undefined): string | null {
+  if (password === undefined || password === '') return null
+  if (password.length < 8) return 'Password must be at least 8 characters.'
+  if (password.length > 200) return 'Password must be 200 characters or fewer.'
+  return null
+}
+
 export function validateProvisionPlan(plan: string | undefined): string | null {
   if (!plan?.trim()) return null
   if (!isOrganizationPlan(plan.trim())) {
@@ -85,6 +96,7 @@ export function validateProvisionInput(input: ProvisionOrganizationInput): strin
     || validateSubdomain(input.subdomain)
     || validateOwnerName(input.ownerName)
     || validateOwnerEmail(input.ownerEmail)
+    || validateOwnerPassword(input.ownerPassword)
     || validateProvisionPlan(input.plan)
 }
 
@@ -193,7 +205,9 @@ export async function provisionOrganization(
 
   const subdomain = input.subdomain.trim().toLowerCase()
   const ownerEmail = input.ownerEmail.trim()
-  const tempPassword = generateTemporaryPassword()
+  const chosenPassword = input.ownerPassword?.trim() || ''
+  const accountReady = chosenPassword.length > 0
+  const password = accountReady ? chosenPassword : generateTemporaryPassword()
 
   const availability = await checkSubdomainAvailability(pb, subdomain)
   if (!availability.available) {
@@ -232,13 +246,13 @@ export async function provisionOrganization(
     owner = await pb.collection('users').create({
       name: input.ownerName.trim(),
       email: ownerEmail,
-      password: tempPassword,
-      passwordConfirm: tempPassword,
+      password,
+      passwordConfirm: password,
       role: 'admin',
       is_billing_contact: true,
       organization: organization.id,
       emailVisibility: true,
-      verified: false
+      verified: accountReady
     })
   } catch (error) {
     await pb.collection('organizations').delete(organization.id).catch(() => {})
@@ -250,11 +264,13 @@ export async function provisionOrganization(
   }
 
   let inviteEmailSent = false
-  try {
-    await sendSetPasswordEmail(pb, ownerEmail)
-    inviteEmailSent = true
-  } catch {
-    inviteEmailSent = false
+  if (!accountReady) {
+    try {
+      await sendSetPasswordEmail(pb, ownerEmail)
+      inviteEmailSent = true
+    } catch {
+      inviteEmailSent = false
+    }
   }
 
   return {
@@ -270,6 +286,7 @@ export async function provisionOrganization(
       name: String(owner.name)
     },
     loginUrl: buildTenantLoginUrl(subdomain, options.appDomain, options.appUrl),
-    inviteEmailSent
+    inviteEmailSent,
+    accountReady
   }
 }

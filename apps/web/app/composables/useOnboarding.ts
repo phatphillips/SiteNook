@@ -1,13 +1,61 @@
 import type { OrganizationOnboardingState } from '~/types/sitenook'
 import { daysRemainingUntil } from '~/utils/planPricing'
 import { trackFunnelEvent } from '~/utils/funnelAnalytics'
-import { canWriteOrg } from '~/utils/orgAccess'
+import { canWriteOrg, getUserOrganizationId } from '~/utils/orgAccess'
 import { shouldShowOnboardingChecklist } from '~/utils/onboardingChecklist'
+
+type OnboardingOrg = {
+  id: string
+  onboarding_state?: OrganizationOnboardingState | null
+  subscription_status?: string | null
+  trial_ends_at?: string | null
+}
 
 export function useOnboarding() {
   const { organization, loadTenantContext } = useTenantOrg()
   const { pb, sessionUser } = usePocketBase()
   const saving = ref(false)
+  const membershipOrg = ref<OnboardingOrg | null>(null)
+
+  async function loadMembershipOrg(force = false) {
+    if (!import.meta.client || !pb) return null
+    const orgId = getUserOrganizationId(sessionUser.value)
+    if (!orgId) {
+      membershipOrg.value = null
+      return null
+    }
+    if (!force && membershipOrg.value?.id === orgId) {
+      return membershipOrg.value
+    }
+    try {
+      const record = await pb.collection('organizations').getOne(orgId, {
+        fields: 'id,subscription_status,trial_ends_at,onboarding_state'
+      }) as OnboardingOrg
+      membershipOrg.value = record
+      return record
+    } catch {
+      membershipOrg.value = null
+      return null
+    }
+  }
+
+  watch(
+    [sessionUser, organization],
+    ([user, tenantOrg]) => {
+      if (!user) {
+        membershipOrg.value = null
+        return
+      }
+      // Tenant host already exposes onboarding_state via org-context.
+      if (tenantOrg?.id) return
+      void loadMembershipOrg()
+    },
+    { immediate: true }
+  )
+
+  const effectiveOrganization = computed<OnboardingOrg | null>(() =>
+    organization.value || membershipOrg.value
+  )
 
   const onboardingState = computed<OrganizationOnboardingState>(() => ({
     dismissed: false,
@@ -16,22 +64,30 @@ export function useOnboarding() {
     ahaSeen: false,
     teammateInvited: false,
     scheduleEnabled: false,
-    ...(organization.value?.onboarding_state || {})
+    ...(effectiveOrganization.value?.onboarding_state || {})
   }))
 
   const isTrialing = computed(() =>
-    organization.value?.subscription_status === 'trialing'
-    && Boolean(organization.value?.trial_ends_at?.trim())
+    effectiveOrganization.value?.subscription_status === 'trialing'
+    && Boolean(effectiveOrganization.value?.trial_ends_at?.trim())
   )
 
   const trialDaysRemaining = computed(() =>
-    daysRemainingUntil(organization.value?.trial_ends_at || null)
+    daysRemainingUntil(effectiveOrganization.value?.trial_ends_at || null)
   )
 
   const showChecklist = computed(() => {
-    if (!organization.value) return false
+    if (!effectiveOrganization.value) return false
+    if (!sessionUser.value) return false
     return shouldShowOnboardingChecklist(onboardingState.value)
   })
+
+  async function refreshOnboardingOrg() {
+    await Promise.all([
+      loadTenantContext(true).catch(() => null),
+      loadMembershipOrg(true)
+    ])
+  }
 
   async function patchOnboardingState(patch: Partial<OrganizationOnboardingState>) {
     if (!pb?.authStore.token) return null
@@ -44,7 +100,7 @@ export function useOnboarding() {
         headers: { Authorization: `Bearer ${pb.authStore.token}` },
         body: { state: patch }
       })
-      await loadTenantContext(true)
+      await refreshOnboardingOrg()
       return result.onboarding_state
     } finally {
       saving.value = false
@@ -52,13 +108,13 @@ export function useOnboarding() {
   }
 
   async function markSiteAndScanStarted() {
-    trackFunnelEvent('first_site', { organizationId: organization.value?.id })
-    trackFunnelEvent('first_scan_complete', { organizationId: organization.value?.id })
+    trackFunnelEvent('first_site', { organizationId: effectiveOrganization.value?.id })
+    trackFunnelEvent('first_scan_complete', { organizationId: effectiveOrganization.value?.id })
     return patchOnboardingState({ siteAdded: true, firstScanStarted: true })
   }
 
   async function markAhaSeen() {
-    trackFunnelEvent('aha_viewed', { organizationId: organization.value?.id })
+    trackFunnelEvent('aha_viewed', { organizationId: effectiveOrganization.value?.id })
     return patchOnboardingState({ ahaSeen: true })
   }
 
@@ -77,7 +133,7 @@ export function useOnboarding() {
   const canManageOnboarding = computed(() => canWriteOrg(sessionUser.value))
 
   return {
-    organization,
+    organization: effectiveOrganization,
     onboardingState,
     isTrialing,
     trialDaysRemaining,
@@ -89,6 +145,7 @@ export function useOnboarding() {
     markAhaSeen,
     dismissChecklist,
     markTeammateInvited,
-    markScheduleEnabled
+    markScheduleEnabled,
+    loadMembershipOrg
   }
 }

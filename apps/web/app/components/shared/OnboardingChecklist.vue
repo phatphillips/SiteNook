@@ -16,7 +16,7 @@ const steps = computed(() => {
     {
       id: 'site',
       title: 'Add your site',
-      description: 'Add a site and run your first scan for accessibility, broken links, and spelling.',
+      description: 'Enter a URL and run your first scan for accessibility, broken links, and spelling.',
       done: Boolean(state.siteAdded && state.firstScanStarted),
       to: '/sites',
       cta: 'Add site'
@@ -24,7 +24,7 @@ const steps = computed(() => {
     {
       id: 'invite',
       title: 'Invite a teammate',
-      description: 'Bring a content owner or developer into the workspace.',
+      description: 'Bring a content owner or developer into the workspace so fixes don’t sit with you alone.',
       done: Boolean(state.teammateInvited),
       to: '/settings/users',
       cta: 'Invite'
@@ -32,7 +32,7 @@ const steps = computed(() => {
     {
       id: 'review',
       title: 'Review what matters most',
-      description: 'See your score and the top issues that may block people.',
+      description: 'Open your score and the top issues that may block people from using your site.',
       done: Boolean(state.ahaSeen),
       to: '/accessibility/issues',
       cta: 'View issues'
@@ -74,17 +74,20 @@ function stepStatus(step: { id: string, done: boolean }) {
 <template>
   <section
     v-if="showChecklist && canManageOnboarding"
-    class="rounded-xl border border-default bg-elevated/40 px-5 py-4 sm:px-6 sm:py-5"
+    class="rounded-xl border border-primary/25 bg-primary/5 px-5 py-4 sm:px-6 sm:py-5"
     :aria-labelledby="titleId"
   >
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
       <div class="min-w-0 flex-1">
-        <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <p class="text-xs font-medium uppercase tracking-wide text-primary">
+          Getting set up
+        </p>
+        <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <h2
             :id="titleId"
             class="text-base font-semibold text-highlighted sm:text-lg"
           >
-            Get started
+            Here’s what to do next
           </h2>
           <p class="text-sm text-muted">
             {{ progressLabel }}
@@ -92,7 +95,9 @@ function stepStatus(step: { id: string, done: boolean }) {
           </p>
         </div>
         <p class="mt-1 text-sm leading-relaxed text-muted">
-          Finish these steps to start monitoring accessibility and QA.
+          Follow these steps to finish setup. Start with
+          <span class="font-medium text-highlighted">{{ nextStep?.title || 'your checklist' }}</span>
+          — you can dismiss this anytime.
         </p>
       </div>
 
@@ -127,8 +132,8 @@ function stepStatus(step: { id: string, done: boolean }) {
             class="relative z-10 flex size-7 items-center justify-center rounded-full border text-xs font-semibold"
             :class="{
               'border-success bg-success/15 text-success': stepStatus(step) === 'done',
-              'border-primary bg-primary/15 text-primary': stepStatus(step) === 'current',
-              'border-default bg-elevated text-muted': stepStatus(step) === 'upcoming'
+              'border-primary bg-primary text-inverted': stepStatus(step) === 'current',
+              'border-default bg-default text-muted': stepStatus(step) === 'upcoming'
             }"
             :aria-hidden="true"
           >
@@ -141,7 +146,7 @@ function stepStatus(step: { id: string, done: boolean }) {
           </span>
           <span
             v-if="index < steps.length - 1"
-            class="mt-1 w-px flex-1 min-h-4 bg-default"
+            class="mt-1 w-px flex-1 min-h-4"
             :class="step.done ? 'bg-success/40' : 'bg-default'"
             aria-hidden="true"
           />
@@ -159,7 +164,17 @@ function stepStatus(step: { id: string, done: boolean }) {
             {{ step.description }}
           </p>
           <UButton
-            v-if="!step.done && nextStep?.id !== step.id"
+            v-if="!step.done && nextStep?.id === step.id"
+            :to="step.to"
+            size="xs"
+            variant="link"
+            color="primary"
+            class="mt-1 px-0"
+          >
+            {{ step.cta }} →
+          </UButton>
+          <UButton
+            v-else-if="!step.done"
             :to="step.to"
             size="xs"
             variant="link"

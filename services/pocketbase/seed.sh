@@ -54,9 +54,16 @@ if [ "$(curl -s -o /dev/null -w '%{http_code}' "$PB_URL/api/collections/organiza
     ORG_RESP=$(curl -sf -X POST "$PB_URL/api/collections/organizations/records" \
       -H "Content-Type: application/json" \
       -H "$AUTH" \
-      -d "{\"name\":\"$DEFAULT_ORG_NAME\",\"subdomain\":\"$DEFAULT_ORG_SUBDOMAIN\",\"plan\":\"$DEFAULT_ORG_PLAN\",\"status\":\"active\",\"subscription_status\":\"none\"}")
+      -d "{\"name\":\"$DEFAULT_ORG_NAME\",\"subdomain\":\"$DEFAULT_ORG_SUBDOMAIN\",\"plan\":\"$DEFAULT_ORG_PLAN\",\"status\":\"active\",\"subscription_status\":\"none\",\"onboarding_state\":{\"dismissed\":false,\"siteAdded\":false,\"firstScanStarted\":false,\"ahaSeen\":false,\"teammateInvited\":false,\"scheduleEnabled\":false}}")
     ORG_ID=$(echo "$ORG_RESP" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p' | head -1)
     echo "Seed: created default organization ($DEFAULT_ORG_SUBDOMAIN) plan=$DEFAULT_ORG_PLAN."
+  else
+    # Ensure first-run checklist state exists on existing default org.
+    curl -sf -X PATCH "$PB_URL/api/collections/organizations/records/$ORG_ID" \
+      -H "Content-Type: application/json" \
+      -H "$AUTH" \
+      -d '{"onboarding_state":{"dismissed":false,"siteAdded":false,"firstScanStarted":false,"ahaSeen":false,"teammateInvited":false,"scheduleEnabled":false}}' \
+      > /dev/null || true
   fi
 fi
 

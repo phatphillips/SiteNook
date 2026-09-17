@@ -38,6 +38,8 @@ const form = reactive({
   subdomain: '',
   ownerName: '',
   ownerEmail: '',
+  ownerPassword: '',
+  ownerPasswordConfirm: '',
   acceptTerms: false
 })
 
@@ -49,7 +51,8 @@ const turnstileWidgetId = ref<string | null>(null)
 const result = reactive({
   loginUrl: '',
   ownerEmail: '',
-  inviteEmailSent: false
+  inviteEmailSent: false,
+  accountReady: false
 })
 
 const subdomainPreview = computed(() => {
@@ -93,7 +96,10 @@ function canProceedFromOrganization(): boolean {
 }
 
 function canProceedFromYou(): boolean {
-  return !!form.ownerName.trim() && !!form.ownerEmail.trim()
+  return !!form.ownerName.trim()
+    && !!form.ownerEmail.trim()
+    && form.ownerPassword.length >= 8
+    && form.ownerPassword === form.ownerPasswordConfirm
 }
 
 async function checkSubdomainAvailability(slug: string) {
@@ -203,6 +209,7 @@ async function submitSignup() {
       loginUrl: string
       owner: { email: string }
       inviteEmailSent: boolean
+      accountReady: boolean
     }>('/api/signup-organization', {
       method: 'POST',
       body: {
@@ -210,6 +217,7 @@ async function submitSignup() {
         subdomain: form.subdomain.trim().toLowerCase(),
         ownerName: form.ownerName.trim(),
         ownerEmail: form.ownerEmail.trim(),
+        ownerPassword: form.ownerPassword,
         acceptTerms: true,
         turnstileToken: turnstileToken.value || undefined,
         plan: props.plan,
@@ -221,6 +229,7 @@ async function submitSignup() {
     result.loginUrl = response.loginUrl
     result.ownerEmail = response.owner.email
     result.inviteEmailSent = response.inviteEmailSent
+    result.accountReady = response.accountReady === true
     goToStep('done')
     emit('complete')
   } catch (e: unknown) {
@@ -345,6 +354,32 @@ declare global {
         />
       </UFormField>
 
+      <UFormField label="Password" class="w-full" help="At least 8 characters. You will use this to sign in.">
+        <UInput
+          v-model="form.ownerPassword"
+          class="w-full"
+          type="password"
+          size="lg"
+          autocomplete="new-password"
+        />
+      </UFormField>
+
+      <UFormField
+        label="Confirm password"
+        class="w-full"
+        :error="form.ownerPasswordConfirm && form.ownerPassword !== form.ownerPasswordConfirm
+          ? 'Passwords do not match'
+          : undefined"
+      >
+        <UInput
+          v-model="form.ownerPasswordConfirm"
+          class="w-full"
+          type="password"
+          size="lg"
+          autocomplete="new-password"
+        />
+      </UFormField>
+
       <div class="flex gap-3">
         <UButton variant="soft" color="neutral" size="lg" @click="goToStep('organization')">
           Back
@@ -435,12 +470,17 @@ declare global {
         color="success"
         variant="subtle"
         title="Organization created"
-        :description="result.inviteEmailSent
-          ? `We sent an account setup link to ${result.ownerEmail}.`
-          : `Your organization was created, but the account setup email could not be sent. Use Forgot password on your sign-in page.`"
+        :description="result.accountReady
+          ? `Your admin account is ready. Sign in with ${result.ownerEmail} and the password you chose.`
+          : result.inviteEmailSent
+            ? `We sent an account setup link to ${result.ownerEmail}.`
+            : `Your organization was created, but the account setup email could not be sent. Use Forgot password on your sign-in page.`"
       />
 
-      <ol class="space-y-3 rounded-xl border border-default bg-elevated/30 p-4 leading-relaxed text-muted">
+      <ol
+        v-if="!result.accountReady"
+        class="space-y-3 rounded-xl border border-default bg-elevated/30 p-4 leading-relaxed text-muted"
+      >
         <li class="flex gap-3">
           <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-elevated text-xs font-semibold text-highlighted">1</span>
           <span>
@@ -461,6 +501,18 @@ declare global {
           </span>
         </li>
       </ol>
+
+      <div
+        v-else
+        class="rounded-xl border border-default bg-elevated/30 p-4 leading-relaxed text-muted"
+      >
+        <p>
+          Sign in at:
+        </p>
+        <p class="mt-2 font-mono text-default break-all">
+          {{ result.loginUrl }}
+        </p>
+      </div>
 
       <UButton
         :to="result.loginUrl"

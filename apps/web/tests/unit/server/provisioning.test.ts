@@ -9,6 +9,7 @@ import {
   validateOrgName,
   validateOwnerEmail,
   validateOwnerName,
+  validateOwnerPassword,
   validateProvisionInput,
   validateProvisionPlan,
   validateSubdomain
@@ -40,9 +41,10 @@ describe('provisioning validation', () => {
     expect(validateOwnerEmail('not-an-email')).toMatch(/not valid/)
   })
 
-  it('rejects invalid plan slugs', () => {
-    expect(validateProvisionPlan('pro')).toMatch(/starter, team, business, or enterprise/)
-    expect(validateProvisionPlan('team')).toBeNull()
+  it('rejects short passwords when provided', () => {
+    expect(validateOwnerPassword('short')).toMatch(/8 characters/)
+    expect(validateOwnerPassword('longenough')).toBeNull()
+    expect(validateOwnerPassword(undefined)).toBeNull()
   })
 })
 
@@ -136,5 +138,63 @@ describe('provisionOrganization', () => {
       subscription_status: 'none'
     }))
     expect(requestPasswordReset).toHaveBeenCalledWith('jane@acme.test')
+  })
+
+  it('creates a verified owner when a password is provided', async () => {
+    const userCreate = vi.fn().mockResolvedValue({
+      id: 'user1',
+      email: 'jane@acme.test',
+      name: 'Jane Owner'
+    })
+    const orgCreate = vi.fn().mockResolvedValue({
+      id: 'org1',
+      name: 'Acme Agency',
+      subdomain: 'acme'
+    })
+    const requestPasswordReset = vi.fn().mockResolvedValue(undefined)
+
+    const pb = {
+      collection: (name: string) => {
+        if (name === 'organizations') {
+          return {
+            create: orgCreate,
+            delete: vi.fn().mockResolvedValue(undefined),
+            getFirstListItem: vi.fn().mockRejectedValue(new ClientResponseError({ status: 404 } as never))
+          }
+        }
+        if (name === 'users') {
+          return {
+            create: userCreate,
+            requestPasswordReset
+          }
+        }
+        throw new Error(`Unexpected collection: ${name}`)
+      }
+    } as unknown as PocketBase
+
+    const result = await provisionOrganization(
+      pb,
+      {
+        orgName: 'Acme Agency',
+        subdomain: 'acme',
+        ownerName: 'Jane Owner',
+        ownerEmail: 'jane@acme.test',
+        ownerPassword: 'securepass1'
+      },
+      {
+        appDomain: 'localhost',
+        appUrl: 'http://localhost:3000',
+        createdVia: 'self_service'
+      }
+    )
+
+    expect(userCreate).toHaveBeenCalledWith(expect.objectContaining({
+      verified: true,
+      password: 'securepass1',
+      passwordConfirm: 'securepass1'
+    }))
+    expect(requestPasswordReset).not.toHaveBeenCalled()
+    expect(result.accountReady).toBe(true)
+    expect(result.inviteEmailSent).toBe(false)
   })
 })

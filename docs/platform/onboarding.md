@@ -6,6 +6,10 @@ By default, new customer organizations are provisioned by platform operators (`P
 
 After the first admin signs in, a dismissable **Get started** checklist appears across dashboard pages (above the feature-page banner). It tracks adding a site, inviting a teammate, and reviewing issues. Progress and dismiss are stored on `organizations.onboarding_state` (org-scoped; once dismissed it does not return).
 
+**Self-service signup** (`/start`) collects the first admin’s email **and password** so they can sign in immediately (no setup email required). Operator `POST /api/provision` still creates an unverified admin and sends a set-password email unless you pass a password yourself.
+
+**Docker / appliance first boot:** `APP_USER_EMAIL` / `APP_USER_PASSWORD` seed a verified admin on the default org (see `services/pocketbase/seed.sh`).
+
 ---
 
 ## Flows at a glance
