@@ -1,14 +1,14 @@
-# SiteNook
+# 🪺 SiteNook
 
 **The free, self-hosted alternative to expensive accessibility tools like SiteImprove.**
 
 Website accessibility matters. Tools that check it shouldn't cost a fortune. SiteNook scans your sites for accessibility, SEO, and quality issues, runs entirely on your own server, and never asks for a monthly invoice.
 
-> **Work in progress.** SiteNook is under active development. Things may break, change, or move. Use it, poke at it, tell us what's wrong.
+> ⚠️ **Work in progress.** SiteNook is under active development. Things may break, change, or move. Use it, poke at it, tell us what's wrong.
 
 ---
 
-## Screenshots
+## 🖼️ Screenshots
 
 <!-- Replace these placeholders with real images -->
 
@@ -20,39 +20,39 @@ Website accessibility matters. Tools that check it shouldn't cost a fortune. Sit
 
 ---
 
-## Why SiteNook?
+## 🤔 Why SiteNook?
 
 Good accessibility tools exist. They also charge a lot for something you could run yourself.
 
 SiteNook gives you the same core power for free:
 
-- **You own the data.** It lives on your server, not someone else's cloud.
-- **No subscription required.** Self-host it and pay nothing.
-- **Build on it.** It's open source, so change it, extend it, connect it to your own tools.
-- **Runs securely on your own infrastructure.** Nothing leaves your network unless you want it to.
+- 🔓 **You own the data.** It lives on your server, not someone else's cloud.
+- 💸 **No subscription required.** Self-host it and pay nothing.
+- 🛠️ **Build on it.** It's open source, so change it, extend it, connect it to your own tools.
+- 🔒 **Runs securely on your own infrastructure.** Nothing leaves your network unless you want it to.
 
 ---
 
-## What it does
+## ✨ What it does
 
 One scan, five ways to use it:
 
-- **Accessibility** — Finds WCAG issues (the industry-standard checks) with a simple 0 to 100 score, so you know what to fix first
-- **SEO** — Checks the technical and content stuff that helps pages get found
-- **QA** — Catches broken links, spelling mistakes, and messy content
-- **PDF accessibility** — Checks your PDFs too, not just web pages
-- **Content Explorer** — Browse everything your site crawled and export it
+- ♿ **Accessibility** — Finds WCAG issues (the industry-standard checks) with a simple 0 to 100 score, so you know what to fix first
+- 🔍 **SEO** — Checks the technical and content stuff that helps pages get found
+- 🧹 **QA** — Catches broken links, spelling mistakes, and messy content
+- 📄 **PDF accessibility** — Checks your PDFs too, not just web pages
+- 🗂️ **Content Explorer** — Browse everything your site crawled and export it
 
 A few other things worth knowing:
 
-- Scans run automatically on a schedule, or whenever you want
-- A simulator lets you preview pages the way people with vision impairments see them
-- Reports export as PDF or CSV, so you can share results with anyone
-- Runs in Docker. One command and it's up
+- ⏰ Scans run automatically on a schedule, or whenever you want
+- 👀 A simulator lets you preview pages the way people with vision impairments see them
+- 📊 Reports export as PDF or CSV, so you can share results with anyone
+- 🐳 Runs in Docker. One command and it's up
 
 ---
 
-## Quickstart
+## 🚀 Quickstart
 
 ### What you need
 
@@ -116,7 +116,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run tests and which package ma
 
 ---
 
-## Built with
+## 🧱 Built with
 
 | Layer | Tech |
 |-------|------|
@@ -127,7 +127,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run tests and which package ma
 
 ---
 
-## More docs
+## 📚 More docs
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — local setup and how to send a PR
 - [SECURITY.md](SECURITY.md) — how to report a security issue
@@ -136,7 +136,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run tests and which package ma
 
 ---
 
-## Licence
+## 📄 Licence
 
 SiteNook is released under the [MIT License](LICENSE). Free to use, free to change, free to build on.
 
