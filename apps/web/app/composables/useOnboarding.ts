@@ -2,6 +2,7 @@ import type { OrganizationOnboardingState } from '~/types/sitenook'
 import { daysRemainingUntil } from '~/utils/planPricing'
 import { trackFunnelEvent } from '~/utils/funnelAnalytics'
 import { canWriteOrg } from '~/utils/orgAccess'
+import { shouldShowOnboardingChecklist } from '~/utils/onboardingChecklist'
 
 export function useOnboarding() {
   const { organization, loadTenantContext } = useTenantOrg()
@@ -29,11 +30,7 @@ export function useOnboarding() {
 
   const showChecklist = computed(() => {
     if (!organization.value) return false
-    if (onboardingState.value.dismissed) return false
-    const done = onboardingState.value.siteAdded
-      && onboardingState.value.firstScanStarted
-      && onboardingState.value.ahaSeen
-    return !done
+    return shouldShowOnboardingChecklist(onboardingState.value)
   })
 
   async function patchOnboardingState(patch: Partial<OrganizationOnboardingState>) {

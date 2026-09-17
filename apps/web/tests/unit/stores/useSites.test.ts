@@ -28,6 +28,11 @@ beforeAll(async () => {
     organization: ref({ id: 'org-1', plan: 'team' })
   }))
 
+  vi.stubGlobal('useOnboarding', () => ({
+    onboardingState: ref({ scheduleEnabled: false }),
+    markScheduleEnabled: vi.fn().mockResolvedValue(null)
+  }))
+
   const mod = await import('~/composables/useSites')
   useSites = mod.useSites
 })

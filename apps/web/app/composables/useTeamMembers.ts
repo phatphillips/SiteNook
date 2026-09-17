@@ -141,6 +141,12 @@ function _useTeamMembers() {
 
     const member = toTeamMember(record)
     members.value = [...members.value, member].sort((a, b) => a.name.localeCompare(b.name))
+
+    const { markTeammateInvited, onboardingState } = useOnboarding()
+    if (!onboardingState.value.teammateInvited) {
+      await markTeammateInvited().catch(() => {})
+    }
+
     return member
   }
 

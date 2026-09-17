@@ -41,7 +41,7 @@ const successTitle = computed(() =>
 
 const successDescription = computed(() =>
   isAccountSetup.value
-    ? 'Your password is set. You can now sign in.'
+    ? 'Your password is set. Sign in to open your dashboard and finish setup (add a site, invite teammates).'
     : 'You can now sign in with your new password.'
 )
 

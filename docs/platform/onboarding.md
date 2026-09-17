@@ -4,6 +4,8 @@ By default, new customer organizations are provisioned by platform operators (`P
 
 **Phase F (optional):** When `NUXT_PUBLIC_SELF_SERVICE_SIGNUP=true`, new customers can create an organization from the apex host. **Phase G** adds marketing landing, `/pricing`, and Stripe Checkout before `/start` for paid plans. The primary marketing CTA is a **30-day Team trial** (`/start?plan=team&trial=1`, no credit card); Free remains available at 1 site / 20 pages per scan. After trial expiry the scanner downgrades the org to Free. Team member onboarding is unchanged — only admins invite colleagues.
 
+After the first admin signs in, a dismissable **Get started** checklist appears across dashboard pages (above the feature-page banner). It tracks adding a site, inviting a teammate, and reviewing issues. Progress and dismiss are stored on `organizations.onboarding_state` (org-scoped; once dismissed it does not return).
+
 ---
 
 ## Flows at a glance
@@ -333,6 +335,8 @@ NUXT_PUBLIC_TERMS_URL=https://sitenook.com/terms
 | Self-service signup API | `apps/web/server/api/signup-organization.post.ts`, `subdomain-available.get.ts` |
 | Provisioning logic | `apps/web/server/utils/provisioning.ts` |
 | Signup wizard | `apps/web/app/pages/start.vue`, `components/auth/CreateOrganizationWizard.vue` |
+| Dashboard checklist | `apps/web/app/components/shared/OnboardingChecklist.vue`, `composables/useOnboarding.ts`, `utils/onboardingChecklist.ts` |
+| Onboarding state API | `apps/web/server/api/billing/onboarding-state.post.ts` |
 | Stripe checkout + webhook | `apps/web/server/api/stripe/`, `server/utils/stripe*.ts`, `startAccess.ts` |
 | Checkout records | PocketBase `stripe_checkout_sessions` (migration `1730000029`) |
 | API key guard | `apps/web/server/utils/requireProvisionKey.ts` |
@@ -343,7 +347,7 @@ NUXT_PUBLIC_TERMS_URL=https://sitenook.com/terms
 | Users create rule (boot patch) | `services/pocketbase/patch-users.sh` |
 | Security hooks | `services/pocketbase/pb_hooks/users_security.pb.js`, `users_security_lib.js` |
 | Integration tests | `apps/scanner/tests/integration/teamMembersCreate.test.ts`, `usersHooks.test.ts` |
-| Unit tests | `apps/web/tests/unit/server/provisioning.test.ts` |
+| Unit tests | `apps/web/tests/unit/server/provisioning.test.ts`, `apps/web/tests/unit/utils/onboardingChecklist.test.ts` |
 
 ---
 

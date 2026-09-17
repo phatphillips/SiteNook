@@ -154,6 +154,14 @@ function _useSites() {
     })
     await fetchSites()
     selectSite(record.id)
+
+    if (CRAWL_SCHEDULE_AUTO && CRAWL_SCHEDULE_AUTO !== 'manual') {
+      const { markScheduleEnabled, onboardingState } = useOnboarding()
+      if (!onboardingState.value.scheduleEnabled) {
+        await markScheduleEnabled().catch(() => {})
+      }
+    }
+
     return record
   }
 
@@ -248,6 +256,13 @@ function _useSites() {
       schedule_last_enqueued_at: null
     })
     await fetchSites()
+
+    if (crawlSchedule && crawlSchedule !== 'manual') {
+      const { markScheduleEnabled, onboardingState } = useOnboarding()
+      if (!onboardingState.value.scheduleEnabled) {
+        await markScheduleEnabled().catch(() => {})
+      }
+    }
   }
 
   async function clearSiteSchedule(siteId: string) {

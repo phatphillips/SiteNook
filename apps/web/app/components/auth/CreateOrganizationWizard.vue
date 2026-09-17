@@ -436,18 +436,31 @@ declare global {
         variant="subtle"
         title="Organization created"
         :description="result.inviteEmailSent
-          ? `We sent an account setup link to ${result.ownerEmail}. Open it to choose your password.`
+          ? `We sent an account setup link to ${result.ownerEmail}.`
           : `Your organization was created, but the account setup email could not be sent. Use Forgot password on your sign-in page.`"
       />
 
-      <div class="rounded-xl border border-default bg-elevated/30 p-4 leading-relaxed text-muted">
-        <p>
-          Check your email for the account setup link, then sign in at your organization URL.
-        </p>
-        <p class="mt-3 font-mono text-default break-all">
-          {{ result.loginUrl }}
-        </p>
-      </div>
+      <ol class="space-y-3 rounded-xl border border-default bg-elevated/30 p-4 leading-relaxed text-muted">
+        <li class="flex gap-3">
+          <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-elevated text-xs font-semibold text-highlighted">1</span>
+          <span>
+            {{ result.inviteEmailSent
+              ? `Open the setup link in the email sent to ${result.ownerEmail}.`
+              : 'Use Forgot password on the sign-in page to receive a setup link.' }}
+          </span>
+        </li>
+        <li class="flex gap-3">
+          <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-elevated text-xs font-semibold text-highlighted">2</span>
+          <span>Choose a password to finish setting up your admin account.</span>
+        </li>
+        <li class="flex gap-3">
+          <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-elevated text-xs font-semibold text-highlighted">3</span>
+          <span>
+            Sign in at your organization URL:
+            <span class="mt-1 block font-mono text-default break-all">{{ result.loginUrl }}</span>
+          </span>
+        </li>
+      </ol>
 
       <UButton
         :to="result.loginUrl"
@@ -458,7 +471,7 @@ declare global {
       </UButton>
 
       <p class="text-center text-xs text-muted">
-        Colleagues join via Team Members invite — not from this page.
+        After you sign in, a short checklist helps you add a site and invite teammates. Colleagues join via Team Members invite — not from this page.
       </p>
     </div>
   </div>

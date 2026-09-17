@@ -22,6 +22,12 @@ beforeAll(async () => {
     organization: ref({ id: 'org-1', plan: 'team' })
   }))
 
+  vi.stubGlobal('useOnboarding', () => ({
+    onboardingState: ref({ teammateInvited: false, scheduleEnabled: false }),
+    markTeammateInvited: vi.fn().mockResolvedValue(null),
+    markScheduleEnabled: vi.fn().mockResolvedValue(null)
+  }))
+
   vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ ok: true }))
 
   vi.stubGlobal('usePocketBase', () => ({

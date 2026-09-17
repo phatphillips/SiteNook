@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import FeaturePageBanner from '~/components/shared/FeaturePageBanner.vue'
-
 const {
   onboardingState,
   showChecklist,
@@ -10,24 +8,26 @@ const {
   dismissChecklist
 } = useOnboarding()
 
+const titleId = useId()
+
 const steps = computed(() => {
   const state = onboardingState.value
   return [
     {
       id: 'site',
       title: 'Add your site',
-      description: 'We’ll check how inclusive this site is for your visitors.',
-      done: Boolean(state.siteAdded),
+      description: 'Add a site and run your first scan for accessibility, broken links, and spelling.',
+      done: Boolean(state.siteAdded && state.firstScanStarted),
       to: '/sites',
       cta: 'Add site'
     },
     {
-      id: 'scan',
-      title: 'Run your first scan',
-      description: 'Crawl pages for accessibility, broken links, and spelling.',
-      done: Boolean(state.firstScanStarted),
-      to: '/sites',
-      cta: 'Start scan'
+      id: 'invite',
+      title: 'Invite a teammate',
+      description: 'Bring a content owner or developer into the workspace.',
+      done: Boolean(state.teammateInvited),
+      to: '/settings/users',
+      cta: 'Invite'
     },
     {
       id: 'review',
@@ -36,15 +36,6 @@ const steps = computed(() => {
       done: Boolean(state.ahaSeen),
       to: '/accessibility/issues',
       cta: 'View issues'
-    },
-    {
-      id: 'invite',
-      title: 'Invite someone who can help fix',
-      description: 'Bring a content owner or developer into the workspace.',
-      done: Boolean(state.teammateInvited),
-      to: '/settings/users',
-      cta: 'Invite',
-      optional: true
     },
     {
       id: 'schedule',
@@ -59,12 +50,12 @@ const steps = computed(() => {
   ].filter(step => !step.trialOnly || isTrialing.value)
 })
 
-const completedCount = computed(() => steps.value.filter(step => step.done).length)
+const requiredSteps = computed(() => steps.value.filter(step => !step.optional))
 const nextStep = computed(() => steps.value.find(step => !step.done))
 
-const stepLabel = computed(() => {
-  const prefix = `Step ${Math.min(completedCount.value + 1, steps.value.length)} of ${steps.value.length}`
-  return nextStep.value ? `${prefix} — ${nextStep.value.title}` : prefix
+const progressLabel = computed(() => {
+  const requiredDone = requiredSteps.value.filter(step => step.done).length
+  return `${requiredDone} of ${requiredSteps.value.length} complete`
 })
 
 const trialHint = computed(() => {
@@ -72,63 +63,113 @@ const trialHint = computed(() => {
   const days = trialDaysRemaining.value
   return `${days} day${days === 1 ? '' : 's'} left on Team trial`
 })
+
+function stepStatus(step: { id: string, done: boolean }) {
+  if (step.done) return 'done' as const
+  if (nextStep.value?.id === step.id) return 'current' as const
+  return 'upcoming' as const
+}
 </script>
 
 <template>
-  <FeaturePageBanner
+  <section
     v-if="showChecklist && canManageOnboarding"
-    title="See how inclusive your site is"
+    class="rounded-xl border border-default bg-elevated/40 px-5 py-4 sm:px-6 sm:py-5"
+    :aria-labelledby="titleId"
   >
-    <template #description>
-      <p class="text-sm leading-relaxed text-muted">
-        {{ stepLabel }}
-        <span v-if="trialHint" class="text-muted"> · {{ trialHint }}</span>
-      </p>
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <h2
+            :id="titleId"
+            class="text-base font-semibold text-highlighted sm:text-lg"
+          >
+            Get started
+          </h2>
+          <p class="text-sm text-muted">
+            {{ progressLabel }}
+            <span v-if="trialHint"> · {{ trialHint }}</span>
+          </p>
+        </div>
+        <p class="mt-1 text-sm leading-relaxed text-muted">
+          Finish these steps to start monitoring accessibility and QA.
+        </p>
+      </div>
 
-      <ol class="mt-4 space-y-2">
-        <li
-          v-for="step in steps"
-          :key="step.id"
-          class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-default/70 bg-default/40 px-3 py-2.5"
+      <div class="flex shrink-0 flex-wrap items-center gap-2">
+        <UButton
+          v-if="nextStep"
+          :to="nextStep.to"
+          size="sm"
+          color="primary"
         >
-          <div class="flex min-w-0 items-start gap-3">
+          {{ nextStep.cta }}
+        </UButton>
+        <UButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          @click="dismissChecklist()"
+        >
+          Dismiss
+        </UButton>
+      </div>
+    </div>
+
+    <ol class="mt-5 space-y-0">
+      <li
+        v-for="(step, index) in steps"
+        :key="step.id"
+        class="relative flex gap-3 pb-5 last:pb-0"
+      >
+        <div class="flex w-7 shrink-0 flex-col items-center">
+          <span
+            class="relative z-10 flex size-7 items-center justify-center rounded-full border text-xs font-semibold"
+            :class="{
+              'border-success bg-success/15 text-success': stepStatus(step) === 'done',
+              'border-primary bg-primary/15 text-primary': stepStatus(step) === 'current',
+              'border-default bg-elevated text-muted': stepStatus(step) === 'upcoming'
+            }"
+            :aria-hidden="true"
+          >
             <UIcon
-              :name="step.done ? 'i-lucide-circle-check' : 'i-lucide-circle'"
-              class="mt-0.5 size-5 shrink-0"
-              :class="step.done ? 'text-success' : 'text-muted'"
+              v-if="step.done"
+              name="i-lucide-check"
+              class="size-3.5"
             />
-            <div class="min-w-0">
-              <p class="text-sm font-medium text-highlighted">
-                {{ step.title }}
-                <span v-if="step.optional" class="font-normal text-muted">(optional)</span>
-              </p>
-              <p class="text-xs text-muted">
-                {{ step.description }}
-              </p>
-            </div>
-          </div>
+            <span v-else>{{ index + 1 }}</span>
+          </span>
+          <span
+            v-if="index < steps.length - 1"
+            class="mt-1 w-px flex-1 min-h-4 bg-default"
+            :class="step.done ? 'bg-success/40' : 'bg-default'"
+            aria-hidden="true"
+          />
+        </div>
+
+        <div class="min-w-0 flex-1 pt-0.5">
+          <p
+            class="text-sm font-medium"
+            :class="stepStatus(step) === 'upcoming' ? 'text-muted' : 'text-highlighted'"
+          >
+            {{ step.title }}
+            <span v-if="step.optional" class="font-normal text-muted">(optional)</span>
+          </p>
+          <p class="mt-0.5 text-xs leading-relaxed text-muted">
+            {{ step.description }}
+          </p>
           <UButton
-            v-if="!step.done"
+            v-if="!step.done && nextStep?.id !== step.id"
             :to="step.to"
             size="xs"
-            :variant="nextStep?.id === step.id ? 'solid' : 'outline'"
+            variant="link"
             color="neutral"
+            class="mt-1 px-0"
           >
             {{ step.cta }}
           </UButton>
-        </li>
-      </ol>
-    </template>
-
-    <template #actions>
-      <UButton
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        @click="dismissChecklist()"
-      >
-        Dismiss
-      </UButton>
-    </template>
-  </FeaturePageBanner>
+        </div>
+      </li>
+    </ol>
+  </section>
 </template>
