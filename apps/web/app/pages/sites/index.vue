@@ -5,8 +5,10 @@ definePageMeta({ middleware: 'auth' })
 
 const { sessionUser, awaitAuthReady } = usePocketBase()
 const { sites, fetchSites, deleteSites } = useSites()
+const { openWizard } = useAddSiteWizard()
 const canWrite = computed(() => canWriteOrg(sessionUser.value))
 const toast = useToast()
+const route = useRoute()
 
 type SitesTableExpose = {
   selectedCount: number
@@ -16,7 +18,6 @@ type SitesTableExpose = {
 
 const sitesTable = useTemplateRef<SitesTableExpose | null>('sitesTable')
 
-const showAddModal = ref(false)
 const showDeleteModal = ref(false)
 const settingsSite = ref<Site | null>(null)
 const showSettingsModal = ref(false)
@@ -25,6 +26,9 @@ const deleting = ref(false)
 onMounted(async () => {
   await awaitAuthReady()
   fetchSites().catch(() => {})
+  if (route.query.add === '1' || route.query.add === 'true') {
+    openWizard()
+  }
 })
 
 const selectedCount = computed(() => sitesTable.value?.selectedCount ?? 0)
@@ -83,7 +87,7 @@ async function confirmDelete() {
           >
             Delete ({{ selectedCount }})
           </UButton>
-          <UButton icon="i-lucide-plus" @click="showAddModal = true">Add Site</UButton>
+          <UButton icon="i-lucide-plus" @click="openWizard()">Add Site</UButton>
         </template>
       </DashboardPageNavbar>
     </template>
@@ -99,8 +103,6 @@ async function confirmDelete() {
     @saved="onSettingsSaved"
     @deleted="fetchSites"
   />
-
-  <AddSiteWizard v-model:open="showAddModal" />
 
   <UModal
     v-model:open="showDeleteModal"

@@ -8,6 +8,7 @@ const {
   dismissChecklist
 } = useOnboarding()
 
+const { openWizard } = useAddSiteWizard()
 const titleId = useId()
 
 const steps = computed(() => {
@@ -19,7 +20,8 @@ const steps = computed(() => {
       description: 'Enter a URL and run your first scan for accessibility, broken links, and spelling.',
       done: Boolean(state.siteAdded && state.firstScanStarted),
       to: '/sites',
-      cta: 'Add site'
+      cta: 'Add site',
+      openAddSite: true
     },
     {
       id: 'invite',
@@ -69,6 +71,17 @@ function stepStatus(step: { id: string, done: boolean }) {
   if (nextStep.value?.id === step.id) return 'current' as const
   return 'upcoming' as const
 }
+
+function runStepCta(step: { openAddSite?: boolean, to?: string }) {
+  if (step.openAddSite) {
+    openWizard()
+    return
+  }
+  if (step.to) {
+    void navigateTo(step.to)
+  }
+}
+
 </script>
 
 <template>
@@ -104,9 +117,9 @@ function stepStatus(step: { id: string, done: boolean }) {
       <div class="flex shrink-0 flex-wrap items-center gap-2">
         <UButton
           v-if="nextStep"
-          :to="nextStep.to"
           size="sm"
           color="primary"
+          @click="runStepCta(nextStep)"
         >
           {{ nextStep.cta }}
         </UButton>
@@ -165,21 +178,21 @@ function stepStatus(step: { id: string, done: boolean }) {
           </p>
           <UButton
             v-if="!step.done && nextStep?.id === step.id"
-            :to="step.to"
             size="xs"
             variant="link"
             color="primary"
             class="mt-1 px-0"
+            @click="runStepCta(step)"
           >
             {{ step.cta }} →
           </UButton>
           <UButton
             v-else-if="!step.done"
-            :to="step.to"
             size="xs"
             variant="link"
             color="neutral"
             class="mt-1 px-0"
+            @click="runStepCta(step)"
           >
             {{ step.cta }}
           </UButton>

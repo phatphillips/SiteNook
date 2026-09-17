@@ -232,11 +232,11 @@ defineExpose({
 
         <div v-if="configState.mode === 'full'" class="space-y-4">
           <div class="grid sm:grid-cols-2 gap-4">
-            <UFormField label="Page limit" help="Scan stops after this many pages">
-              <UInput v-model.number="configState.maxPages" type="number" min="1" />
+            <UFormField label="Page limit" help="Scan stops after this many pages" class="w-full">
+              <UInput v-model.number="configState.maxPages" class="w-full" type="number" min="1" />
             </UFormField>
-            <UFormField label="Max depth" help="How many links deep to follow from the homepage">
-              <UInput v-model.number="configState.maxDepth" type="number" min="1" />
+            <UFormField label="Max depth" help="How many links deep to follow from the homepage" class="w-full">
+              <UInput v-model.number="configState.maxDepth" class="w-full" type="number" min="1" />
             </UFormField>
           </div>
           <UFormField label="Stay on this domain" help="Don't follow links to external domains">

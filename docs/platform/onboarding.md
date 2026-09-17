@@ -340,7 +340,7 @@ NUXT_PUBLIC_TERMS_URL=https://sitenook.com/terms
 | Provisioning logic | `apps/web/server/utils/provisioning.ts` |
 | Signup wizard | `apps/web/app/pages/start.vue`, `components/auth/CreateOrganizationWizard.vue` |
 | Dashboard checklist | `apps/web/app/components/shared/OnboardingChecklist.vue`, `composables/useOnboarding.ts`, `utils/onboardingChecklist.ts` |
-| Onboarding state API | `apps/web/server/api/billing/onboarding-state.post.ts` |
+| Onboarding state API | `apps/web/server/api/onboarding-state.post.ts` |
 | Stripe checkout + webhook | `apps/web/server/api/stripe/`, `server/utils/stripe*.ts`, `startAccess.ts` |
 | Checkout records | PocketBase `stripe_checkout_sessions` (migration `1730000029`) |
 | API key guard | `apps/web/server/utils/requireProvisionKey.ts` |

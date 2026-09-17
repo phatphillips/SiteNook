@@ -7,6 +7,7 @@ import { buildOrgFeatureNavLinks, buildSiteFeatureNavLinks, isRootOverviewPath }
 const route = useRoute()
 const { activeSiteId, isAllSites, fetchSites } = useSites()
 const { isBusy: scanBusy } = useActiveWorkspaceScanState()
+const { open: addSiteOpen } = useAddSiteWizard()
 
 const open = ref(false)
 
@@ -235,6 +236,8 @@ const sidebarNavUi = {
         <slot />
       </div>
     </div>
+
+    <AddSiteWizard v-model:open="addSiteOpen" />
   </UDashboardGroup>
 </template>
 

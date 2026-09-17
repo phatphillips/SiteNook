@@ -95,7 +95,7 @@ export function useOnboarding() {
     try {
       const result = await $fetch<{
         onboarding_state: OrganizationOnboardingState
-      }>('/api/billing/onboarding-state', {
+      }>('/api/onboarding-state', {
         method: 'POST',
         headers: { Authorization: `Bearer ${pb.authStore.token}` },
         body: { state: patch }

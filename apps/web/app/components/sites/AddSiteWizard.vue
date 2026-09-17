@@ -10,11 +10,10 @@ import type ScanConfigForm from '~/components/shared/ScanConfigForm.vue'
 const open = defineModel<boolean>('open', { default: false })
 
 const { createSiteAndQueueScan } = useSites()
-const { markSiteAndScanStarted, onboardingState } = useOnboarding()
+const { markSiteAndScanStarted } = useOnboarding()
 const toast = useToast()
 const router = useRouter()
 const config = useRuntimeConfig()
-const showAha = ref(false)
 
 const step = ref<1 | 2>(1)
 const submitting = ref(false)
@@ -86,22 +85,21 @@ async function startScan() {
       raw,
       deriveScanType(validation.config)
     )
-    await markSiteAndScanStarted()
+    // Don't block success UX if milestone persistence fails (e.g. transient API error).
+    await markSiteAndScanStarted().catch(() => {})
     toast.add({
-      title: 'Site created',
-      description: 'Your first scan has been queued. We’ll show what matters most when you are ready.'
+      title: 'Scan queued',
+      description: 'Your site was added and the first scan is starting.'
     })
     open.value = false
-    if (!onboardingState.value.ahaSeen) {
-      showAha.value = true
-    } else {
-      await router.push('/scans')
-    }
+    await router.push('/scans')
   } catch (e: unknown) {
     const msg = e && typeof e === 'object' && 'message' in e
       ? String((e as { message: string }).message)
       : 'Could not create site.'
-    error.value = msg.includes('Session expired') ? msg : 'Could not create site. Try again.'
+    error.value = msg.includes('Session expired') || msg.includes('plan allows')
+      ? msg
+      : 'Could not create site. Try again.'
   } finally {
     submitting.value = false
   }
@@ -113,18 +111,27 @@ async function startScan() {
     v-model:open="open"
     :title="step === 1 ? 'Add Site' : 'Configure Scan'"
     :description="step === 2 ? siteInfo.url : undefined"
-    :ui="{ content: step === 2 ? 'sm:max-w-4xl' : 'sm:max-w-lg' }"
+    :ui="{
+      content: step === 2 ? 'sm:max-w-4xl' : 'sm:max-w-lg',
+      body: step === 2 ? 'min-h-[28rem] max-h-[28rem] overflow-y-auto' : undefined
+    }"
   >
     <template #body>
-      <form v-if="step === 1" class="space-y-4" @submit.prevent="goToStep2">
-        <UFormField label="Title" required>
-          <UInput v-model="siteInfo.name" required />
+      <form v-if="step === 1" class="w-full space-y-4" @submit.prevent="goToStep2">
+        <UFormField label="Title" required class="w-full">
+          <UInput v-model="siteInfo.name" class="w-full" required />
         </UFormField>
-        <UFormField label="URL" required>
-          <UInput v-model="siteInfo.url" type="url" placeholder="https://example.com" required />
+        <UFormField label="URL" required class="w-full">
+          <UInput
+            v-model="siteInfo.url"
+            class="w-full"
+            type="url"
+            placeholder="https://example.com"
+            required
+          />
         </UFormField>
-        <UFormField label="Description">
-          <UTextarea v-model="siteInfo.description" />
+        <UFormField label="Description" class="w-full">
+          <UTextarea v-model="siteInfo.description" class="w-full" :rows="3" />
         </UFormField>
         <p class="text-sm text-muted">
           After adding site details, you will configure the first scan. Scans repeat automatically every 5 days.
@@ -132,13 +139,14 @@ async function startScan() {
         <UAlert v-if="error" color="error" variant="subtle" :title="error" />
       </form>
 
-      <ScanConfigForm
-        v-else-if="draftScanConfig"
-        ref="formRef"
-        :site-url="siteInfo.url.trim()"
-        :initial-raw-config="draftScanConfig"
-        :max-pages-default="maxPagesDefault"
-      />
+      <div v-else-if="draftScanConfig" class="w-full">
+        <ScanConfigForm
+          ref="formRef"
+          :site-url="siteInfo.url.trim()"
+          :initial-raw-config="draftScanConfig"
+          :max-pages-default="maxPagesDefault"
+        />
+      </div>
 
       <UAlert v-if="step === 2 && error" color="error" variant="subtle" :title="error" class="mt-4" />
     </template>
@@ -171,10 +179,4 @@ async function startScan() {
       </div>
     </template>
   </UModal>
-  <OnboardingAhaModal
-    v-model:open="showAha"
-    :issue-count="0"
-    @continue="router.push('/accessibility/issues')"
-    @invite="router.push('/settings/users')"
-  />
 </template>
