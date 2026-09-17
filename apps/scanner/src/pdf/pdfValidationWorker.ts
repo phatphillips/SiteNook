@@ -103,7 +103,8 @@ export async function storeOneMissingCrawlPdfFile(pb: PocketBase): Promise<boole
   try {
     const list = await pb.collection('pdf_documents').getList(1, 50, {
       filter: 'source = "crawl"',
-      sort: '-updated'
+      // Prefer -updated when autodate exists; -id always works (PB 0.22+ may lack autodate).
+      sort: '-id'
     })
     const now = Date.now()
     const missing = list.items.find((item) => {
