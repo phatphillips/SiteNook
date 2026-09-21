@@ -6,7 +6,8 @@ import {
   TypesenseUnavailableError
 } from './typesenseConfig'
 import { loadAllHelpArticles } from './helpFs'
-import type { HelpSearchHit } from '~/utils/help'
+import { isCommercialHelpCategory, type HelpSearchHit } from '~/utils/help'
+import { isCommercialEnabled } from './commercial'
 
 export const HELP_COLLECTION = 'help_articles'
 
@@ -158,5 +159,9 @@ export async function searchHelpArticles(q: string, limit = 20): Promise<{
     }
   })
 
-  return { hits, found: result.found ?? hits.length }
+  const visibleHits = isCommercialEnabled()
+    ? hits
+    : hits.filter(hit => !isCommercialHelpCategory(String(hit.category)))
+
+  return { hits: visibleHits, found: visibleHits.length }
 }

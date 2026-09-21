@@ -6,6 +6,7 @@ import {
   canToggleBillingContact,
   type OrgUserRole
 } from '~/utils/orgAccess'
+import { isCommercialEnabled } from '~/utils/commercial'
 
 const props = defineProps<{
   member: TeamMember | null
@@ -18,7 +19,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [boolean]
-  save: [payload: { name: string, email: string, role: OrgUserRole, is_billing_contact: boolean }]
+  save: [payload: { name: string, email: string, role: OrgUserRole, is_billing_contact?: boolean }]
   'confirm-remove': []
   'send-password-email': []
 }>()
@@ -32,6 +33,8 @@ const roleOptions = [
   { label: 'Admin', value: 'admin' as const },
   { label: 'Viewer', value: 'viewer' as const }
 ]
+
+const commercialEnabled = computed(() => isCommercialEnabled())
 
 const form = reactive({
   name: '',
@@ -137,12 +140,20 @@ function requestRemove() {
 function handleSave() {
   if (!props.member || pendingRemove.value) return
 
-  emit('save', {
+  const payload: {
+    name: string
+    email: string
+    role: OrgUserRole
+    is_billing_contact?: boolean
+  } = {
     name: form.name,
     email: form.email,
-    role: form.role,
-    is_billing_contact: form.role === 'admin' ? form.is_billing_contact : false
-  })
+    role: form.role
+  }
+  if (commercialEnabled.value) {
+    payload.is_billing_contact = form.role === 'admin' ? form.is_billing_contact : false
+  }
+  emit('save', payload)
 }
 
 function handleRemoveConfirm() {
@@ -217,7 +228,7 @@ function handleRemoveConfirm() {
           </UFormField>
 
           <USwitch
-            v-if="form.role === 'admin'"
+            v-if="commercialEnabled && form.role === 'admin'"
             v-model="form.is_billing_contact"
             class="team-member-billing-switch"
             label="Billing contact"
@@ -225,7 +236,7 @@ function handleRemoveConfirm() {
             :disabled="billingToggleDisabled || inConfirmMode"
           />
           <p
-            v-if="form.role === 'admin' && billingToggleHint"
+            v-if="commercialEnabled && form.role === 'admin' && billingToggleHint"
             class="text-xs text-warning"
           >
             {{ billingToggleHint }}

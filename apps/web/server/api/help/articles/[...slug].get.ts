@@ -5,7 +5,8 @@ import {
   toHelpSummary,
   buildHelpCatalog
 } from '../../../utils/helpFs'
-import { helpCategoryMeta, isHelpCategoryId, parseHelpSlugParam } from '~/utils/help'
+import { helpCategoryMeta, isCommercialHelpCategory, isHelpCategoryId, parseHelpSlugParam } from '~/utils/help'
+import { isCommercialEnabled } from '../../../utils/commercial'
 
 export default defineEventHandler(async (event) => {
   const raw = getRouterParam(event, 'slug') || ''
@@ -16,6 +17,9 @@ export default defineEventHandler(async (event) => {
 
   // Category landing: /help/{category}
   if (!parsed.slug && isHelpCategoryId(parsed.category)) {
+    if (!isCommercialEnabled() && isCommercialHelpCategory(parsed.category)) {
+      throw createError({ statusCode: 404, statusMessage: 'Category not found' })
+    }
     const meta = helpCategoryMeta(parsed.category)
     const catalog = await buildHelpCatalog()
     const category = catalog.categories.find(c => c.id === parsed.category)

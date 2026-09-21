@@ -13,7 +13,7 @@ order: 20
 
 ## Who can change scan settings?
 
-Admins and owners can change crawl config, schedules, and billing. Members can usually view findings and start scans, depending on your organization’s roles.
+Admins can change crawl config and schedules. Viewers can usually view findings and start scans, depending on your organization’s roles.
 
 ## Tips
 

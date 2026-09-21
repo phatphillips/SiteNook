@@ -9,7 +9,7 @@ import { formatPbClientError } from '~/utils/pbClientError'
 import { trackFunnelEvent } from '~/utils/funnelAnalytics'
 import type { BillingInvoiceSummary, BillingSubscriptionSummary } from '~/utils/billingTypes'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'commercial-only'] })
 
 const route = useRoute()
 const { sessionUser, awaitAuthReady, syncAuth, pb } = usePocketBase()

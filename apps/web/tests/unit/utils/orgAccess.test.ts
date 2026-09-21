@@ -73,9 +73,21 @@ describe('orgAccess', () => {
       { id: 'admin-2', role: 'admin', is_billing_contact: false }
     ]
 
-    expect(canChangeRole(users[0]!, users, 'viewer', actor)).toEqual({
+    expect(canChangeRole(users[0]!, users, 'viewer', actor, { commercial: true })).toEqual({
       allowed: false,
       reason: 'Organization must have at least one billing contact — assign another admin as billing contact first.'
+    })
+  })
+
+  it('allows demoting a billing-contact admin when commercial billing is off', () => {
+    const actor = { id: 'admin-2', role: 'admin' }
+    const users = [
+      { id: 'admin-1', role: 'admin', is_billing_contact: true },
+      { id: 'admin-2', role: 'admin', is_billing_contact: false }
+    ]
+
+    expect(canChangeRole(users[0]!, users, 'viewer', actor, { commercial: false })).toEqual({
+      allowed: true
     })
   })
 
@@ -105,9 +117,13 @@ describe('orgAccess', () => {
       { id: 'admin-2', role: 'admin', is_billing_contact: false }
     ]
 
-    expect(canRemoveMember(multiAdminSoleBilling[0]!, multiAdminSoleBilling, actor)).toEqual({
+    expect(canRemoveMember(multiAdminSoleBilling[0]!, multiAdminSoleBilling, actor, { commercial: true })).toEqual({
       allowed: false,
       reason: 'Organization must have at least one billing contact — assign another admin as billing contact first.'
+    })
+
+    expect(canRemoveMember(multiAdminSoleBilling[0]!, multiAdminSoleBilling, actor, { commercial: false })).toEqual({
+      allowed: true
     })
   })
 
@@ -128,7 +144,7 @@ describe('orgAccess', () => {
       { id: 'admin-2', role: 'admin', is_billing_contact: false }
     ]
 
-    expect(canToggleBillingContact(users[0]!, users, true)).toEqual({
+    expect(canToggleBillingContact(users[0]!, users, true, 'admin', { commercial: true })).toEqual({
       allowed: false,
       reason: 'Organization must have at least one billing contact — assign another admin as billing contact first.'
     })
@@ -140,6 +156,6 @@ describe('orgAccess', () => {
       { id: 'admin-2', role: 'admin', is_billing_contact: true }
     ]
 
-    expect(canToggleBillingContact(users[0]!, users, true)).toEqual({ allowed: true })
+    expect(canToggleBillingContact(users[0]!, users, true, 'admin', { commercial: true })).toEqual({ allowed: true })
   })
 })

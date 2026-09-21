@@ -343,7 +343,7 @@ declare global {
         />
       </UFormField>
 
-      <UFormField label="Work email" class="w-full" help="You will be the first admin and billing contact.">
+      <UFormField label="Work email" class="w-full" help="You will be the first organization admin.">
         <UInput
           v-model="form.ownerEmail"
           class="w-full"

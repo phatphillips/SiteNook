@@ -32,7 +32,7 @@ beforeAll(async () => {
 
   vi.stubGlobal('usePocketBase', () => ({
     pb: {
-      authStore: { token: 'test-token' },
+      authStore: { token: 'test-token', isValid: true },
       collection: (name: string) => {
         if (name === 'team_activity_log') {
           return { getList: mockGetList }

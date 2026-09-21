@@ -6,6 +6,7 @@ import {
   canRemoveMember,
   isOrgAdmin
 } from '~/utils/orgAccess'
+import { isCommercialEnabled } from '~/utils/commercial'
 import { formatPbClientError } from '~/utils/pbClientError'
 
 definePageMeta({ middleware: 'auth' })
@@ -34,6 +35,7 @@ const teamTable = useTemplateRef<TeamMembersTableExpose | null>('teamTable')
 
 const pageReady = ref(false)
 const canManageTeam = computed(() => pageReady.value && isOrgAdmin(sessionUser.value))
+const commercialEnabled = computed(() => isCommercialEnabled())
 const tableSearch = ref('')
 const showAddModal = ref(false)
 const submitting = ref(false)
@@ -159,7 +161,7 @@ function requestBulkRemove() {
   const blockers = getBulkRemoveBlockers(selected)
   if (blockers.length) {
     const names = blockers.map(member => member.name).join(', ')
-    bulkRemoveError.value = `Cannot remove: ${names}. ${blockers.length === 1 ? 'This member is' : 'These members are'} required as the last admin or billing contact.`
+    bulkRemoveError.value = `Cannot remove: ${names}. ${blockers.length === 1 ? 'This member is' : 'These members are'} required as the last admin.`
     toast.add({
       title: 'Bulk remove blocked',
       description: bulkRemoveError.value,
@@ -212,7 +214,7 @@ async function saveDrawerMember(payload: {
   name: string
   email: string
   role: OrgUserRole
-  is_billing_contact: boolean
+  is_billing_contact?: boolean
 }) {
   if (!drawerMember.value) return
   drawerSaving.value = true
@@ -375,6 +377,7 @@ async function confirmRemoveMembers() {
           :loading="loading"
           :can-manage="canManageTeam"
           :current-user-id="sessionUser?.id"
+          :show-billing-contact="commercialEnabled"
           @open-member="openMemberDrawer"
         />
       </div>

@@ -10,6 +10,8 @@ export interface HelpCategoryMeta {
   label: string
   description: string
   icon: string
+  /** Hide this category unless the commercial module is on. */
+  commercialOnly?: boolean
 }
 
 export interface HelpArticleSummary {
@@ -59,7 +61,8 @@ export const HELP_CATEGORIES: HelpCategoryMeta[] = [
     id: 'account-billing',
     label: 'Account & billing',
     description: 'Plans, trials, teammates, and invoices.',
-    icon: 'i-lucide-credit-card'
+    icon: 'i-lucide-credit-card',
+    commercialOnly: true
   },
   {
     id: 'troubleshooting',
@@ -81,6 +84,10 @@ export function helpCategoryLabel(category: string): string {
 
 export function helpCategoryMeta(category: string): HelpCategoryMeta | undefined {
   return HELP_CATEGORIES.find(c => c.id === category)
+}
+
+export function isCommercialHelpCategory(category: string): boolean {
+  return helpCategoryMeta(category)?.commercialOnly === true
 }
 
 /** `getting-started/first-scan` → path `/help/getting-started/first-scan` */

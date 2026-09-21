@@ -168,16 +168,17 @@ a[data-slot="base"].action-solid:hover {
   opacity: 0.9;
 }
 
-/** Auth + team drawer forms — inputs should span the panel width (not switches). */
+/**
+ * Auth + team forms — controls should span the panel width.
+ * Do not force [data-slot="trailing"] to 100%: that stretches SelectMenu
+ * chevrons and other trailing icons across the field (icon ends up left).
+ */
 .auth-page-card form [data-slot="root"],
 .auth-page-card form [data-slot="base"],
-.auth-page-card form [data-slot="trailing"],
 .team-member-drawer .w-full [data-slot="root"],
 .team-member-drawer .w-full [data-slot="base"],
-.team-member-drawer .w-full [data-slot="trailing"],
 .team-member-add-modal [data-slot="root"],
-.team-member-add-modal [data-slot="base"],
-.team-member-add-modal [data-slot="trailing"] {
+.team-member-add-modal [data-slot="base"] {
   width: 100%;
   max-width: 100%;
 }

@@ -80,7 +80,7 @@ onMounted(() => {
 
 useSeoMeta({
   title: 'Help Center',
-  description: 'Guides and answers for scanning, accessibility, billing, and troubleshooting SiteNook.'
+  description: 'Guides and answers for scanning, accessibility, and troubleshooting SiteNook.'
 })
 </script>
 

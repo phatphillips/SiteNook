@@ -15,6 +15,16 @@ export type TeamActivityAction =
   | 'analytics_reconnected'
   | 'analytics_sync_needs_reconnect'
 
+const COMMERCIAL_TEAM_ACTIVITY_ACTIONS = new Set([
+  'billing_contact_added',
+  'billing_contact_removed',
+  'subscription_updated'
+])
+
+export function isCommercialTeamActivityAction(action: string): boolean {
+  return COMMERCIAL_TEAM_ACTIVITY_ACTIONS.has(action)
+}
+
 const PROVIDER_LABELS: Record<string, string> = {
   ga4: 'Google Analytics 4',
   cloudflare: 'Cloudflare Web Analytics',

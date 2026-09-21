@@ -54,6 +54,11 @@ function countOrgAdmins(app, organizationId, excludeUserId) {
   return countOrgUsersByFilter(app, organizationId, 'role = "admin"', excludeUserId)
 }
 
+function isCommercialEnabled() {
+  const raw = String($os.getenv('SITENOOK_COMMERCIAL') || '').trim().toLowerCase()
+  return raw === '1' || raw === 'true' || raw === 'on' || raw === 'yes'
+}
+
 function countBillingContacts(app, organizationId, excludeUserId) {
   return countOrgUsersByFilter(app, organizationId, 'is_billing_contact = true', excludeUserId)
 }
@@ -110,7 +115,11 @@ function ensureRoleChangeAllowed(app, record, original, auth, hasSuperuser) {
     }
 
     const wasBillingContact = Boolean(original.get('is_billing_contact'))
-    if (wasBillingContact && countBillingContacts(app, orgId, record.id) === 0) {
+    if (
+      isCommercialEnabled()
+      && wasBillingContact
+      && countBillingContacts(app, orgId, record.id) === 0
+    ) {
       throw new BadRequestError(
         'Organization must have at least one billing contact — assign another admin as billing contact first.'
       )
@@ -128,6 +137,8 @@ function ensureBillingContactRules(app, record, original) {
   if (newRole !== 'admin' && newBilling) {
     throw new BadRequestError('Only admins can be billing contacts.')
   }
+
+  if (!isCommercialEnabled()) return
 
   if (oldRole === 'admin' && newRole !== 'admin' && oldBilling && !newBilling) {
     if (countBillingContacts(app, orgId, record.id) === 0) {
@@ -170,7 +181,7 @@ function ensureDeleteAllowed(app, record, auth, hasSuperuser) {
     }
   }
 
-  if (Boolean(record.get('is_billing_contact'))) {
+  if (isCommercialEnabled() && Boolean(record.get('is_billing_contact'))) {
     if (countBillingContacts(app, orgId, record.id) === 0) {
       throw new BadRequestError(
         'Organization must have at least one billing contact — assign another admin as billing contact first.'

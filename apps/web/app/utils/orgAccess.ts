@@ -1,4 +1,5 @@
 import type { RecordModel } from 'pocketbase'
+import { isCommercialEnabled } from '~/utils/commercial'
 
 export type SiteAccessRole = 'owner' | 'editor' | 'viewer'
 
@@ -59,11 +60,21 @@ export interface OrgAccessDecision {
   reason?: string
 }
 
+export interface OrgAccessOptions {
+  /** When false, skip billing-contact constraints (OSS launch). Defaults to commercial flag. */
+  commercial?: boolean
+}
+
+function billingContactRulesEnabled(options?: OrgAccessOptions): boolean {
+  return options?.commercial ?? isCommercialEnabled()
+}
+
 export function canChangeRole(
   targetUser: OrgMemberLike,
   allOrgUsers: OrgMemberLike[],
   newRole: string,
-  actor?: { id: string, role: string }
+  actor?: { id: string, role: string },
+  options?: OrgAccessOptions
 ): OrgAccessDecision {
   if (actor && actor.id === targetUser.id) {
     return { allowed: false, reason: 'You cannot change your own role.' }
@@ -81,7 +92,11 @@ export function canChangeRole(
       }
     }
 
-    if (targetUser.is_billing_contact && countBillingContacts(allOrgUsers) <= 1) {
+    if (
+      billingContactRulesEnabled(options)
+      && targetUser.is_billing_contact
+      && countBillingContacts(allOrgUsers) <= 1
+    ) {
       return {
         allowed: false,
         reason: 'Organization must have at least one billing contact — assign another admin as billing contact first.'
@@ -95,7 +110,8 @@ export function canChangeRole(
 export function canRemoveMember(
   targetUser: OrgMemberLike,
   allOrgUsers: OrgMemberLike[],
-  actor?: { id: string, role: string }
+  actor?: { id: string, role: string },
+  options?: OrgAccessOptions
 ): OrgAccessDecision {
   if (actor && actor.id === targetUser.id) {
     return { allowed: false, reason: 'You cannot remove your own account.' }
@@ -108,7 +124,11 @@ export function canRemoveMember(
     }
   }
 
-  if (targetUser.is_billing_contact && countBillingContacts(allOrgUsers) <= 1) {
+  if (
+    billingContactRulesEnabled(options)
+    && targetUser.is_billing_contact
+    && countBillingContacts(allOrgUsers) <= 1
+  ) {
     return {
       allowed: false,
       reason: 'Organization must have at least one billing contact — assign another admin as billing contact first.'
@@ -122,13 +142,19 @@ export function canToggleBillingContact(
   targetUser: OrgMemberLike,
   allOrgUsers: OrgMemberLike[],
   turningOff: boolean,
-  selectedRole: string = targetUser.role
+  selectedRole: string = targetUser.role,
+  options?: OrgAccessOptions
 ): OrgAccessDecision {
   if (selectedRole !== 'admin') {
     return { allowed: false, reason: 'Only admins can be billing contacts.' }
   }
 
-  if (turningOff && targetUser.is_billing_contact && countBillingContacts(allOrgUsers) <= 1) {
+  if (
+    billingContactRulesEnabled(options)
+    && turningOff
+    && targetUser.is_billing_contact
+    && countBillingContacts(allOrgUsers) <= 1
+  ) {
     return {
       allowed: false,
       reason: 'Organization must have at least one billing contact — assign another admin as billing contact first.'

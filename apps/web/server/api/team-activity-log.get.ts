@@ -2,6 +2,9 @@ import PocketBase, { ClientResponseError } from 'pocketbase'
 import { createError, getHeader, getQuery, type H3Event } from 'h3'
 import { requirePbUser } from '../utils/requirePbUser'
 import { resolveServerPocketBaseUrl } from '../utils/resolvePbUrl'
+import { isCommercialEnabled } from '../utils/commercial'
+
+const COMMERCIAL_ACTIVITY_FILTER = 'action != "billing_contact_added" && action != "billing_contact_removed" && action != "subscription_updated"'
 
 function createUserPb(event: H3Event, token: string, user: Record<string, unknown>) {
   const pb = new PocketBase(resolveServerPocketBaseUrl(event))
@@ -14,19 +17,26 @@ async function listTeamActivity(
   page: number,
   perPage: number
 ) {
-  try {
-    return await pb.collection('team_activity_log').getList(page, perPage, {
-      sort: '-logged_at'
-    })
-  } catch (error) {
-    if (!(error instanceof ClientResponseError) || error.status !== 400) {
-      throw error
-    }
+  const filter = isCommercialEnabled() ? '' : COMMERCIAL_ACTIVITY_FILTER
+  const query = filter ? { sort: '-logged_at', filter } : { sort: '-logged_at' }
 
-    const fallback = await pb.collection('team_activity_log').getList(page, perPage)
-    fallback.items.sort((a, b) => String(b.id).localeCompare(String(a.id)))
-    return fallback
-  }
+  return pb.collection('team_activity_log').getList(page, perPage, query)
+    .catch(async (error) => {
+      if (!(error instanceof ClientResponseError) || error.status !== 400) {
+        throw error
+      }
+
+      const fallback = await pb.collection('team_activity_log').getList(page, perPage)
+      fallback.items.sort((a, b) => String(b.id).localeCompare(String(a.id)))
+      if (!filter) return fallback
+      fallback.items = fallback.items.filter((record) => {
+        const action = String(record.action ?? '')
+        return action !== 'billing_contact_added'
+          && action !== 'billing_contact_removed'
+          && action !== 'subscription_updated'
+      })
+      return fallback
+    })
 }
 
 export default defineEventHandler(async (event) => {

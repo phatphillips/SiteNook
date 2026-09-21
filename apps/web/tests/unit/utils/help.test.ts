@@ -3,6 +3,7 @@ import {
   HELP_CATEGORIES,
   helpCategoryLabel,
   helpPathFromParts,
+  isCommercialHelpCategory,
   isHelpCategoryId,
   parseHelpSlugParam
 } from '~/utils/help'
@@ -26,6 +27,8 @@ describe('help utils', () => {
     expect(helpCategoryLabel('unknown')).toBe('unknown')
     expect(isHelpCategoryId('accessibility')).toBe(true)
     expect(isHelpCategoryId('nope')).toBe(false)
+    expect(isCommercialHelpCategory('account-billing')).toBe(true)
+    expect(isCommercialHelpCategory('getting-started')).toBe(false)
   })
 
   it('parses category and article slug params', () => {

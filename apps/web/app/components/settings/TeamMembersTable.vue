@@ -12,6 +12,7 @@ const props = defineProps<{
   loading?: boolean
   canManage?: boolean
   currentUserId?: string
+  showBillingContact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -61,7 +62,7 @@ const columns = computed<TableColumn<TeamMember>[]>(() => {
             color: roleBadgeColor(String(row.original.role)),
             variant: 'subtle'
           }, () => formatOrgUserRole(row.original.role)),
-          row.original.is_billing_contact
+          props.showBillingContact && row.original.is_billing_contact
             ? h(UBadge, { color: 'info', variant: 'subtle', size: 'sm' }, () => 'Billing')
             : null
         ])

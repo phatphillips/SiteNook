@@ -4,12 +4,14 @@ import {
   HELP_CATEGORIES,
   helpCategoryLabel,
   helpPathFromParts,
+  isCommercialHelpCategory,
   isHelpCategoryId,
   type HelpArticleSummary,
   type HelpCatalogCategory,
   type HelpCategoryId
 } from '~/utils/help'
 import { markdownToHtml, parseBlogFrontmatter } from '~/utils/blogMarkdown'
+import { isCommercialEnabled } from './commercial'
 
 export interface HelpArticleRecord extends HelpArticleSummary {
   bodyMarkdown: string
@@ -66,8 +68,11 @@ async function listMarkdownInCategory(category: HelpCategoryId): Promise<HelpArt
 }
 
 export async function loadAllHelpArticles(): Promise<HelpArticleRecord[]> {
+  const categories = isCommercialEnabled()
+    ? HELP_CATEGORIES
+    : HELP_CATEGORIES.filter(cat => !cat.commercialOnly)
   const batches = await Promise.all(
-    HELP_CATEGORIES.map(cat => listMarkdownInCategory(cat.id))
+    categories.map(cat => listMarkdownInCategory(cat.id))
   )
   return batches.flat().sort((a, b) => a.order - b.order || a.title.localeCompare(b.title))
 }
@@ -77,6 +82,7 @@ export async function loadHelpArticle(
   slug: string
 ): Promise<HelpArticleRecord | null> {
   if (!isHelpCategoryId(category) || !slug) return null
+  if (!isCommercialEnabled() && isCommercialHelpCategory(category)) return null
   const safeSlug = slug.replace(/[^a-z0-9-_/]/gi, '')
   if (!safeSlug || safeSlug.includes('..')) return null
   try {
@@ -103,16 +109,19 @@ export async function buildHelpCatalog(): Promise<{
   categories: HelpCatalogCategory[]
 }> {
   const all = await loadAllHelpArticles()
-  const categories = HELP_CATEGORIES.map((meta) => {
-    const articles = all
-      .filter(a => a.category === meta.id)
-      .map(toHelpSummary)
-    return {
-      ...meta,
-      articleCount: articles.length,
-      articles
-    }
-  })
+  const commercial = isCommercialEnabled()
+  const categories = HELP_CATEGORIES
+    .filter(meta => commercial || !meta.commercialOnly)
+    .map((meta) => {
+      const articles = all
+        .filter(a => a.category === meta.id)
+        .map(toHelpSummary)
+      return {
+        ...meta,
+        articleCount: articles.length,
+        articles
+      }
+    })
   return { categories }
 }
 

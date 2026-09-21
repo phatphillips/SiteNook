@@ -3,7 +3,8 @@ import {
   formatTeamActivityDetail,
   formatTeamActivitySentence,
   formatTeamActivityTimestamp,
-  getTeamActivityActionMeta
+  getTeamActivityActionMeta,
+  isCommercialTeamActivityAction
 } from '~/utils/teamActivityLog'
 
 describe('teamActivityLog', () => {
@@ -60,6 +61,8 @@ describe('teamActivityLog', () => {
 
     expect(getTeamActivityActionMeta(entry.action).label).toBe('Billing contact added')
     expect(formatTeamActivityTimestamp(entry)).toContain('Jun')
+    expect(isCommercialTeamActivityAction(entry.action)).toBe(true)
+    expect(isCommercialTeamActivityAction('member_added')).toBe(false)
   })
 
   it('formats analytics connect activity', () => {

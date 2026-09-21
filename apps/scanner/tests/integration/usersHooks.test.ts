@@ -167,7 +167,7 @@ describe('users collection security hooks (integration)', () => {
     superPb.authStore.clear()
   })
 
-  it('rejects clearing billing contact on the last billing contact admin', async () => {
+  it('allows clearing billing contact when commercial billing is off', async () => {
     const superPb = new PocketBase(PB_URL)
     await authSuperuser(superPb)
 
@@ -189,9 +189,8 @@ describe('users collection security hooks (integration)', () => {
 
     await superPb.collection('users').update(adminId, { is_billing_contact: false })
 
-    await expect(
-      adminPb.collection('users').update(peerAdmin.id, { is_billing_contact: false })
-    ).rejects.toSatisfy(expectRejected)
+    const updated = await adminPb.collection('users').update(peerAdmin.id, { is_billing_contact: false })
+    expect(updated.is_billing_contact).toBe(false)
 
     await superPb.collection('users').update(adminId, { is_billing_contact: true })
     await superPb.collection('users').delete(peerAdmin.id)

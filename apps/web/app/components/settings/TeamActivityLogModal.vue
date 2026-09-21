@@ -4,8 +4,10 @@ import {
   formatTeamActivityDetail,
   formatTeamActivitySentence,
   formatTeamActivityTimestamp,
-  getTeamActivityActionMeta
+  getTeamActivityActionMeta,
+  isCommercialTeamActivityAction
 } from '~/utils/teamActivityLog'
+import { isCommercialEnabled } from '~/utils/commercial'
 
 const open = defineModel<boolean>('open', { default: false })
 
@@ -16,6 +18,18 @@ const props = defineProps<{
   totalPages: number
   totalItems: number
 }>()
+
+const commercialEnabled = computed(() => isCommercialEnabled())
+const activitySubtitle = computed(() =>
+  commercialEnabled.value
+    ? 'Recent changes to members, roles, and billing contacts.'
+    : 'Recent changes to members and roles.'
+)
+const visibleEntries = computed(() =>
+  commercialEnabled.value
+    ? props.entries
+    : props.entries.filter(entry => !isCommercialTeamActivityAction(entry.action))
+)
 
 const emit = defineEmits<{
   'update:page': [number]
@@ -41,7 +55,7 @@ const emit = defineEmits<{
             Team activity
           </h2>
           <p class="mt-0.5 text-sm text-muted">
-            Recent changes to members, roles, and billing contacts.
+            {{ activitySubtitle }}
           </p>
         </div>
       </div>
@@ -53,13 +67,13 @@ const emit = defineEmits<{
           Loading activity…
         </p>
 
-        <p v-else-if="!entries.length" class="text-sm text-muted">
+        <p v-else-if="!visibleEntries.length" class="text-sm text-muted">
           No team activity recorded yet.
         </p>
 
         <ul v-else class="divide-y divide-default/60">
           <li
-            v-for="entry in entries"
+            v-for="entry in visibleEntries"
             :key="entry.id"
             class="flex gap-3 py-3 first:pt-0 last:pb-0"
           >
