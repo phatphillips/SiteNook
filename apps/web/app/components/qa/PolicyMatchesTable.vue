@@ -339,7 +339,7 @@ defineExpose({
       </UButton>
     </div>
 
-    <div class="table-surface">
+    <div class="table-surface overflow-x-auto">
       <DataTableSkeleton
         v-if="showInitialSkeleton"
         :rows="pageSize"
@@ -355,7 +355,10 @@ defineExpose({
         :columns="columns"
         :loading="stableLoading && !!items.length"
         :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
-        :ui="DATA_TABLE_UI"
+        :ui="{
+          ...DATA_TABLE_UI,
+          base: 'w-full min-w-[64rem] border-collapse'
+        }"
       >
         <template #loading>
           <DataTableSkeleton
@@ -363,6 +366,11 @@ defineExpose({
             :layout="skeletonLayout"
             :show-header="false"
           />
+        </template>
+        <template #empty>
+          <div class="py-10 text-center text-sm text-muted">
+            No policy matches for this filter.
+          </div>
         </template>
       </UTable>
 
@@ -390,12 +398,5 @@ defineExpose({
         />
       </div>
     </div>
-
-    <p
-      v-if="!stableLoading && !displayed.length"
-      class="text-sm text-muted text-center py-4"
-    >
-      No policy matches for this filter.
-    </p>
   </div>
 </template>

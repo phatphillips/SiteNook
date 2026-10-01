@@ -261,7 +261,7 @@ defineExpose({
         </UButton>
       </div>
 
-      <div ref="tablePanelRef" class="table-surface">
+      <div ref="tablePanelRef" class="table-surface overflow-x-auto">
         <DataTableSkeleton
           v-if="showInitialSkeleton"
           :rows="pageSize"
@@ -276,7 +276,10 @@ defineExpose({
           :columns="columns"
           :loading="stableLoading && !!items.length"
           :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
-          :ui="DATA_TABLE_UI"
+          :ui="{
+            ...DATA_TABLE_UI,
+            base: 'w-full min-w-[40rem] border-collapse'
+          }"
         >
           <template #loading>
             <DataTableSkeleton
@@ -284,6 +287,11 @@ defineExpose({
               :layout="skeletonLayout"
               :show-header="false"
             />
+          </template>
+          <template #empty>
+            <div class="py-10 text-center text-sm text-muted">
+              No spelling issues in this category yet.
+            </div>
           </template>
         </UTable>
 
@@ -311,13 +319,6 @@ defineExpose({
           />
         </div>
       </div>
-
-      <p
-        v-if="!displayed.length && !loading"
-        class="text-sm text-muted py-4 text-center"
-      >
-        No spelling issues in this category yet.
-      </p>
     </div>
 
     <div class="table-surface p-4 space-y-3 h-fit">
