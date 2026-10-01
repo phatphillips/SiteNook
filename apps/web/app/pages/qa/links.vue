@@ -114,19 +114,14 @@ const {
     <div class="space-y-4">
 
       <DataTableToolbar>
-
-        <template #actions>
-
+        <template #leading>
           <TableSearchInput
-
             v-model="hrefSearch"
-
             placeholder="Filter by URL…"
-
             aria-label="Filter links by URL"
-
           />
-
+        </template>
+        <template #actions>
           <UButton
             icon="i-lucide-download"
             label="Export to CSV"
@@ -134,9 +129,7 @@ const {
             variant="outline"
             @click="exportModalOpen = true"
           />
-
         </template>
-
       </DataTableToolbar>
 
       <TableExportModal

@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { h, resolveComponent } from 'vue'
+import { getSortedRowModel } from '@tanstack/vue-table'
 import type { TableColumn } from '@nuxt/ui'
+import type { Column, SortingState } from '@tanstack/vue-table'
 import type { BrokenLink } from '~/types/sitenook'
 import { BROKEN_LINKS_TABLE_SKELETON_COLUMNS } from '~/utils/dataTableSkeletonColumns'
 import { DATA_TABLE_UI } from '~/utils/dataTableUi'
 import { scrollDataTableIntoView } from '~/utils/dataTableScroll'
+import { parsePageUrl } from '~/utils/issueExplanation'
 
 const props = withDefaults(defineProps<{
   links: BrokenLink[]
@@ -31,7 +34,36 @@ const emit = defineEmits<{
 }>()
 
 const UBadge = resolveComponent('UBadge')
+const UButton = resolveComponent('UButton')
 const stableLoading = useStableLoading(toRef(() => props.loading))
+const sorting = ref<SortingState>([])
+
+function sortableHeader<T>(
+  column: Column<T, unknown>,
+  label: string,
+  align: 'left' | 'right' | 'center' = 'left'
+) {
+  const isSorted = column.getIsSorted()
+  const button = h(UButton, {
+    color: 'neutral',
+    variant: 'ghost',
+    size: 'xs',
+    label,
+    icon: isSorted
+      ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow')
+      : 'i-lucide-arrow-up-down',
+    class: align === 'left' ? '-ms-2' : '',
+    ui: {
+      base: 'font-medium',
+      leadingIcon: 'size-3.5'
+    },
+    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
+  })
+  if (align === 'left') return button
+  return h('div', {
+    class: align === 'right' ? 'flex justify-end' : 'flex justify-center'
+  }, [button])
+}
 
 const visibleLinks = computed(() => {
   if (props.serverPaginated) return props.links
@@ -110,13 +142,25 @@ function linkStatusColor(status: string) {
 
 function pageUrlCell(url: string) {
   if (!url) return '—'
-  return h('a', {
-    href: url,
-    target: '_blank',
-    rel: 'noopener',
-    class: 'text-sm text-primary hover:underline break-all',
-    title: url
-  }, url)
+  const parsed = parsePageUrl(url)
+  return h('div', { class: 'min-w-0 max-w-md' }, [
+    h('a', {
+      href: url,
+      target: '_blank',
+      rel: 'noopener',
+      class: 'text-sm text-primary hover:underline block truncate',
+      title: url
+    }, parsed.path),
+    h('span', { class: 'text-xs text-muted block truncate' }, parsed.domain)
+  ])
+}
+
+type LinkAggRow = {
+  href: string
+  status_code: number
+  link_type: string
+  status: string
+  pages: string[]
 }
 
 const flatLinksColumns = computed<TableColumn<FlatLinkRow>[]>(() => {
@@ -125,7 +169,7 @@ const flatLinksColumns = computed<TableColumn<FlatLinkRow>[]>(() => {
   if (props.showSiteColumn) {
     cols.push({
       accessorKey: 'siteName',
-      header: 'Site',
+      header: ({ column }) => sortableHeader(column, 'Site'),
       cell: ({ row }) => h('span', { class: 'text-sm' }, row.original.siteName)
     })
   }
@@ -133,12 +177,12 @@ const flatLinksColumns = computed<TableColumn<FlatLinkRow>[]>(() => {
   cols.push(
     {
       accessorKey: 'href',
-      header: 'URL',
+      header: ({ column }) => sortableHeader(column, 'URL'),
       cell: ({ row }) => pageUrlCell(row.original.href)
     },
     {
       accessorKey: 'pageUrl',
-      header: 'Page',
+      header: ({ column }) => sortableHeader(column, 'Page'),
       cell: ({ row }) => pageUrlCell(row.original.pageUrl)
     }
   )
@@ -146,7 +190,7 @@ const flatLinksColumns = computed<TableColumn<FlatLinkRow>[]>(() => {
   if (props.urlSearchActive) {
     cols.push({
       accessorKey: 'status',
-      header: 'Status',
+      header: ({ column }) => sortableHeader(column, 'Status'),
       cell: ({ row }) => h(UBadge, {
         color: linkStatusColor(row.original.status),
         variant: 'subtle'
@@ -157,7 +201,7 @@ const flatLinksColumns = computed<TableColumn<FlatLinkRow>[]>(() => {
   cols.push(
     {
       accessorKey: 'status_code',
-      header: 'HTTP status',
+      header: ({ column }) => sortableHeader(column, 'HTTP status', 'right'),
       meta: { class: { th: 'text-right tabular-nums', td: 'text-right tabular-nums' } },
       cell: ({ row }) => h(UBadge, {
         color: statusColor(row.original.status_code),
@@ -167,7 +211,7 @@ const flatLinksColumns = computed<TableColumn<FlatLinkRow>[]>(() => {
     },
     {
       accessorKey: 'link_type',
-      header: 'Type',
+      header: ({ column }) => sortableHeader(column, 'Type'),
       cell: ({ row }) => h('span', { class: 'text-sm capitalize' }, row.original.link_type)
     }
   )
@@ -178,34 +222,26 @@ const flatLinksColumns = computed<TableColumn<FlatLinkRow>[]>(() => {
 const pagesColumns = computed<TableColumn<{ url: string, count: number }>[]>(() => [
   {
     accessorKey: 'url',
-    header: 'Page URL',
+    header: ({ column }) => sortableHeader(column, 'Page URL'),
     cell: ({ row }) => pageUrlCell(row.original.url)
   },
   {
     accessorKey: 'count',
-    header: props.urlSearchActive ? 'Matching links' : 'Broken links',
+    header: ({ column }) => sortableHeader(
+      column,
+      props.urlSearchActive ? 'Matching links' : 'Broken links',
+      'right'
+    ),
     meta: { class: { th: 'text-right tabular-nums', td: 'text-right tabular-nums' } },
     cell: ({ row }) => h('span', { class: 'text-sm tabular-nums' }, String(row.original.count))
   }
 ])
 
-const linksColumns = computed<TableColumn<{
-  href: string
-  status_code: number
-  link_type: string
-  status: string
-  pages: string[]
-}>[]>(() => {
-  const cols: TableColumn<{
-    href: string
-    status_code: number
-    link_type: string
-    status: string
-    pages: string[]
-  }>[] = [
+const linksColumns = computed<TableColumn<LinkAggRow>[]>(() => {
+  const cols: TableColumn<LinkAggRow>[] = [
     {
       accessorKey: 'href',
-      header: 'URL',
+      header: ({ column }) => sortableHeader(column, 'URL'),
       cell: ({ row }) => pageUrlCell(row.original.href)
     }
   ]
@@ -213,7 +249,7 @@ const linksColumns = computed<TableColumn<{
   if (props.urlSearchActive) {
     cols.push({
       accessorKey: 'status',
-      header: 'Status',
+      header: ({ column }) => sortableHeader(column, 'Status'),
       cell: ({ row }) => h(UBadge, {
         color: linkStatusColor(row.original.status),
         variant: 'subtle'
@@ -224,7 +260,7 @@ const linksColumns = computed<TableColumn<{
   cols.push(
     {
       accessorKey: 'status_code',
-      header: 'HTTP status',
+      header: ({ column }) => sortableHeader(column, 'HTTP status', 'right'),
       meta: { class: { th: 'text-right tabular-nums', td: 'text-right tabular-nums' } },
       cell: ({ row }) => h(UBadge, {
         color: statusColor(row.original.status_code),
@@ -234,12 +270,13 @@ const linksColumns = computed<TableColumn<{
     },
     {
       accessorKey: 'link_type',
-      header: 'Type',
+      header: ({ column }) => sortableHeader(column, 'Type'),
       cell: ({ row }) => h('span', { class: 'text-sm capitalize' }, row.original.link_type)
     },
     {
       id: 'pages',
-      header: 'Pages affected',
+      accessorFn: row => row.pages.length,
+      header: ({ column }) => sortableHeader(column, 'Pages affected', 'right'),
       meta: { class: { th: 'text-right tabular-nums', td: 'text-right tabular-nums' } },
       cell: ({ row }) => h('span', { class: 'text-sm tabular-nums' }, String(row.original.pages.length))
     }
@@ -331,9 +368,11 @@ watch(
       <template v-else>
         <UTable
           v-if="useFlatView"
+          v-model:sorting="sorting"
           :data="flatLinksView"
           :columns="flatLinksColumns"
           :loading="stableLoading && !!links.length"
+          :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
           :ui="DATA_TABLE_UI"
           :empty-state="{
             icon: 'i-lucide-unlink',
@@ -352,8 +391,10 @@ watch(
 
         <UTable
           v-else-if="view === 'pages'"
+          v-model:sorting="sorting"
           :data="pagesView"
           :columns="pagesColumns"
+          :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
           :ui="DATA_TABLE_UI"
           :empty-state="{
             icon: 'i-lucide-unlink',
@@ -363,8 +404,10 @@ watch(
         />
         <UTable
           v-else
+          v-model:sorting="sorting"
           :data="linksView"
           :columns="linksColumns"
+          :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
           :ui="DATA_TABLE_UI"
           :empty-state="{
             icon: 'i-lucide-unlink',

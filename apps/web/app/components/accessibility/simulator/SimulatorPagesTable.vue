@@ -9,6 +9,8 @@ import {
   severityBadgeColor,
   type SimulatorPageRow
 } from '~/utils/simulatorPages'
+import { DATA_TABLE_UI } from '~/utils/dataTableUi'
+import { scrollDataTableIntoView } from '~/utils/dataTableScroll'
 
 const props = withDefaults(defineProps<{
   rows: SimulatorPageRow[]
@@ -29,24 +31,40 @@ const emit = defineEmits<{
 const UButton = resolveComponent('UButton')
 const UBadge = resolveComponent('UBadge')
 
+const tablePanelRef = useTemplateRef<HTMLElement>('tablePanelRef')
 const pagination = ref({ pageIndex: 0, pageSize: 20 })
 const sorting = ref<SortingState>([
   { id: 'severity', desc: true },
   { id: 'issues', desc: true }
 ])
 
-function sortableHeader(column: Column<SimulatorPageRow, unknown>, label: string) {
+const stableLoading = useStableLoading(toRef(() => props.loading))
+
+function sortableHeader(
+  column: Column<SimulatorPageRow, unknown>,
+  label: string,
+  align: 'left' | 'right' | 'center' = 'left'
+) {
   const isSorted = column.getIsSorted()
-  return h(UButton, {
+  const button = h(UButton, {
     color: 'neutral',
     variant: 'ghost',
+    size: 'xs',
     label,
     icon: isSorted
       ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow')
       : 'i-lucide-arrow-up-down',
-    class: '-mx-2.5',
+    class: align === 'left' ? '-ms-2' : '',
+    ui: {
+      base: 'font-medium',
+      leadingIcon: 'size-3.5'
+    },
     onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
   })
+  if (align === 'left') return button
+  return h('div', {
+    class: align === 'right' ? 'flex justify-end' : 'flex justify-center'
+  }, [button])
 }
 
 const columns = computed<TableColumn<SimulatorPageRow>[]>(() => {
@@ -103,7 +121,7 @@ const columns = computed<TableColumn<SimulatorPageRow>[]>(() => {
     {
       id: 'issues',
       accessorKey: 'issueCount',
-      header: ({ column }) => sortableHeader(column, 'Issues'),
+      header: ({ column }) => sortableHeader(column, 'Issues', 'center'),
       meta: { class: { th: 'text-center', td: 'text-center tabular-nums' } },
       cell: ({ row }) => row.original.issueCount
     },
@@ -111,6 +129,7 @@ const columns = computed<TableColumn<SimulatorPageRow>[]>(() => {
       id: 'actions',
       enableSorting: false,
       header: '',
+      meta: { class: { th: 'w-24', td: 'w-24 text-right' } },
       cell: ({ row }) => h(UButton, {
         size: 'xs',
         color: 'neutral',
@@ -135,38 +154,73 @@ const filteredRows = computed(() => {
       || row.highestSeverityLabel.toLowerCase().includes(q)
   })
 })
+
+const showPagination = computed(() => filteredRows.value.length > pagination.value.pageSize)
+const showFooter = computed(() => !!props.footerSummary || showPagination.value)
+const showInitialSkeleton = computed(() => stableLoading.value && !props.rows.length)
+
+watch(globalFilter, () => {
+  pagination.value.pageIndex = 0
+})
+
+function onPaginationChange(nextPage: number) {
+  scrollDataTableIntoView(tablePanelRef.value)
+  pagination.value.pageIndex = nextPage - 1
+}
 </script>
 
 <template>
-  <div class="space-y-3">
-    <UTable
-      :data="filteredRows"
-      :columns="columns"
-      :loading="loading"
-      v-model:sorting="sorting"
-      v-model:pagination="pagination"
-      :pagination-options="{ getPaginationRowModel: getPaginationRowModel() }"
-      :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
-    >
-      <template #empty>
-        <div class="py-10 text-center text-sm text-muted">
-          No pages with open accessibility issues.
-        </div>
-      </template>
-    </UTable>
-
-    <div
-      v-if="footerSummary || filteredRows.length > pagination.pageSize"
-      class="flex flex-wrap items-center justify-between gap-2 text-xs text-muted"
-    >
-      <p>{{ footerSummary }}</p>
-      <UPagination
-        v-if="filteredRows.length > pagination.pageSize"
-        :default-page="pagination.pageIndex + 1"
-        :total="filteredRows.length"
-        :items-per-page="pagination.pageSize"
-        @update:page="(p: number) => { pagination.pageIndex = p - 1 }"
+  <div ref="tablePanelRef" class="space-y-4">
+    <div class="table-surface">
+      <DataTableSkeleton
+        v-if="showInitialSkeleton"
+        :rows="8"
+        :columns="showSiteColumn ? 6 : 5"
       />
+      <UTable
+        v-else
+        v-model:sorting="sorting"
+        v-model:pagination="pagination"
+        :data="filteredRows"
+        :columns="columns"
+        :loading="stableLoading && !!rows.length"
+        :pagination-options="{ getPaginationRowModel: getPaginationRowModel() }"
+        :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
+        :ui="{
+          ...DATA_TABLE_UI,
+          tr: 'cursor-pointer hover:bg-elevated/40 border-b border-default last:border-b-0'
+        }"
+      >
+        <template #empty>
+          <div class="py-10 text-center text-sm text-muted">
+            No pages with open accessibility issues.
+          </div>
+        </template>
+      </UTable>
+
+      <div
+        v-if="showFooter && !showInitialSkeleton"
+        class="flex flex-wrap items-center justify-between gap-2 border-t border-default px-4 py-2"
+      >
+        <p
+          v-if="footerSummary"
+          class="text-xs text-muted"
+        >
+          {{ footerSummary }}
+        </p>
+        <div
+          v-else
+          class="flex-1"
+        />
+        <UPagination
+          v-if="showPagination"
+          :page="pagination.pageIndex + 1"
+          :total="filteredRows.length"
+          :items-per-page="pagination.pageSize"
+          class="ms-auto"
+          @update:page="onPaginationChange"
+        />
+      </div>
     </div>
   </div>
 </template>

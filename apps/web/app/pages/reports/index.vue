@@ -18,8 +18,25 @@ const historyTable = useTemplateRef<{
   selectedCount: number
   selectedIds: string[]
   selectedJobs: ReportJobRecord[]
+  columnMenuItems: Array<{
+    label: string
+    type: 'checkbox'
+    checked: boolean
+    onUpdateChecked: (checked: boolean) => void
+    onSelect: (e: Event) => void
+  }>
   clearSelection: () => void
 }>('historyTable')
+
+const schedulesTable = useTemplateRef<{
+  columnMenuItems: Array<{
+    label: string
+    type: 'checkbox'
+    checked: boolean
+    onUpdateChecked: (checked: boolean) => void
+    onSelect: (e: Event) => void
+  }>
+}>('schedulesTable')
 
 const {
   jobs,
@@ -349,6 +366,16 @@ onUnmounted(() => {
               :placeholder="searchPlaceholder"
               :aria-label="searchPlaceholder"
             />
+            <UDropdownMenu
+              :items="(activeTab === 'history' ? historyTable?.columnMenuItems : schedulesTable?.columnMenuItems) ?? []"
+              :content="{ align: 'start' }"
+            >
+              <TableToolbarMenuButton
+                label="Columns"
+                icon="i-lucide-columns-3"
+                aria-label="Toggle column visibility"
+              />
+            </UDropdownMenu>
           </template>
           <template #actions>
             <template v-if="activeTab === 'history' && selectedCount">
@@ -399,6 +426,7 @@ onUnmounted(() => {
           </div>
           <div v-else key="scheduled">
             <ScheduledReportsTable
+              ref="schedulesTable"
               :schedules="schedules"
               :loading="stableSchedulesLoading"
               :total="schedulesTotal"

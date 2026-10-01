@@ -11,6 +11,8 @@ const { issues, loading, loadError } = useSEO(siteId, { summary: false, parts: [
 
 const selectedIssue = ref<SeoIssue | null>(null)
 const drawerOpen = ref(false)
+const tableSearch = ref('')
+const tableRef = useTemplateRef('tableRef')
 
 const filtered = computed(() =>
   filterSeoIssues(issues.value, { category: 'content', statuses: ['open'] })
@@ -21,6 +23,16 @@ const exportPage = ref(1)
 const exportPageSize = ref(1)
 watch(groupedIssues, (rows) => {
   exportPageSize.value = Math.max(1, rows.length)
+})
+
+const footerSummary = computed(() => {
+  if (loading.value && !filtered.value.length) return ''
+  const count = groupedIssues.value.length
+  if (!count) return ''
+  if (tableSearch.value.trim().length > 0) {
+    return 'Showing filtered issue types in site target'
+  }
+  return `Showing ${count.toLocaleString()} issue ${count === 1 ? 'type' : 'types'} in site target`
 })
 
 const {
@@ -65,12 +77,34 @@ function openIssue(issue: SeoIssue) {
       />
       <div class="space-y-4">
         <DataTableToolbar>
+          <template #leading>
+            <div class="flex min-w-0 flex-nowrap items-center gap-1.5 sm:gap-2">
+              <TableSearchInput
+                v-model="tableSearch"
+                placeholder="Search issues…"
+                aria-label="Search SEO content issues"
+              />
+              <UDropdownMenu
+                :items="tableRef?.columnMenuItems ?? []"
+                :content="{ align: 'start' }"
+              >
+                <TableToolbarMenuButton
+                  label="Columns"
+                  icon="i-lucide-columns-3"
+                  aria-label="Toggle column visibility"
+                />
+              </UDropdownMenu>
+            </div>
+          </template>
           <template #actions>
             <UButton
               icon="i-lucide-download"
               label="Export to CSV"
               color="neutral"
               variant="outline"
+              size="sm"
+              class="max-lg:aspect-square max-lg:!px-2"
+              :ui="{ base: 'h-8', label: 'hidden lg:inline' }"
               @click="exportModalOpen = true"
             />
           </template>
@@ -84,13 +118,20 @@ function openIssue(issue: SeoIssue) {
           @export="runExport"
         />
 
-      <SeoIssueTable :issues="filtered" :loading="loading" @select="openIssue" />
-      <SeoIssueDetailDrawer
-        :issue="selectedIssue"
-        :open="drawerOpen"
-        :site-id="siteId"
-        @update:open="drawerOpen = $event"
-      />
+        <SeoIssueTable
+          ref="tableRef"
+          v-model:search="tableSearch"
+          :issues="filtered"
+          :loading="loading"
+          :footer-summary="footerSummary"
+          @select="openIssue"
+        />
+        <SeoIssueDetailDrawer
+          :issue="selectedIssue"
+          :open="drawerOpen"
+          :site-id="siteId"
+          @update:open="drawerOpen = $event"
+        />
       </div>
     </template>
   </AppDashboardPanel>

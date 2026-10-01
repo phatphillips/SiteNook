@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { h, resolveComponent } from 'vue'
+import { getSortedRowModel } from '@tanstack/vue-table'
 import type { TableColumn } from '@nuxt/ui'
+import type { Column, SortingState } from '@tanstack/vue-table'
 import type { ReportJobRecord } from '~/types/reports'
 import { DATA_TABLE_UI } from '~/utils/dataTableUi'
 import {
@@ -28,10 +30,27 @@ const emit = defineEmits<{
 }>()
 
 const UBadge = resolveComponent('UBadge')
+const UButton = resolveComponent('UButton')
 const UCheckbox = resolveComponent('UCheckbox')
 
-const table = useTemplateRef('table')
+const table = useTemplateRef<{
+  tableApi?: {
+    getAllColumns: () => Array<{ id: string, getCanHide: () => boolean, getIsVisible: () => boolean }>
+    getColumn: (id: string) => { toggleVisibility: (v: boolean) => void } | undefined
+    getFilteredSelectedRowModel: () => { rows: Array<{ original: ReportJobRecord }> }
+    getRowModel: () => { rows?: Array<{ original: ReportJobRecord }> }
+  }
+}>('table')
 const rowSelection = ref<Record<string, boolean>>({})
+const sorting = ref<SortingState>([{ id: 'created', desc: true }])
+const columnVisibility = ref<Record<string, boolean>>({})
+
+const COLUMN_LABELS: Record<string, string> = {
+  scope: 'Scope',
+  format: 'Format',
+  status: 'Status',
+  created: 'Created'
+}
 
 function openJob(job: ReportJobRecord) {
   emit('open', job)
@@ -57,6 +76,13 @@ function formatJobDate(job: ReportJobRecord): string {
   return date.toLocaleString()
 }
 
+function jobCreatedMs(job: ReportJobRecord): number {
+  const raw = job.started_at || job.completed_at || job.created
+  if (!raw) return 0
+  const ms = new Date(raw).getTime()
+  return Number.isNaN(ms) ? 0 : ms
+}
+
 function scopeLabel(job: ReportJobRecord): string {
   if (job.include_all_sites) return 'All sites'
   return job.expand?.site?.name || 'Single site'
@@ -67,6 +93,28 @@ function statusColor(status: ReportJobRecord['status']): 'success' | 'error' | '
   if (status === 'failed') return 'error'
   if (status === 'processing' || status === 'pending') return 'warning'
   return 'neutral'
+}
+
+function sortableHeader(
+  column: Column<ReportJobRecord, unknown>,
+  label: string
+) {
+  const isSorted = column.getIsSorted()
+  return h(UButton, {
+    color: 'neutral',
+    variant: 'ghost',
+    size: 'xs',
+    label,
+    icon: isSorted
+      ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow')
+      : 'i-lucide-arrow-up-down',
+    class: '-ms-2',
+    ui: {
+      base: 'font-medium',
+      leadingIcon: 'size-3.5'
+    },
+    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
+  })
 }
 
 const tableUi = {
@@ -105,14 +153,15 @@ const columns = computed<TableColumn<ReportJobRecord>[]>(() => [
   },
   {
     id: 'scope',
-    header: 'Scope',
+    accessorFn: row => scopeLabel(row),
+    header: ({ column }) => sortableHeader(column, 'Scope'),
     cell: ({ row }) => h('div', {
       class: 'text-sm font-medium py-1'
     }, scopeLabel(row.original))
   },
   {
     accessorKey: 'format',
-    header: 'Format',
+    header: ({ column }) => sortableHeader(column, 'Format'),
     meta: { class: { th: 'w-24', td: 'w-24' } },
     cell: ({ row }) => h('div', {
       class: 'inline-flex py-1'
@@ -122,7 +171,7 @@ const columns = computed<TableColumn<ReportJobRecord>[]>(() => [
   },
   {
     accessorKey: 'status',
-    header: 'Status',
+    header: ({ column }) => sortableHeader(column, 'Status'),
     cell: ({ row }) => {
       const job = row.original
       if (isReportJobActive(job.status)) {
@@ -151,7 +200,8 @@ const columns = computed<TableColumn<ReportJobRecord>[]>(() => [
   },
   {
     id: 'created',
-    header: 'Created',
+    accessorFn: row => jobCreatedMs(row),
+    header: ({ column }) => sortableHeader(column, 'Created'),
     meta: { class: { th: 'w-44', td: 'w-44' } },
     cell: ({ row }) => h('div', {
       class: 'text-sm text-muted py-1'
@@ -173,14 +223,50 @@ const selectedCount = computed(() => selectedIds.value.length)
 
 const showPagination = computed(() => props.total > props.perPage)
 
+const footerSummary = computed(() => {
+  if (!props.total) return ''
+  const start = props.total === 0 ? 0 : (props.page - 1) * props.perPage + 1
+  const end = Math.min(props.page * props.perPage, props.total)
+  return `Showing ${start}-${end} of ${props.total.toLocaleString()}`
+})
+
 watch(() => props.jobs, () => {
   rowSelection.value = {}
+})
+
+type ColumnMenuItem = {
+  label: string
+  type: 'checkbox'
+  checked: boolean
+  onUpdateChecked: (checked: boolean) => void
+  onSelect: (e: Event) => void
+}
+
+const columnMenuItems = computed((): ColumnMenuItem[] => {
+  const api = table.value?.tableApi
+  if (!api) return []
+  return api.getAllColumns()
+    .filter(column => column.getCanHide())
+    .map(column => ({
+      label: COLUMN_LABELS[column.id] ?? column.id,
+      type: 'checkbox' as const,
+      checked: column.getIsVisible(),
+      onUpdateChecked(checked: boolean) {
+        api.getColumn(column.id)?.toggleVisibility(!!checked)
+      },
+      onSelect(e: Event) {
+        e.preventDefault()
+      }
+    }))
 })
 
 defineExpose({
   selectedCount,
   selectedIds,
   selectedJobs,
+  get columnMenuItems() {
+    return columnMenuItems.value
+  },
   clearSelection() {
     rowSelection.value = {}
   }
@@ -195,25 +281,40 @@ defineExpose({
         v-else
         ref="table"
         v-model:row-selection="rowSelection"
+        v-model:sorting="sorting"
+        v-model:column-visibility="columnVisibility"
         :data="jobs"
         :columns="columns"
         :loading="loading && !!jobs.length"
+        :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
         :ui="tableUi"
         :get-row-id="(row: ReportJobRecord) => row.id"
         :empty-state="{ icon: 'i-lucide-file-stack', label: 'No reports yet', description: 'Create your first report export.' }"
       />
-    </div>
 
-    <div
-      v-if="showPagination"
-      class="flex justify-end"
-    >
-      <UPagination
-        :page="page"
-        :items-per-page="perPage"
-        :total="total"
-        @update:page="(p: number) => emit('update:page', p)"
-      />
+      <div
+        v-if="(showPagination || footerSummary) && !(loading && !jobs.length)"
+        class="flex flex-wrap items-center justify-between gap-2 border-t border-default px-4 py-2"
+      >
+        <p
+          v-if="footerSummary"
+          class="text-xs text-muted"
+        >
+          {{ footerSummary }}
+        </p>
+        <div
+          v-else
+          class="flex-1"
+        />
+        <UPagination
+          v-if="showPagination"
+          :page="page"
+          :items-per-page="perPage"
+          :total="total"
+          class="ms-auto"
+          @update:page="(p: number) => emit('update:page', p)"
+        />
+      </div>
     </div>
   </div>
 </template>

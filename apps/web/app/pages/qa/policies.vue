@@ -10,6 +10,8 @@ const { resolvedSiteId, isAllSites } = useWorkspaceSiteFilter()
 const { pb } = usePocketBase()
 
 const statusFilter = ref<PolicyMatchStatusFilter>('open')
+const tableSearch = ref('')
+const tableRef = useTemplateRef('tableRef')
 
 const {
   policyMatches,
@@ -48,6 +50,16 @@ watch(page, () => {
 
 const scopeLabel = computed(() => resolvedSiteId.value ?? 'org')
 
+const footerSummary = computed(() => {
+  if (loading.value && !policyMatches.value.length) return ''
+  if (!total.value) return ''
+  const start = (page.value - 1) * perPage.value + 1
+  const end = Math.min(page.value * perPage.value, total.value)
+  const scope = isAllSites.value ? 'across all sites' : 'in site target'
+  const searchSuffix = tableSearch.value.trim() ? ' (filtered)' : ''
+  return `Showing ${start}-${end} of ${total.value.toLocaleString()} matches ${scope}${searchSuffix}`
+})
+
 const {
   exportModalOpen,
   exportConfig,
@@ -75,7 +87,9 @@ const {
   }, {
     onProgress: (current, totalPages) => onProgress(`Fetching page ${current} of ${totalPages}…`)
   }),
-  buildCsv: rows => buildPolicyMatchesCsv(rows, { showSiteColumn: isAllSites.value })
+  buildCsv: rows => buildPolicyMatchesCsv(rows, {
+    showSiteColumn: isAllSites.value
+  })
 })
 
 async function onAction(payload: {
@@ -101,6 +115,36 @@ async function onAction(payload: {
   <OrgFeaturePageShell title="Policy Matches">
     <div class="space-y-4">
       <DataTableToolbar>
+        <template #leading>
+          <div class="flex min-w-0 flex-nowrap items-center gap-1.5 sm:gap-2">
+            <UTabs
+              v-model="statusFilter"
+              :items="[
+                { label: 'Open', value: 'open' },
+                { label: 'Dismissed', value: 'dismissed' },
+                { label: 'All', value: 'all' }
+              ]"
+              :content="false"
+              size="sm"
+              class="w-auto"
+            />
+            <TableSearchInput
+              v-model="tableSearch"
+              placeholder="Search matches…"
+              aria-label="Search policy matches"
+            />
+            <UDropdownMenu
+              :items="tableRef?.columnMenuItems ?? []"
+              :content="{ align: 'start' }"
+            >
+              <TableToolbarMenuButton
+                label="Columns"
+                icon="i-lucide-columns-3"
+                aria-label="Toggle column visibility"
+              />
+            </UDropdownMenu>
+          </div>
+        </template>
         <template #actions>
           <UButton
             to="/policies"
@@ -108,12 +152,18 @@ async function onAction(payload: {
             label="Manage rules"
             color="neutral"
             variant="outline"
+            size="sm"
+            class="max-lg:aspect-square max-lg:!px-2"
+            :ui="{ base: 'h-8', label: 'hidden lg:inline' }"
           />
           <UButton
             icon="i-lucide-download"
             label="Export to CSV"
             color="neutral"
             variant="outline"
+            size="sm"
+            class="max-lg:aspect-square max-lg:!px-2"
+            :ui="{ base: 'h-8', label: 'hidden lg:inline' }"
             @click="exportModalOpen = true"
           />
         </template>
@@ -128,14 +178,18 @@ async function onAction(payload: {
       />
 
       <QaPolicyMatchesTable
+        ref="tableRef"
         v-model:status-filter="statusFilter"
+        v-model:search="tableSearch"
+        :show-status-filters="false"
         server-paginated
         :items="policyMatches"
         :loading="loading"
         :page="page"
         :page-size="perPage"
         :total="total"
-        show-site-column
+        :footer-summary="footerSummary"
+        :show-site-column="isAllSites"
         @update:page="(p) => { page = p }"
         @action="onAction"
       />

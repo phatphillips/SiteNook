@@ -13,6 +13,8 @@ const {
 } = useQA(siteId, { summary: false, parts: ['policies'] })
 
 const statusFilter = ref<PolicyMatchStatusFilter>('open')
+const tableSearch = ref('')
+const tableRef = useTemplateRef('tableRef')
 
 const displayed = computed(() => {
   if (statusFilter.value === 'all') return policyMatches.value
@@ -24,6 +26,14 @@ const pageSize = ref(1)
 
 watch(displayed, (rows) => {
   pageSize.value = Math.max(1, rows.length)
+})
+
+const footerSummary = computed(() => {
+  if (loading.value && !displayed.value.length) return ''
+  const count = displayed.value.length
+  if (!count) return ''
+  const searchSuffix = tableSearch.value.trim() ? ' (filtered)' : ''
+  return `Showing ${count.toLocaleString()} matches in site target${searchSuffix}`
 })
 
 const {
@@ -58,27 +68,60 @@ async function onAction(payload: {
 <template>
   <AppDashboardPanel>
     <template #header>
-      <DashboardPageNavbar title="Policy Matches">
-        <template #right>
-          <UButton
-            to="/policies"
-            icon="i-lucide-settings-2"
-            label="Manage rules"
-            color="neutral"
-            variant="outline"
-          />
-        </template>
-      </DashboardPageNavbar>
+      <DashboardPageNavbar title="Policy Matches" />
     </template>
     <template #body>
       <div class="space-y-4">
         <DataTableToolbar>
+          <template #leading>
+            <div class="flex min-w-0 flex-nowrap items-center gap-1.5 sm:gap-2">
+              <UTabs
+                v-model="statusFilter"
+                :items="[
+                  { label: 'Open', value: 'open' },
+                  { label: 'Dismissed', value: 'dismissed' },
+                  { label: 'All', value: 'all' }
+                ]"
+                :content="false"
+                size="sm"
+                class="w-auto"
+              />
+              <TableSearchInput
+                v-model="tableSearch"
+                placeholder="Search matches…"
+                aria-label="Search policy matches"
+              />
+              <UDropdownMenu
+                :items="tableRef?.columnMenuItems ?? []"
+                :content="{ align: 'start' }"
+              >
+                <TableToolbarMenuButton
+                  label="Columns"
+                  icon="i-lucide-columns-3"
+                  aria-label="Toggle column visibility"
+                />
+              </UDropdownMenu>
+            </div>
+          </template>
           <template #actions>
+            <UButton
+              to="/policies"
+              icon="i-lucide-settings-2"
+              label="Manage rules"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              class="max-lg:aspect-square max-lg:!px-2"
+              :ui="{ base: 'h-8', label: 'hidden lg:inline' }"
+            />
             <UButton
               icon="i-lucide-download"
               label="Export to CSV"
               color="neutral"
               variant="outline"
+              size="sm"
+              class="max-lg:aspect-square max-lg:!px-2"
+              :ui="{ base: 'h-8', label: 'hidden lg:inline' }"
               @click="exportModalOpen = true"
             />
           </template>
@@ -93,9 +136,13 @@ async function onAction(payload: {
         />
 
         <QaPolicyMatchesTable
+          ref="tableRef"
           v-model:status-filter="statusFilter"
+          v-model:search="tableSearch"
+          :show-status-filters="false"
           :items="policyMatches"
           :loading="loading"
+          :footer-summary="footerSummary"
           @action="onAction"
         />
       </div>
