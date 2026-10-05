@@ -2,6 +2,7 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 import ApplianceLicenceBanner from '~/components/shared/ApplianceLicenceBanner.vue'
+import SiteNookLogo from '~/components/shared/SiteNookLogo.vue'
 import { buildOrgFeatureNavLinks, buildSiteFeatureNavLinks, isRootOverviewPath } from '~/utils/featureNavLinks'
 
 const route = useRoute()
@@ -142,21 +143,10 @@ const sidebarNavUi = {
       <template #header="{ collapsed }">
         <NuxtLink
           to="/"
-          class="flex min-w-0 items-center gap-2 rounded-md px-1 py-1 text-highlighted transition-colors hover:bg-[var(--sidebar-nav-hover-bg)]"
-          :aria-label="collapsed ? 'SiteNook home' : undefined"
+          class="flex shrink-0 items-center rounded-md px-1 py-1 text-highlighted transition-colors hover:bg-[var(--sidebar-nav-hover-bg)]"
+          aria-label="SiteNook home"
         >
-          <span
-            class="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-[var(--sidebar-nav-active-bg)]"
-            aria-hidden="true"
-          >
-            <UIcon name="i-lucide-search-check" class="size-4 text-primary" />
-          </span>
-          <span
-            v-if="!collapsed"
-            class="truncate text-sm font-semibold tracking-tight"
-          >
-            SiteNook
-          </span>
+          <SiteNookLogo size="sm" :compact="Boolean(collapsed)" />
         </NuxtLink>
       </template>
 

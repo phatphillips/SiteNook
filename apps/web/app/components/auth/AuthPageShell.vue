@@ -1,9 +1,15 @@
 <script setup lang="ts">
-defineProps<{
-  title: string
+withDefaults(defineProps<{
+  /** Page heading under the brand wordmark. Omit when the logo alone is enough. */
+  title?: string
   subtitle?: string
+  /** Optional icon above the title (hidden when brand wordmark is shown). */
   icon?: string
-}>()
+  /** Show the SiteNook text logo in the card header. */
+  brand?: boolean
+}>(), {
+  brand: true
+})
 </script>
 
 <template>
@@ -18,13 +24,31 @@ defineProps<{
     >
       <template #header>
         <div class="auth-page-header text-center py-2">
-          <div class="auth-page-icon mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
-            <UIcon :name="icon ?? 'i-lucide-search-check'" class="size-7 text-primary" />
+          <div
+            v-if="brand"
+            class="auth-page-brand mb-4 flex justify-center overflow-visible"
+          >
+            <SiteNookLogo size="lg" />
+            <span class="sr-only">SiteNook</span>
           </div>
-          <h1 class="text-2xl font-semibold tracking-tight text-highlighted">
+          <div
+            v-else-if="icon"
+            class="auth-page-icon mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20"
+          >
+            <UIcon :name="icon" class="size-7 text-primary" />
+          </div>
+          <h1
+            v-if="title"
+            class="text-2xl font-semibold tracking-tight text-highlighted"
+            :class="brand ? 'text-xl' : undefined"
+          >
             {{ title }}
           </h1>
-          <p v-if="subtitle" class="mt-1.5 text-sm text-muted leading-relaxed">
+          <p
+            v-if="subtitle"
+            class="text-sm text-muted leading-relaxed"
+            :class="title ? 'mt-1.5' : 'mt-0.5'"
+          >
             {{ subtitle }}
           </p>
         </div>

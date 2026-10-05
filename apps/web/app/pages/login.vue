@@ -43,8 +43,6 @@ async function submit() {
 
 <template>
   <AuthPageShell
-    title="SiteNook"
-    icon="i-lucide-log-in"
     :subtitle="isTenantHost && organization ? `Sign in to ${organization.name}` : 'Sign in to your account'"
   >
     <form class="space-y-5" @submit.prevent="submit">
@@ -72,29 +70,41 @@ async function submit() {
         />
       </UFormField>
 
-      <p class="text-right text-sm">
-        <NuxtLink to="/forgot-password" class="text-primary hover:underline">
-          Forgot password?
-        </NuxtLink>
-      </p>
-
       <UAlert v-if="error" color="error" variant="subtle" :title="error" />
 
-      <UButton type="submit" block size="lg" :loading="loading">
-        Sign in
-      </UButton>
+      <div class="flex flex-col gap-2.5 pt-1">
+        <UButton type="submit" block size="lg" :loading="loading">
+          Sign in
+        </UButton>
 
-      <p class="text-center text-sm text-muted">
-        Need an account?
-        <NuxtLink to="/signup" class="text-primary hover:underline">
-          Request access
+        <UButton
+          to="/forgot-password"
+          block
+          size="lg"
+          color="neutral"
+          variant="outline"
+          :disabled="loading"
+        >
+          Forgot password?
+        </UButton>
+
+        <UButton
+          to="/signup"
+          block
+          size="lg"
+          color="neutral"
+          variant="ghost"
+          :disabled="loading"
+        >
+          Create account
+        </UButton>
+      </div>
+
+      <p v-if="!isTenantHost" class="text-center text-sm text-muted">
+        Wrong organization?
+        <NuxtLink to="/sign-in" class="text-primary hover:underline">
+          Use a different email
         </NuxtLink>
-        <template v-if="!isTenantHost">
-          ·
-          <NuxtLink to="/sign-in" class="text-primary hover:underline">
-            Use a different email
-          </NuxtLink>
-        </template>
       </p>
     </form>
   </AuthPageShell>
