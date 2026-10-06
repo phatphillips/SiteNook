@@ -68,12 +68,17 @@ cd SiteNook
 cp .env.example .env
 ```
 
-Open `.env` and set these two:
+Copying `.env.example` seeds these defaults (change them before any real deployment):
+
+| Login | Email | Password | Where |
+|-------|-------|----------|--------|
+| **Dashboard** (first app user) | `admin@sitenook.local` | `changeme_app_password` | http://localhost |
+| **PocketBase admin** | `admin@sitenook.local` | `changeme_strong_password_here` | http://localhost:8090/_/ (dev) or via `/_/` behind nginx |
 
 | Variable | What it's for |
 |----------|----------------|
-| `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` | Admin login for the database |
-| `APP_USER_EMAIL` / `APP_USER_PASSWORD` | Your first login to the dashboard |
+| `APP_USER_EMAIL` / `APP_USER_PASSWORD` | Your first login to the dashboard (seeded on first boot) |
+| `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` | Admin login for the PocketBase database |
 
 Then:
 
@@ -81,7 +86,7 @@ Then:
 docker compose up -d --build
 ```
 
-Go to **http://localhost** and sign in.
+Go to **http://localhost** and sign in with the dashboard email/password above (or whatever you set in `.env`).
 
 > First build can take a few minutes — it's downloading a real browser to scan with.
 
