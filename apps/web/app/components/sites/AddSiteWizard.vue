@@ -117,11 +117,11 @@ async function startScan() {
     }"
   >
     <template #body>
-      <form v-if="step === 1" class="flex w-full min-h-full flex-col justify-center space-y-4" @submit.prevent="goToStep2">
-        <UFormField label="Title" required class="w-full">
-          <UInput v-model="siteInfo.name" class="w-full" required />
+      <form v-if="step === 1" class="flex h-full min-h-full w-full flex-col gap-4" @submit.prevent="goToStep2">
+        <UFormField label="Title" required class="w-full shrink-0">
+          <UInput v-model="siteInfo.name" class="w-full" placeholder="Example" required />
         </UFormField>
-        <UFormField label="URL" required class="w-full">
+        <UFormField label="URL" required class="w-full shrink-0">
           <UInput
             v-model="siteInfo.url"
             class="w-full"
@@ -130,13 +130,19 @@ async function startScan() {
             required
           />
         </UFormField>
-        <UFormField label="Description" class="w-full">
-          <UTextarea v-model="siteInfo.description" class="w-full" :rows="3" />
-        </UFormField>
-        <p class="text-sm text-muted">
+        <div class="flex min-h-0 w-full flex-1 flex-col gap-1.5">
+          <label class="block text-sm font-medium text-default">Description</label>
+          <UTextarea
+            v-model="siteInfo.description"
+            class="min-h-0 w-full flex-1"
+            :rows="14"
+            :ui="{ base: 'h-full min-h-[16rem] resize-none' }"
+          />
+        </div>
+        <p class="shrink-0 text-sm text-muted">
           After adding site details, you will configure the first scan. Scans repeat automatically every 5 days.
         </p>
-        <UAlert v-if="error" color="error" variant="subtle" :title="error" />
+        <UAlert v-if="error" color="error" variant="subtle" :title="error" class="shrink-0" />
       </form>
 
       <div v-else-if="draftScanConfig" class="w-full">

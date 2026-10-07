@@ -159,8 +159,8 @@ function runStepCta(step: { openAddSite?: boolean, to?: string }) {
           <span
             class="relative z-10 flex size-7 items-center justify-center rounded-full border text-xs font-semibold"
             :class="{
-              'border-success bg-success/15 text-success': stepStatus(step) === 'done',
-              'border-highlighted bg-inverted text-inverted': stepStatus(step) === 'current',
+              'border-info bg-info/15 text-info': stepStatus(step) === 'done',
+              'border-info bg-info text-inverted': stepStatus(step) === 'current',
               'border-default bg-default text-muted': stepStatus(step) === 'upcoming'
             }"
             :aria-hidden="true"
@@ -175,7 +175,7 @@ function runStepCta(step: { openAddSite?: boolean, to?: string }) {
           <span
             v-if="index < steps.length - 1"
             class="mt-1 w-px flex-1 min-h-4"
-            :class="step.done ? 'bg-success/40' : 'bg-default'"
+            :class="step.done ? 'bg-info/40' : 'bg-default'"
             aria-hidden="true"
           />
         </div>
@@ -194,9 +194,9 @@ function runStepCta(step: { openAddSite?: boolean, to?: string }) {
           <UButton
             v-if="!step.done && nextStep?.id === step.id"
             size="xs"
-            variant="link"
-            color="neutral"
-            class="mt-1 px-0"
+            color="info"
+            variant="soft"
+            class="mt-2"
             @click="runStepCta(step)"
           >
             {{ step.cta }} →
@@ -204,9 +204,9 @@ function runStepCta(step: { openAddSite?: boolean, to?: string }) {
           <UButton
             v-else-if="!step.done"
             size="xs"
-            variant="link"
             color="neutral"
-            class="mt-1 px-0"
+            variant="ghost"
+            class="mt-2"
             @click="runStepCta(step)"
           >
             {{ step.cta }}

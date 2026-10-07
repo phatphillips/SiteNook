@@ -214,14 +214,14 @@ defineExpose({
       v-model="activeTab"
       :content="false"
       :items="tabItems"
-      color="neutral"
+      color="info"
       variant="link"
       size="md"
       class="w-full scan-config-tabs"
       :ui="{
-        list: 'gap-4 border-b border-default',
-        trigger: 'grow px-1 pb-2.5 text-muted data-[state=active]:text-highlighted',
-        leadingIcon: 'size-4'
+        list: 'gap-1 border-b border-default pb-0',
+        trigger: 'group relative grow gap-1.5 rounded-md px-2.5 py-1.5 font-medium text-muted transition-colors hover:bg-elevated/50 hover:text-highlighted data-[state=active]:text-info',
+        leadingIcon: 'size-5 shrink-0 text-dimmed transition-colors group-hover:text-default group-data-[state=active]:text-info'
       }"
     />
     <p class="text-sm text-muted">{{ tabSummary }}</p>
