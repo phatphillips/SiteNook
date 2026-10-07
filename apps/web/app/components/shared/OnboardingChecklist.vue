@@ -105,14 +105,15 @@ function runStepCta(step: { openAddSite?: boolean, to?: string }) {
     :aria-labelledby="titleId"
   >
     <ProseCallout
+      color="info"
       class="w-full"
       :ui="{
-        base: 'my-0 w-full rounded-lg border border-dotted border-indigo-500/45 bg-indigo-500/[0.08] px-5 py-4 text-default sm:px-6 sm:py-5 dark:border-indigo-400/40 dark:bg-indigo-500/10'
+        base: 'my-0 w-full rounded-xl border-dashed px-5 py-4 text-default sm:px-6 sm:py-5'
       }"
     >
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div class="min-w-0 flex-1">
-          <p class="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
+          <p class="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-info">
             <UIcon name="i-lucide-list-checks" class="size-3.5 shrink-0" aria-hidden="true" />
             Getting set up
           </p>
@@ -139,7 +140,7 @@ function runStepCta(step: { openAddSite?: boolean, to?: string }) {
           <UButton
             v-if="nextStep"
             size="sm"
-            class="bg-indigo-500 text-white hover:bg-indigo-400 disabled:bg-indigo-500/50"
+            color="neutral"
             @click="runStepCta(nextStep)"
           >
             {{ nextStep.cta }}
@@ -166,7 +167,7 @@ function runStepCta(step: { openAddSite?: boolean, to?: string }) {
               class="relative z-10 flex size-7 items-center justify-center rounded-full border text-xs font-semibold"
               :class="{
                 'border-success bg-success/15 text-success': stepStatus(step) === 'done',
-                'border-indigo-500 bg-indigo-500 text-white': stepStatus(step) === 'current',
+                'border-info bg-info text-inverted': stepStatus(step) === 'current',
                 'border-default bg-default text-muted': stepStatus(step) === 'upcoming'
               }"
               :aria-hidden="true"
@@ -201,7 +202,8 @@ function runStepCta(step: { openAddSite?: boolean, to?: string }) {
               v-if="!step.done && nextStep?.id === step.id"
               size="xs"
               variant="link"
-              class="mt-1 px-0 text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 dark:hover:text-indigo-200"
+              color="neutral"
+              class="mt-1 px-0"
               @click="runStepCta(step)"
             >
               {{ step.cta }} →
