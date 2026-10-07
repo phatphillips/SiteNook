@@ -7,7 +7,7 @@ const props = defineProps<{
   section: DashboardSectionId
 }>()
 
-const { fetchSites } = useSites()
+const { sites, fetchSites, loading: sitesLoading } = useSites()
 const { organization } = useTenantOrg()
 
 const {
@@ -23,6 +23,14 @@ const seoEnabled = computed(() =>
 )
 
 const pageTitle = computed(() => DASHBOARD_SECTION_LABELS[props.section])
+const hasSites = computed(() => sites.value.length > 0)
+
+const emptyContext = computed((): 'accessibility' | 'qa' | 'seo' | 'home' => {
+  if (props.section === 'accessibility' || props.section === 'qa' || props.section === 'seo') {
+    return props.section
+  }
+  return 'home'
+})
 
 const dataAsOfLabel = computed(() => {
   if (!dataAsOf.value) return null
@@ -33,7 +41,9 @@ const dataAsOfLabel = computed(() => {
 
 onMounted(async () => {
   await fetchSites().catch(() => {})
-  await fetchOrgDashboard()
+  if (sites.value.length > 0) {
+    await fetchOrgDashboard()
+  }
 })
 </script>
 
@@ -43,10 +53,12 @@ onMounted(async () => {
       <DashboardPageNavbar :title="pageTitle" />
     </template>
     <template #body>
-      <div
-        class="mx-auto w-full"
-        :class="section === 'accessibility' || section === 'qa' || section === 'seo' ? 'max-w-[1200px]' : undefined"
-      >
+      <DashboardEmptySitesState
+        v-if="!sitesLoading && !hasSites"
+        :context="emptyContext"
+      />
+
+      <template v-else-if="hasSites">
         <UAlert
           v-if="orgLoadError"
           color="error"
@@ -95,7 +107,15 @@ onMounted(async () => {
           :show-qa="section !== 'accessibility'"
           :show-seo="section === 'seo' && seoEnabled"
         />
-      </div>
+      </template>
+
+      <UCard
+        v-else
+        class="mb-6"
+        :ui="{ body: 'p-6 flex justify-center' }"
+      >
+        <UIcon name="i-lucide-loader-circle" class="size-7 animate-spin text-muted" />
+      </UCard>
     </template>
   </AppDashboardPanel>
 </template>

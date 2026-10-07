@@ -4,13 +4,12 @@ import type { OrganizationOnboardingState } from '~/types/sitenook'
 export function isOnboardingChecklistComplete(
   state: Pick<
     OrganizationOnboardingState,
-    'siteAdded' | 'firstScanStarted' | 'ahaSeen' | 'teammateInvited'
+    'siteAdded' | 'firstScanStarted' | 'ahaSeen'
   >
 ): boolean {
   return Boolean(state.siteAdded)
     && Boolean(state.firstScanStarted)
     && Boolean(state.ahaSeen)
-    && Boolean(state.teammateInvited)
 }
 
 /** Whether the dismissable getting-started section should render. */

@@ -7,11 +7,13 @@ defineOptions({ inheritAttrs: false })
 
 withDefaults(
   defineProps<{
-    /** Overview pages use the full panel width instead of the default content cap. */
+    /**
+     * Kept for call-site compatibility. All non-fluid panels use the same 1400px content width.
+     */
     fullWidth?: boolean
     /** Fill the dashboard panel with no max-width (split-pane workspaces). */
     fluid?: boolean
-    /** Hide the route-based feature intro banner for this page. */
+    /** Hide the route-based feature intro for this page. */
     hideFeatureBanner?: boolean
   }>(),
   { fullWidth: false, fluid: false, hideFeatureBanner: false }
@@ -36,14 +38,13 @@ const commercialEnabled = computed(() => {
     <template #body>
       <div
         class="dashboard-panel-body mx-auto flex w-full min-w-0 flex-col gap-4 sm:gap-6"
-        :class="fluid ? undefined : fullWidth ? 'max-w-[1200px]' : 'lg:max-w-[70rem]'"
+        :class="fluid ? undefined : 'max-w-[1400px]'"
       >
         <template v-if="commercialEnabled">
           <RetentionBanner />
           <TrialBanner />
           <BillingUsageLimitBanner />
         </template>
-        <OnboardingChecklist />
         <FeaturePageBannerSkeleton
           v-if="!hideFeatureBanner && featureBanner && featureBannerLoading"
         />
@@ -52,6 +53,7 @@ const commercialEnabled = computed(() => {
           :title="featureBanner.title"
           :description="featureBanner.description"
         />
+        <OnboardingChecklist />
         <slot name="body" />
       </div>
     </template>

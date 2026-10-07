@@ -663,6 +663,12 @@ function _useScans() {
         if (TERMINAL_SCAN_STATUSES.includes(status as typeof TERMINAL_SCAN_STATUSES[number])) {
           fetchLatestScansSummary().catch(() => {})
           if (record?.id) invalidateScanPagesCache(record.id)
+          if (status === 'complete' || status === 'complete_with_errors') {
+            const { markFirstScanComplete, onboardingState } = useOnboarding()
+            if (!onboardingState.value.firstScanStarted) {
+              markFirstScanComplete().catch(() => {})
+            }
+          }
         }
       })
     } catch {

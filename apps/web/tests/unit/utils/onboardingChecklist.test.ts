@@ -20,18 +20,25 @@ function state(
 }
 
 describe('onboardingChecklist', () => {
-  it('is incomplete until site, scan, aha, and invite are done', () => {
+  it('is incomplete until site, crawl, and aha are done', () => {
     expect(isOnboardingChecklistComplete(state())).toBe(false)
     expect(isOnboardingChecklistComplete(state({
       siteAdded: true,
-      firstScanStarted: true,
-      ahaSeen: true
+      firstScanStarted: true
     }))).toBe(false)
     expect(isOnboardingChecklistComplete(state({
       siteAdded: true,
       firstScanStarted: true,
+      ahaSeen: true
+    }))).toBe(true)
+  })
+
+  it('does not require teammate invite to complete', () => {
+    expect(isOnboardingChecklistComplete(state({
+      siteAdded: true,
+      firstScanStarted: true,
       ahaSeen: true,
-      teammateInvited: true
+      teammateInvited: false
     }))).toBe(true)
   })
 
@@ -43,17 +50,15 @@ describe('onboardingChecklist', () => {
     expect(shouldShowOnboardingChecklist(state({
       siteAdded: true,
       firstScanStarted: true,
-      ahaSeen: true,
-      teammateInvited: true
+      ahaSeen: true
     }))).toBe(false)
   })
 
-  it('keeps showing when invite is still missing', () => {
+  it('keeps showing when crawl is still missing', () => {
     expect(shouldShowOnboardingChecklist(state({
       siteAdded: true,
-      firstScanStarted: true,
-      ahaSeen: true,
-      teammateInvited: false
+      firstScanStarted: false,
+      ahaSeen: true
     }))).toBe(true)
   })
 
@@ -62,7 +67,6 @@ describe('onboardingChecklist', () => {
       siteAdded: true,
       firstScanStarted: true,
       ahaSeen: true,
-      teammateInvited: true,
       scheduleEnabled: false
     }))).toBe(false)
   })

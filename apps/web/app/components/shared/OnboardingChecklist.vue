@@ -1,11 +1,14 @@
 <script setup lang="ts">
+import ProseCallout from '@nuxt/ui/components/prose/Callout.vue'
+
 const {
   onboardingState,
   showChecklist,
   isTrialing,
   trialDaysRemaining,
   canManageOnboarding,
-  dismissChecklist
+  dismissChecklist,
+  syncFirstScanCompleteFromDb
 } = useOnboarding()
 
 const { openWizard } = useAddSiteWizard()
@@ -17,19 +20,19 @@ const steps = computed(() => {
     {
       id: 'site',
       title: 'Add your site',
-      description: 'Enter a URL and run your first scan for accessibility, broken links, and spelling.',
-      done: Boolean(state.siteAdded && state.firstScanStarted),
+      description: 'Enter a public URL so SiteNook knows what to crawl.',
+      done: Boolean(state.siteAdded),
       to: '/sites',
       cta: 'Add site',
       openAddSite: true
     },
     {
-      id: 'invite',
-      title: 'Invite a teammate',
-      description: 'Bring a content owner or developer into the workspace so fixes don’t sit with you alone.',
-      done: Boolean(state.teammateInvited),
-      to: '/settings/users',
-      cta: 'Invite'
+      id: 'crawl',
+      title: 'Complete a site crawl',
+      description: 'Run a scan and wait until it finishes — scores and issues appear after the crawl completes.',
+      done: Boolean(state.firstScanStarted),
+      to: '/scans',
+      cta: 'View scans'
     },
     {
       id: 'review',
@@ -50,6 +53,18 @@ const steps = computed(() => {
       trialOnly: true
     }
   ].filter(step => !step.trialOnly || isTrialing.value)
+})
+
+watch(
+  showChecklist,
+  (show) => {
+    if (show) void syncFirstScanCompleteFromDb()
+  },
+  { immediate: true }
+)
+
+onMounted(() => {
+  if (showChecklist.value) void syncFirstScanCompleteFromDb()
 })
 
 const requiredSteps = computed(() => steps.value.filter(step => !step.optional))
@@ -81,123 +96,129 @@ function runStepCta(step: { openAddSite?: boolean, to?: string }) {
     void navigateTo(step.to)
   }
 }
-
 </script>
 
 <template>
   <section
     v-if="showChecklist && canManageOnboarding"
-    class="rounded-xl border border-primary/25 bg-primary/5 px-5 py-4 sm:px-6 sm:py-5"
+    class="onboarding-checklist w-full"
     :aria-labelledby="titleId"
   >
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-      <div class="min-w-0 flex-1">
-        <p class="text-xs font-medium uppercase tracking-wide text-primary">
-          Getting set up
-        </p>
-        <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <h2
-            :id="titleId"
-            class="text-base font-semibold text-highlighted sm:text-lg"
-          >
-            Here’s what to do next
-          </h2>
-          <p class="text-sm text-muted">
-            {{ progressLabel }}
-            <span v-if="trialHint"> · {{ trialHint }}</span>
+    <ProseCallout
+      class="w-full"
+      :ui="{
+        base: 'my-0 w-full rounded-lg border border-dotted border-indigo-500/45 bg-indigo-500/[0.08] px-5 py-4 text-default sm:px-6 sm:py-5 dark:border-indigo-400/40 dark:bg-indigo-500/10'
+      }"
+    >
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+        <div class="min-w-0 flex-1">
+          <p class="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
+            <UIcon name="i-lucide-list-checks" class="size-3.5 shrink-0" aria-hidden="true" />
+            Getting set up
+          </p>
+          <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <h2
+              :id="titleId"
+              class="text-base font-semibold text-highlighted sm:text-lg"
+            >
+              Here’s what to do next
+            </h2>
+            <p class="text-sm text-muted">
+              {{ progressLabel }}
+              <span v-if="trialHint"> · {{ trialHint }}</span>
+            </p>
+          </div>
+          <p class="mt-1 text-sm leading-relaxed text-muted">
+            Follow these steps to finish setup. Start with
+            <span class="font-medium text-highlighted">{{ nextStep?.title || 'your checklist' }}</span>
+            — you can dismiss this anytime.
           </p>
         </div>
-        <p class="mt-1 text-sm leading-relaxed text-muted">
-          Follow these steps to finish setup. Start with
-          <span class="font-medium text-highlighted">{{ nextStep?.title || 'your checklist' }}</span>
-          — you can dismiss this anytime.
-        </p>
-      </div>
 
-      <div class="flex shrink-0 flex-wrap items-center gap-2">
-        <UButton
-          v-if="nextStep"
-          size="sm"
-          color="primary"
-          @click="runStepCta(nextStep)"
-        >
-          {{ nextStep.cta }}
-        </UButton>
-        <UButton
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          @click="dismissChecklist()"
-        >
-          Dismiss
-        </UButton>
-      </div>
-    </div>
-
-    <ol class="mt-5 space-y-0">
-      <li
-        v-for="(step, index) in steps"
-        :key="step.id"
-        class="relative flex gap-3 pb-5 last:pb-0"
-      >
-        <div class="flex w-7 shrink-0 flex-col items-center">
-          <span
-            class="relative z-10 flex size-7 items-center justify-center rounded-full border text-xs font-semibold"
-            :class="{
-              'border-success bg-success/15 text-success': stepStatus(step) === 'done',
-              'border-primary bg-primary text-inverted': stepStatus(step) === 'current',
-              'border-default bg-default text-muted': stepStatus(step) === 'upcoming'
-            }"
-            :aria-hidden="true"
-          >
-            <UIcon
-              v-if="step.done"
-              name="i-lucide-check"
-              class="size-3.5"
-            />
-            <span v-else>{{ index + 1 }}</span>
-          </span>
-          <span
-            v-if="index < steps.length - 1"
-            class="mt-1 w-px flex-1 min-h-4"
-            :class="step.done ? 'bg-success/40' : 'bg-default'"
-            aria-hidden="true"
-          />
-        </div>
-
-        <div class="min-w-0 flex-1 pt-0.5">
-          <p
-            class="text-sm font-medium"
-            :class="stepStatus(step) === 'upcoming' ? 'text-muted' : 'text-highlighted'"
-          >
-            {{ step.title }}
-            <span v-if="step.optional" class="font-normal text-muted">(optional)</span>
-          </p>
-          <p class="mt-0.5 text-xs leading-relaxed text-muted">
-            {{ step.description }}
-          </p>
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
           <UButton
-            v-if="!step.done && nextStep?.id === step.id"
-            size="xs"
-            variant="link"
-            color="primary"
-            class="mt-1 px-0"
-            @click="runStepCta(step)"
+            v-if="nextStep"
+            size="sm"
+            class="bg-indigo-500 text-white hover:bg-indigo-400 disabled:bg-indigo-500/50"
+            @click="runStepCta(nextStep)"
           >
-            {{ step.cta }} →
+            {{ nextStep.cta }}
           </UButton>
           <UButton
-            v-else-if="!step.done"
-            size="xs"
-            variant="link"
+            size="sm"
+            variant="ghost"
             color="neutral"
-            class="mt-1 px-0"
-            @click="runStepCta(step)"
+            @click="dismissChecklist()"
           >
-            {{ step.cta }}
+            Dismiss
           </UButton>
         </div>
-      </li>
-    </ol>
+      </div>
+
+      <ol class="mt-5 space-y-0">
+        <li
+          v-for="(step, index) in steps"
+          :key="step.id"
+          class="relative flex gap-3 pb-5 last:pb-0"
+        >
+          <div class="flex w-7 shrink-0 flex-col items-center">
+            <span
+              class="relative z-10 flex size-7 items-center justify-center rounded-full border text-xs font-semibold"
+              :class="{
+                'border-success bg-success/15 text-success': stepStatus(step) === 'done',
+                'border-indigo-500 bg-indigo-500 text-white': stepStatus(step) === 'current',
+                'border-default bg-default text-muted': stepStatus(step) === 'upcoming'
+              }"
+              :aria-hidden="true"
+            >
+              <UIcon
+                v-if="step.done"
+                name="i-lucide-check"
+                class="size-3.5"
+              />
+              <span v-else>{{ index + 1 }}</span>
+            </span>
+            <span
+              v-if="index < steps.length - 1"
+              class="mt-1 w-px flex-1 min-h-4"
+              :class="step.done ? 'bg-success/40' : 'bg-default'"
+              aria-hidden="true"
+            />
+          </div>
+
+          <div class="min-w-0 flex-1 pt-0.5">
+            <p
+              class="text-sm font-medium"
+              :class="stepStatus(step) === 'upcoming' ? 'text-muted' : 'text-highlighted'"
+            >
+              {{ step.title }}
+              <span v-if="step.optional" class="font-normal text-muted">(optional)</span>
+            </p>
+            <p class="mt-0.5 text-xs leading-relaxed text-muted">
+              {{ step.description }}
+            </p>
+            <UButton
+              v-if="!step.done && nextStep?.id === step.id"
+              size="xs"
+              variant="link"
+              class="mt-1 px-0 text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 dark:hover:text-indigo-200"
+              @click="runStepCta(step)"
+            >
+              {{ step.cta }} →
+            </UButton>
+            <UButton
+              v-else-if="!step.done"
+              size="xs"
+              variant="link"
+              color="neutral"
+              class="mt-1 px-0"
+              @click="runStepCta(step)"
+            >
+              {{ step.cta }}
+            </UButton>
+          </div>
+        </li>
+      </ol>
+    </ProseCallout>
   </section>
 </template>

@@ -10,7 +10,7 @@ import type ScanConfigForm from '~/components/shared/ScanConfigForm.vue'
 const open = defineModel<boolean>('open', { default: false })
 
 const { createSiteAndQueueScan } = useSites()
-const { markSiteAndScanStarted } = useOnboarding()
+const { markSiteAdded } = useOnboarding()
 const toast = useToast()
 const router = useRouter()
 const config = useRuntimeConfig()
@@ -86,10 +86,10 @@ async function startScan() {
       deriveScanType(validation.config)
     )
     // Don't block success UX if milestone persistence fails (e.g. transient API error).
-    await markSiteAndScanStarted().catch(() => {})
+    await markSiteAdded().catch(() => {})
     toast.add({
       title: 'Scan queued',
-      description: 'Your site was added and the first scan is starting.'
+      description: 'Your site was added and the first crawl is starting. Step 2 completes when the scan finishes.'
     })
     open.value = false
     await router.push('/scans')

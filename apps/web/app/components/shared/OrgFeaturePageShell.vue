@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineProps<{
   title: string
-  /** Use full panel width (no 70rem content cap). */
+  /** Kept for call-site compatibility (all panels share the 1400px content width). */
   fullWidth?: boolean
   /** Fill the dashboard panel with no max-width. */
   fluid?: boolean

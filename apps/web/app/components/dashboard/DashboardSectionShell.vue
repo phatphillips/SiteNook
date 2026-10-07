@@ -16,10 +16,10 @@ withDefaults(defineProps<{
     class="dashboard-section relative border-t border-default pt-8 first:border-t-0 first:pt-0"
     :data-section-id="sectionId"
   >
-    <div class="relative mb-4 flex items-center gap-3 pl-0">
+    <div class="mb-4 flex items-center gap-2.5">
       <button
         type="button"
-        class="dashboard-section-drag-handle absolute -left-6 top-2 cursor-grab text-muted hover:text-highlighted focus:outline-hidden active:cursor-grabbing"
+        class="dashboard-section-drag-handle -ml-0.5 shrink-0 cursor-grab rounded p-0.5 text-muted hover:text-highlighted focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500/40 active:cursor-grabbing"
         aria-label="Drag to reorder section"
         role="button"
         tabindex="0"

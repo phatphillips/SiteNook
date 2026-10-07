@@ -79,10 +79,17 @@ function toScoreIssues(issues: AccessibilityIssue[]): SiteimproveScoreIssue[] {
   }))
 }
 
+/**
+ * Prefer issues tied to the latest trusted scan in range. Fall back to current
+ * latest-page scoring issues when no loaded issue references that scan (partial
+ * crawls / untrusted newer scans) so Score details stays in sync with the score.
+ */
 const latestScanScoringIssues = computed(() => {
   const scan = latestScanInRange.value
-  if (!scan) return []
-  return scoringIssuesInRange.value.filter(issue => issue.scan === scan.id)
+  if (scan && issues.value.some(issue => issue.scan === scan.id)) {
+    return scoringIssuesInRange.value.filter(issue => issue.scan === scan.id)
+  }
+  return scoreableTargetIssues.value
 })
 
 const latestScanDenominators = computed(() => {
@@ -154,8 +161,11 @@ const selectedAffectedPages = computed(() => {
 
 const latestScanOpenIssues = computed(() => {
   const scan = latestScanInRange.value
-  if (!scan) return []
-  return issuesInRange.value.filter(i => i.scan === scan.id && i.status === 'open')
+  if (scan && issues.value.some(issue => issue.scan === scan.id)) {
+    return issuesInRange.value.filter(i => i.scan === scan.id && i.status === 'open')
+  }
+  // Mirror scoring fallback: loaded issues are latest-page scoped current state.
+  return scoreableTargetIssues.value.filter(i => i.status === 'open')
 })
 
 onMounted(() => {
@@ -184,7 +194,7 @@ function openPreview(issue: AccessibilityIssue, options?: { actionable?: boolean
     </template>
 
     <template #body>
-      <div class="mx-auto w-full max-w-[1200px]">
+      <div class="mx-auto w-full">
         <SitePageToolbar class="mb-3" :show-site-selector="false">
           <SiteTargetBadgeRow :settings="siteSettings" @edit="openSiteSettings" />
           <template #trailing>

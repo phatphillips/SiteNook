@@ -107,10 +107,39 @@ export function useOnboarding() {
     }
   }
 
-  async function markSiteAndScanStarted() {
+  async function markSiteAdded() {
+    if (onboardingState.value.siteAdded) return onboardingState.value
     trackFunnelEvent('first_site', { organizationId: effectiveOrganization.value?.id })
+    return patchOnboardingState({ siteAdded: true })
+  }
+
+  async function markFirstScanComplete() {
+    if (onboardingState.value.firstScanStarted) return onboardingState.value
     trackFunnelEvent('first_scan_complete', { organizationId: effectiveOrganization.value?.id })
-    return patchOnboardingState({ siteAdded: true, firstScanStarted: true })
+    return patchOnboardingState({ firstScanStarted: true })
+  }
+
+  /** @deprecated Prefer markSiteAdded + markFirstScanComplete */
+  async function markSiteAndScanStarted() {
+    await markSiteAdded()
+    return onboardingState.value
+  }
+
+  async function syncFirstScanCompleteFromDb() {
+    if (!import.meta.client || !pb) return
+    if (!onboardingState.value.siteAdded || onboardingState.value.firstScanStarted) return
+    if (!canWriteOrg(sessionUser.value)) return
+    try {
+      const result = await pb.collection('scans').getList(1, 1, {
+        filter: 'status = "complete" || status = "complete_with_errors"',
+        fields: 'id'
+      })
+      if (result.totalItems > 0) {
+        await markFirstScanComplete()
+      }
+    } catch {
+      // Best-effort milestone sync — ignore permission / network blips.
+    }
   }
 
   async function markAhaSeen() {
@@ -141,7 +170,10 @@ export function useOnboarding() {
     saving,
     canManageOnboarding,
     patchOnboardingState,
+    markSiteAdded,
+    markFirstScanComplete,
     markSiteAndScanStarted,
+    syncFirstScanCompleteFromDb,
     markAhaSeen,
     dismissChecklist,
     markTeammateInvited,

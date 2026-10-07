@@ -16,11 +16,12 @@ const props = withDefaults(defineProps<{
   allSites: false
 })
 
-const { sites, selectSite } = useSites()
+const { sites, selectSite, loading: sitesLoading } = useSites()
 const { organization } = useTenantOrg()
 
 const isAllSitesMode = computed(() => props.allSites || !props.siteId)
 const siteIdRef = computed(() => props.siteId ?? undefined)
+const hasSites = computed(() => sites.value.length > 0)
 
 const pageTitle = computed(() => {
   if (props.title) return props.title
@@ -133,84 +134,99 @@ onUnmounted(() => {
     </template>
 
     <template #body>
-      <ScanStatusSummaryCard
-        v-if="!isAllSitesMode"
-        :scan="summaryScan"
-        title="Latest scan"
-        class="mb-6"
+      <DashboardEmptySitesState
+        v-if="!sitesLoading && !hasSites"
+        context="home"
       />
 
-      <UAlert
-        v-if="isAllSitesMode && orgLoadError"
-        color="error"
-        variant="subtle"
-        title="Could not load org dashboard"
-        :description="orgLoadError"
-        class="mb-6"
-      />
+      <template v-else-if="hasSites">
+        <ScanStatusSummaryCard
+          v-if="!isAllSitesMode"
+          :scan="summaryScan"
+          title="Latest scan"
+          class="mb-6"
+        />
+
+        <UAlert
+          v-if="isAllSitesMode && orgLoadError"
+          color="error"
+          variant="subtle"
+          title="Could not load org dashboard"
+          :description="orgLoadError"
+          class="mb-6"
+        />
+
+        <UCard
+          v-else-if="isAllSitesMode && orgLoading && !aggregates"
+          class="mb-6"
+          :ui="{ body: 'p-6 flex justify-center' }"
+        >
+          <UIcon name="i-lucide-loader-circle" class="size-7 animate-spin text-muted" />
+        </UCard>
+
+        <p
+          v-if="isAllSitesMode && dataAsOfLabel"
+          class="mb-4 text-xs text-muted"
+        >
+          {{ dataAsOfLabel }}
+        </p>
+
+        <DashboardOrgSitesTable
+          v-if="isAllSitesMode && aggregates"
+          class="mb-10"
+          :snapshots="aggregates.siteSnapshots"
+          :seo-enabled="seoEnabled"
+        />
+
+        <div
+          id="dashboard-dnd-describedby"
+          class="sr-only"
+          aria-live="polite"
+        >
+          {{ reorderAnnouncement }}
+        </div>
+
+        <div
+          ref="sectionsContainerRef"
+          class="dashboard-sections"
+        >
+          <DashboardSectionShell
+            v-for="sectionId in sectionOrder"
+            :key="sectionId"
+            :section-id="sectionId"
+            :title="DASHBOARD_SECTION_LABELS[sectionId]"
+            :view-full-to="viewPath(sectionId)"
+            :view-full-label="viewFullLabel()"
+          >
+            <DashboardSectionsAccessibilitySection
+              v-if="sectionId === 'accessibility'"
+              :site-id="isAllSitesMode ? undefined : siteId"
+              :org-aggregates="isAllSitesMode ? aggregates : undefined"
+              :org-loading="orgLoading"
+            />
+            <DashboardSectionsQualityAssuranceSection
+              v-else-if="sectionId === 'qa'"
+              :site-id="isAllSitesMode ? undefined : siteId"
+              :org-aggregates="isAllSitesMode ? aggregates : undefined"
+              :org-loading="orgLoading"
+            />
+            <DashboardSectionsSeoSection
+              v-else-if="sectionId === 'seo'"
+              :site-id="isAllSitesMode ? undefined : siteId"
+              :org-aggregates="isAllSitesMode ? aggregates : undefined"
+              :org-loading="orgLoading"
+            />
+          </DashboardSectionShell>
+        </div>
+      </template>
 
       <UCard
-        v-else-if="isAllSitesMode && orgLoading && !aggregates"
+        v-else
         class="mb-6"
         :ui="{ body: 'p-6 flex justify-center' }"
       >
         <UIcon name="i-lucide-loader-circle" class="size-7 animate-spin text-muted" />
       </UCard>
-
-      <p
-        v-if="isAllSitesMode && dataAsOfLabel"
-        class="mb-4 text-xs text-muted"
-      >
-        {{ dataAsOfLabel }}
-      </p>
-
-      <div
-        id="dashboard-dnd-describedby"
-        class="sr-only"
-        aria-live="polite"
-      >
-        {{ reorderAnnouncement }}
-      </div>
-
-      <div
-        ref="sectionsContainerRef"
-        class="dashboard-sections pl-6"
-      >
-        <DashboardSectionShell
-          v-for="sectionId in sectionOrder"
-          :key="sectionId"
-          :section-id="sectionId"
-          :title="DASHBOARD_SECTION_LABELS[sectionId]"
-          :view-full-to="viewPath(sectionId)"
-          :view-full-label="viewFullLabel()"
-        >
-          <DashboardSectionsAccessibilitySection
-            v-if="sectionId === 'accessibility'"
-            :site-id="isAllSitesMode ? undefined : siteId"
-            :org-aggregates="isAllSitesMode ? aggregates : undefined"
-            :org-loading="orgLoading"
-          />
-          <DashboardSectionsQualityAssuranceSection
-            v-else-if="sectionId === 'qa'"
-            :site-id="isAllSitesMode ? undefined : siteId"
-            :org-aggregates="isAllSitesMode ? aggregates : undefined"
-            :org-loading="orgLoading"
-          />
-          <DashboardSectionsSeoSection
-            v-else-if="sectionId === 'seo'"
-            :site-id="isAllSitesMode ? undefined : siteId"
-            :org-aggregates="isAllSitesMode ? aggregates : undefined"
-            :org-loading="orgLoading"
-          />
-        </DashboardSectionShell>
-      </div>
-
-      <DashboardOrgSitesTable
-        v-if="isAllSitesMode && aggregates"
-        class="mt-10"
-        :snapshots="aggregates.siteSnapshots"
-        :seo-enabled="seoEnabled"
-      />
     </template>
   </AppDashboardPanel>
 </template>
