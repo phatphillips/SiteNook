@@ -6,7 +6,7 @@ import { summarizeCrawlLogErrors } from '~/utils/crawlLog'
 const props = defineProps<{
   activeRow: ActiveScanRow | null
   stoppingRowId?: string | null
-  /** Render inside a parent card — no outer chrome or duplicate stats. */
+  /** Render inside a parent card. No outer chrome or duplicate stats. */
   embedded?: boolean
 }>()
 

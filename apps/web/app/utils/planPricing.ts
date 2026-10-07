@@ -122,7 +122,7 @@ export const MARKETING_PLAN_CARDS: PlanOffering[] = PAID_PLAN_OFFERINGS.filter(
   plan => plan.id === 'starter' || plan.id === 'team' || plan.id === 'business'
 )
 
-/** Typical annual discount vs monthly — used on the billing toggle badge. */
+/** Typical annual discount vs monthly. Used on the billing toggle badge. */
 export function getTypicalAnnualSavingsPercent(): number {
   const team = PAID_PLAN_OFFERINGS.find(plan => plan.id === 'team')
   if (!team?.monthlyPrice || !team.annualMonthlyPrice) return 15
@@ -154,7 +154,7 @@ const FREE_PLAN_OFFERING: PlanOffering = {
     ]
   }
 
-/** All plans including free — used for billing labels and lookups. */
+/** All plans including free. Used for billing labels and lookups. */
 export const PLAN_OFFERINGS: PlanOffering[] = [
   FREE_PLAN_OFFERING,
   ...PAID_PLAN_OFFERINGS

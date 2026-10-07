@@ -21,7 +21,7 @@ const GUIDANCE: Record<string, PdfIssueGuidance> = {
     fixSteps: [
       'Tag content with heading levels (H1–H6) in your authoring tool or Acrobat’s Reading Order / Tags panel.',
       'Use one H1 for the main document title, then nested headings for sections.',
-      'Avoid styling normal text as headings — use actual heading tags.'
+      'Avoid styling normal text as headings. Use actual heading tags.'
     ],
     learnMoreUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html'
   },
@@ -39,7 +39,7 @@ const GUIDANCE: Record<string, PdfIssueGuidance> = {
     fixSteps: [
       'Tag the header row with TH cells and set scope="col" or scope="row".',
       'Use the Table Editor in Acrobat to assign header cells.',
-      'Keep layout tables separate from data tables — only data tables need headers.'
+      'Keep layout tables separate from data tables. Only data tables need headers.'
     ],
     learnMoreUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/info-and-relationships.html'
   },
@@ -73,7 +73,7 @@ const GUIDANCE: Record<string, PdfIssueGuidance> = {
 
 const DEFAULT_GUIDANCE: PdfIssueGuidance = {
   summary:
-    'This PDF/UA validation rule failed. Review the technical description and update the document structure or metadata. Prefer SiteNook’s assisted fix, then re-validate — assisted tagging is not certified PDF/UA.',
+    'This PDF/UA validation rule failed. Review the technical description and update the document structure or metadata. Prefer SiteNook’s assisted fix, then re-validate. Assisted tagging is not certified PDF/UA.',
   fixSteps: [
     'Use PDF Inspector → Generate assisted fix, then review before/after on Compare.',
     'Finish remaining issues in Acrobat/PAC if the assisted fix still fails critical rules.',

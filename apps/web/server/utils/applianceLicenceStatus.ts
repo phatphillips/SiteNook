@@ -33,7 +33,7 @@ export function buildCommunityApplianceStatus(message?: string): ApplianceLicenc
     maxPagesPerScan: limits.maxPagesPerScan,
     upgradeRequired: true,
     message: message
-      || 'Running Community edition — activate a Self-host licence to unlock full local limits.'
+      || 'Running Community edition. Activate a Self-host licence to unlock full local limits.'
   }
 }
 
@@ -49,7 +49,7 @@ export function buildLicensedApplianceStatus(tier: unknown): ApplianceLicenceSta
     maxPagesPerScan: limits.maxPagesPerScan,
     upgradeRequired: !isFullSelfHostTier(normalized),
     message: isFullSelfHostTier(normalized)
-      ? `Licensed ${normalized} — full self-host limits active.`
-      : 'Community licence active — Free caps apply. Purchase Self-host to unlock.'
+      ? `Licensed ${normalized}. Full self-host limits active.`
+      : 'Community licence active. Free caps apply. Purchase Self-host to unlock.'
   }
 }

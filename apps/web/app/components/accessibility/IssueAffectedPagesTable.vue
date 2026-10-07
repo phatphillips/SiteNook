@@ -24,7 +24,7 @@ import {
 
 const props = withDefaults(defineProps<{
   pages: AffectedPageSummary[]
-  /** Parent issue — expanded columns inherit Type, WCAG, role, element, severity. */
+  /** Parent issue. Expanded columns inherit Type, WCAG, role, element, severity. */
   parentIssue?: AccessibilityIssue | null
   /** Same visibility map as the parent IssuesTable so columns stay aligned. */
   columnVisibility?: Record<string, boolean>
@@ -77,7 +77,7 @@ const AFFECTED_TABLE_UI = {
   ...DATA_TABLE_UI_DENSE,
   root: 'relative !overflow-visible',
   base: 'table-fixed border-collapse !min-w-0 !w-auto !overflow-visible',
-  // Avoid extra thead border — it shifts metrics rows down vs the frozen rail.
+  // Avoid extra thead border. It shifts metrics rows down vs the frozen rail.
   thead: '',
   tbody: '',
   tr: ''
@@ -169,7 +169,7 @@ const tableMeta = computed(() => ({
   }
 }))
 
-/** Metrics only — Title lives in the sticky freeze rail. Order matches IssuesTable. */
+/** Metrics only. Title lives in the sticky freeze rail. Order matches IssuesTable. */
 const columns = computed((): TableColumn<AffectedPageSummary>[] => {
   const cols: TableColumn<AffectedPageSummary>[] = []
   const issue = inheritedIssue.value
@@ -630,7 +630,7 @@ watch(
 
 <style scoped>
 .issue-affected-pages {
-  /* Full colspan width — shares the parent .issues-table-scroll. */
+  /* Full colspan width. Shares the parent .issues-table-scroll. */
   position: relative;
   box-sizing: border-box;
   width: 100%;
@@ -715,7 +715,7 @@ watch(
 }
 
 .issue-affected-pages-metrics {
-  /* Never shrink metric columns — horizontal scroll instead. */
+  /* Never shrink metric columns. Horizontal scroll instead. */
   flex: 0 0 auto;
   flex-shrink: 0;
   min-width: max-content;
@@ -943,7 +943,7 @@ watch(
     max-width: none;
   }
 
-  /* Unfreeze only — keep Title rail width locked to main Issue column via CSS vars. */
+  /* Unfreeze only. Keep Title rail width locked to main Issue column via CSS vars. */
   .issue-affected-pages-frozen {
     position: static;
     box-shadow: none;

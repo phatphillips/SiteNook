@@ -140,7 +140,7 @@ export function imageContentFingerprint(img: PdfJsImageData): string {
 }
 
 /**
- * Mask ops pass `{ data: "img_p0_1", width, height }` — `data` is a store id.
+ * Mask ops pass `{ data: "img_p0_1", width, height }`. `data` is a store id.
  * Resolve those before treating them as pixel buffers.
  */
 export function extractImageRefFromArg(arg: unknown): string | null {
@@ -338,7 +338,7 @@ function collectInlineCandidates(args: unknown[]): PdfJsImageData[] {
     if (!item || typeof item !== 'object') return
     const obj = item as PdfJsImageData
     if (!obj.width || !obj.height) return
-    // Skip unresolved mask refs ({ data: "img_…" }) — those are handled via store lookup.
+    // Skip unresolved mask refs ({ data: "img_…" }). Those are handled via store lookup.
     if (typeof obj.data === 'string') return
     if (hasBinaryPayload(obj)) out.push(obj)
   }
@@ -367,7 +367,7 @@ export function collectImageObjectIds(
 
     if (fn === OPS.dependency) {
       for (const dep of args) {
-        // Dependencies also list fonts — only keep image-like ids.
+        // Dependencies also list fonts. Only keep image-like ids.
         if (typeof dep === 'string' && /img/i.test(dep)) ids.add(dep)
       }
       continue
@@ -449,12 +449,12 @@ async function sweepResolvedObjs(
   try {
     for (const [id, data] of store[Symbol.iterator]!()) {
       if (typeof id !== 'string') continue
-      // Fonts and other shared objs also live here — only take image-shaped payloads.
+      // Fonts and other shared objs also live here. Only take image-shaped payloads.
       if (!looksLikeImageObject(data)) continue
       await pushAsset(pageNum, data, id)
     }
   } catch {
-    // Iterator may throw on incomplete stores — ignore.
+    // Iterator may throw on incomplete stores. Ignore.
   }
 }
 
@@ -504,7 +504,7 @@ export async function extractPdfEmbeddedImages(
         height: asset.height
       })
     } catch {
-      // Skip undecodable image — do not mark as seen so alternate intents can retry.
+      // Skip undecodable image. Do not mark as seen so alternate intents can retry.
     }
   }
 

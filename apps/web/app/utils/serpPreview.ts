@@ -36,7 +36,7 @@ export function serpDescriptionPreview(
   const limits = serpLimitsForDevice(device)
   let text = description.trim()
   if (options?.includeDate && options.dateLabel) {
-    text = `${options.dateLabel} — ${text}`
+    text = `${options.dateLabel}. ${text}`
   }
   return truncateSerpText(text, limits.descriptionMax)
 }

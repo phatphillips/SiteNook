@@ -58,7 +58,7 @@ const highlightPage = computed(() =>
 
 /**
  * Shell height from page aspect × preview column width.
- * Uses natural PDF metrics + column WIDTH only — never fitted canvas height —
+ * Uses natural PDF metrics + column WIDTH only. Never fitted canvas height —
  * so ResizeObserver re-fits cannot recurse into shell height.
  */
 const shellHeightPx = computed(() => {

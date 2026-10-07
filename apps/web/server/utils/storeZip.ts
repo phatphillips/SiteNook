@@ -1,4 +1,4 @@
-/** Minimal ZIP (store only) for remediation packs — no external zip deps. */
+/** Minimal ZIP (store only) for remediation packs. No external zip deps. */
 
 function crc32(buf: Buffer): number {
   let crc = ~0

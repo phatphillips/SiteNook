@@ -144,6 +144,10 @@ onMounted(() => {
       targetCategories: [category]
     }
   }
+  const impact = route.query.impact as string
+  if (impact && ['critical', 'serious', 'moderate', 'minor'].includes(impact)) {
+    filters.value = { ...filters.value, impacts: [impact] }
+  }
 })
 
 async function openFix(issue: AccessibilityIssue) {

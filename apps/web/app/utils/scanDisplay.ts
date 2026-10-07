@@ -5,7 +5,7 @@ import { compareTimestampsDesc } from '~/utils/sortTimestamps'
 export const TERMINAL_SCAN_STATUSES = ['complete', 'complete_with_errors', 'failed', 'cancelled'] as const
 export const ACTIVE_SCAN_STATUSES = ['running', 'background_scan'] as const
 
-/** PocketBase list sort for scans — `created` is not sortable on this collection (returns 400). */
+/** PocketBase list sort for scans. `created` is not sortable on this collection (returns 400). */
 export const SCAN_LIST_SORT = '-completed_at,-started_at' as const
 
 /** Statuses the user can stop from the active scans UI. */

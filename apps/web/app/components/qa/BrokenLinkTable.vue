@@ -426,7 +426,7 @@ watch(
           class="text-xs text-muted"
         >
           {{ footerSummary }}
-          <span v-if="urlSearchActive && !serverPaginated"> — includes broken and redirected links</span>
+          <span v-if="urlSearchActive && !serverPaginated">. Includes broken and redirected links</span>
         </p>
         <div
           v-else

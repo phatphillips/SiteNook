@@ -153,10 +153,10 @@ export function summarizeUsageLimits(rows: UsageBreakdownRow[]): UsageLimitSumma
       if (row.limit === 0) {
         messages.push(`${row.label} is not included on your plan but is in use (${row.used}).`)
       } else if (row.limit != null) {
-        messages.push(`${row.label}: ${row.used} of ${row.limit} — limit reached.`)
+        messages.push(`${row.label}: ${row.used} of ${row.limit}. Limit reached.`)
       }
     } else if (row.status === 'warning' && row.limit != null) {
-      messages.push(`${row.label}: ${row.used} of ${row.limit} — nearing limit.`)
+      messages.push(`${row.label}: ${row.used} of ${row.limit}. Nearing limit.`)
     }
   }
 

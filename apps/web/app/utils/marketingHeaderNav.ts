@@ -9,7 +9,7 @@ export interface MarketingNavGroup {
   items: MarketingNavLink[]
 }
 
-/** Centered desktop nav — Cursor-style Product / Resources menus. */
+/** Centered desktop nav. Cursor-style Product / Resources menus. */
 export const MARKETING_NAV_GROUPS: MarketingNavGroup[] = [
   {
     label: 'Product',

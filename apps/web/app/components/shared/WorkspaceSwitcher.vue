@@ -74,10 +74,10 @@ const eyebrowClass = computed(() =>
 
 const triggerAriaLabel = computed(() => {
   if (isAllSites.value) {
-    return `Switch site — ${organization.value?.name ?? 'SiteNook'} — All sites`
+    return `Switch site. ${organization.value?.name ?? 'SiteNook'}. All sites`
   }
   const stateLabel = workspaceScanStateLabel(displayState.value)
-  return `Switch site — ${organization.value?.name ?? 'SiteNook'} — ${activeSiteName.value} — ${stateLabel}`
+  return `Switch site. ${organization.value?.name ?? 'SiteNook'}. ${activeSiteName.value}. ${stateLabel}`
 })
 
 onMounted(async () => {

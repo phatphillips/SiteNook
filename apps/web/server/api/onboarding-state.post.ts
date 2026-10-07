@@ -20,7 +20,7 @@ function mergeOnboardingState(
   }
 }
 
-/** Org onboarding milestones — available in OSS (not gated by SITENOOK_COMMERCIAL). */
+/** Org onboarding milestones. Available in OSS (not gated by SITENOOK_COMMERCIAL). */
 export default defineEventHandler(async (event) => {
   const user = await requirePbUser(event) as RecordModel
   if (!isOrgAdmin(user)) {

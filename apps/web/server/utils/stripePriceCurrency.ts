@@ -43,7 +43,7 @@ export function resolveStripePriceIdForCurrency(
     return currencySpecific.trim()
   }
 
-  // Single global price set — main NUXT_STRIPE_*_PRICE_ID vars (currency validated at checkout).
+  // Single global price set. Main NUXT_STRIPE_*_PRICE_ID vars (currency validated at checkout).
   return resolveStripePriceId(stripeConfig, plan, interval)
 }
 

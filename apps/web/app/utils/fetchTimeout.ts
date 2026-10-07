@@ -1,6 +1,6 @@
 import type PocketBase from 'pocketbase'
 
-/** Default PocketBase API timeout — avoids multi-minute hangs when the API is down. */
+/** Default PocketBase API timeout. Avoids multi-minute hangs when the API is down. */
 export const PB_FETCH_TIMEOUT_MS = 12_000
 
 /** Tenant org-context lookup timeout during app boot. */

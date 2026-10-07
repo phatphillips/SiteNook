@@ -15,7 +15,7 @@ const marketingApex = computed(() =>
   && isApexHost.value
 )
 
-/** Guests on marketing apex always see the public landing — including after session expiry. */
+/** Guests on marketing apex always see the public landing. Including after session expiry. */
 const showMarketingLanding = computed(() => {
   if (route.meta.marketingLanding === true) return true
   if (marketingApex.value && !isAuthenticated.value) return true

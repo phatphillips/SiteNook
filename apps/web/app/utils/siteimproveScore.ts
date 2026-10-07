@@ -1,5 +1,5 @@
 /**
- * Siteimprove-style accessibility scoring (public documentation only — not a patented clone).
+ * Siteimprove-style accessibility scoring (public documentation only. Not a patented clone).
  *
  * Model (see Siteimprove help / WebComm KB):
  * - 90 points: WCAG conformance (A / AA / AAA checks)
@@ -576,7 +576,7 @@ export function scoreRingColor(score: number): string {
   return '#ef4444'
 }
 
-/** Very dark backdrop matching scoreRingColor — keeps score text readable. */
+/** Very dark backdrop matching scoreRingColor. Keeps score text readable. */
 export function scoreTextBackdrop(score: number): string {
   if (score >= 75) return '#052e16'
   if (score >= 50) return '#451a03'
@@ -584,7 +584,7 @@ export function scoreTextBackdrop(score: number): string {
 }
 
 /**
- * Solid fill for score chips on hover — darkened so white text stays WCAG AA.
+ * Solid fill for score chips on hover. Darkened so white text stays WCAG AA.
  * Thresholds match scoreRingColor (green / amber / red).
  */
 export function scoreHoverFill(score: number): string {

@@ -4,7 +4,7 @@ export type ParsedHost = {
   isApex: boolean
 }
 
-/** Subdomains reserved for infrastructure — not treated as tenant slugs. */
+/** Subdomains reserved for infrastructure. Not treated as tenant slugs. */
 export const RESERVED_SUBDOMAINS = new Set(['www', 'api', 'admin', 'app', 'mail', 'smtp'])
 
 export function normalizeAppDomain(domain: string): string {

@@ -10,7 +10,7 @@ image: /blog/readability.svg
 featured: true
 ---
 
-Accessibility is not only about assistive technology. **Clear writing** helps everyone — especially people who are tired, stressed, or reading in a second language.
+Accessibility is not only about assistive technology. **Clear writing** helps everyone. Especially people who are tired, stressed, or reading in a second language.
 
 SiteNook now surfaces readability scores on each crawl so editors can prioritize pages that are harder than they need to be.
 
@@ -28,7 +28,7 @@ The Readability page shows:
 
 ## Practical targets
 
-For public information sites, many teams aim for roughly **grade 8–10** on Flesch–Kincaid. Legal and research pages will sit higher — that is expected. Use the distribution to find outliers, not to force every page into the same band.
+For public information sites, many teams aim for roughly **grade 8–10** on Flesch–Kincaid. Legal and research pages will sit higher. That is expected. Use the distribution to find outliers, not to force every page into the same band.
 
 ## Tips for editors
 

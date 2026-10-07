@@ -247,7 +247,7 @@ const {
           v-if="latestScan"
           class="text-sm text-muted mb-4"
         >
-          Latest scan: {{ latestScan.completed_at || latestScan.created }}<template v-if="!pages.length && !error"> — no pages were stored for this scan yet.</template>
+          Latest scan: {{ latestScan.completed_at || latestScan.created }}<template v-if="!pages.length && !error">. No pages were stored for this scan yet.</template>
         </p>
 
 

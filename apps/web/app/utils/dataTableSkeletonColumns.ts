@@ -57,7 +57,7 @@ export const AFFECTED_PAGES_METRICS_WITH_SITE_SKELETON_COLUMNS: DataTableSkeleto
   ...AFFECTED_PAGES_METRICS_SKELETON_COLUMNS
 ]
 
-/** @deprecated Prefer AFFECTED_PAGES_METRICS_* — Title is a separate sticky rail. */
+/** @deprecated Prefer AFFECTED_PAGES_METRICS_*. Title is a separate sticky rail. */
 export const AFFECTED_PAGES_TABLE_SKELETON_COLUMNS: DataTableSkeletonColumn[] = [
   { cellVariant: 'double' },
   ...AFFECTED_PAGES_METRICS_SKELETON_COLUMNS

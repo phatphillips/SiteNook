@@ -132,7 +132,7 @@ defineExpose({
               Choose an SiteNook site, then continue to Google to authorize Analytics access.
             </template>
             <template v-else>
-              Choose an SiteNook site, then enter credentials. Test before saving — secrets are encrypted and never shown again.
+              Choose an SiteNook site, then enter credentials. Test before saving. Secrets are encrypted and never shown again.
             </template>
           </p>
         </div>

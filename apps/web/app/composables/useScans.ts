@@ -186,7 +186,7 @@ function _useScans() {
         .filter(s => s.status === 'running' || s.status === 'background_scan')
         .map(s => s.site)
     )
-    // Queue stays "processing" while the worker runs a `scans` row — show one row per job.
+    // Queue stays "processing" while the worker runs a `scans` row. Show one row per job.
     const siteList = sites.value
     const queueRows = activeQueue.value
       .filter(item => !(item.status === 'processing' && runningSiteIds.has(item.site)))

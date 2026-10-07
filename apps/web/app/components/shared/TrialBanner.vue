@@ -48,12 +48,12 @@ const description = computed(() => {
   const days = daysLeft.value
   if (days === null) return ''
   if (days <= 0) {
-    return 'Your Team trial ends today. Upgrade to keep scheduled scans, SEO, and higher limits — annual billing saves about 15%.'
+    return 'Your Team trial ends today. Upgrade to keep scheduled scans, SEO, and higher limits. Annual billing saves about 15%.'
   }
   if (days === 1) {
     return '1 day left on your Team trial. Upgrade to keep scheduled scans, SEO, and higher limits.'
   }
-  return `${days} days left on your Team trial. Keep scheduled scans, SEO, and readability — annual billing saves about 15%.`
+  return `${days} days left on your Team trial. Keep scheduled scans, SEO, and readability. Annual billing saves about 15%.`
 })
 
 function onUpgradeClick() {

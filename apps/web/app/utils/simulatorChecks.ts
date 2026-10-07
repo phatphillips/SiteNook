@@ -22,7 +22,7 @@ export interface SimulatorCheckMeta {
   cssFilter: string
   /** Extra overlay class on the preview (e.g. vignette). */
   overlayClass?: string
-  /** Independent of vision modes — can combine. */
+  /** Independent of vision modes. Can combine. */
   independent?: boolean
 }
 
@@ -44,7 +44,7 @@ export const SIMULATOR_CHECKS: SimulatorCheckMeta[] = [
     label: 'Protanopia',
     shortLabel: 'Protanopia',
     description:
-      'Red-blind colour vision. Reds look darker and are hard to tell apart from greens and browns — contrast that relies on red alone often fails.',
+      'Red-blind colour vision. Reds look darker and are hard to tell apart from greens and browns. Contrast that relies on red alone often fails.',
     cssFilter: 'url(#sim-protanopia) grayscale(0.15) contrast(0.95)'
   },
   {
@@ -68,7 +68,7 @@ export const SIMULATOR_CHECKS: SimulatorCheckMeta[] = [
     label: 'Achromatopsia',
     shortLabel: 'Grayscale',
     description:
-      'Complete colour blindness — the page is seen only in shades of grey. Any information conveyed by colour alone is lost.',
+      'Complete colour blindness. The page is seen only in shades of grey. Any information conveyed by colour alone is lost.',
     cssFilter: 'grayscale(1) contrast(1.05)'
   },
   {
@@ -92,7 +92,7 @@ export const SIMULATOR_CHECKS: SimulatorCheckMeta[] = [
     label: 'Tunnel vision',
     shortLabel: 'Tunnel vision',
     description:
-      'Severely reduced peripheral vision. Only the centre of the viewport is clear — layout that places key actions at the edges is easy to miss.',
+      'Severely reduced peripheral vision. Only the centre of the viewport is clear. Layout that places key actions at the edges is easy to miss.',
     cssFilter: '',
     overlayClass: 'simulator-overlay--tunnel'
   },

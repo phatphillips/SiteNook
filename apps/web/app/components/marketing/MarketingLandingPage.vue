@@ -21,7 +21,7 @@ const painPoints = [
   {
     icon: 'i-lucide-accessibility',
     title: 'Accessibility barriers',
-    description: 'Find WCAG issues that may block people using assistive tech — before they leave your site.'
+    description: 'Find WCAG issues that may block people using assistive tech. Before they leave your site.'
   },
   {
     icon: 'i-lucide-link-2-off',
@@ -74,7 +74,7 @@ const productFeatures = computed(() => [
     activeNav: 'scans' as MarketingNavId,
     eyebrow: 'Scanning',
     headline: 'Watch a crawl run in real time',
-    description: 'Pages crawled, elapsed time, and live crawl activity — so you always know what the scanner is doing.',
+    description: 'Pages crawled, elapsed time, and live crawl activity. So you always know what the scanner is doing.',
     ctaLabel: 'Start free trial',
     ctaTo: trialHref.value,
     title: 'Scan monitor',
@@ -93,10 +93,10 @@ const productFeatures = computed(() => [
             SiteNook
           </p>
           <h1 class="text-4xl font-semibold tracking-tight text-highlighted sm:text-5xl">
-            Know whether your site includes everyone — then keep improving it.
+            Know whether your site includes everyone. Then keep improving it.
           </h1>
           <p class="mt-6 text-lg leading-relaxed text-muted">
-            SiteNook crawls your websites, surfaces accessibility and QA issues in plain language, and helps teams who care about inclusive experiences — without the enterprise price tag.
+            SiteNook crawls your websites, surfaces accessibility and QA issues in plain language, and helps teams who care about inclusive experiences. Without the enterprise price tag.
           </p>
           <div class="mt-8 flex flex-wrap gap-3">
             <UButton :to="trialHref" size="lg" class="min-h-11">
@@ -145,7 +145,7 @@ const productFeatures = computed(() => [
           See the product
         </h2>
         <p class="mt-3 max-w-2xl text-muted">
-          Live overview components — scores, charts, readability, and a running scan — the same building blocks you get after your first crawl.
+          Live overview components. Scores, charts, readability, and a running scan. The same building blocks you get after your first crawl.
         </p>
       </div>
     </section>
@@ -188,7 +188,7 @@ const productFeatures = computed(() => [
           Ready to see how inclusive your site is?
         </h2>
         <p class="mx-auto mt-3 max-w-xl text-muted">
-          Start a 30-day Team trial, or compare plans — Free stays available with 1 site and 20 pages per scan.
+          Start a 30-day Team trial, or compare plans. Free stays available with 1 site and 20 pages per scan.
         </p>
         <div class="mt-6 flex flex-wrap justify-center gap-3">
           <UButton :to="trialHref" size="lg" class="min-h-11">

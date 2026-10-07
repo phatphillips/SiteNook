@@ -13,7 +13,7 @@ import { hydrateScanBrokenLinkCounts } from '~/utils/hydrateScanBrokenLinkCounts
 type ScanDetailPart = 'links' | 'spelling' | 'pages' | 'inventory' | 'policies'
 
 export type UseQAOptions = {
-  /** When true (default), load counts only — no bulk link/spelling/inventory arrays. */
+  /** When true (default), load counts only. No bulk link/spelling/inventory arrays. */
   summary?: boolean
   /** Parts to load when summary is false. Defaults to all except inventory on detail pages. */
   parts?: ScanDetailPart[]

@@ -342,7 +342,7 @@ function _useSites() {
   async function queueDefaultScan(siteId: string) {
     const site = sites.value.find(s => s.id === siteId)
     if (!site) throw new Error('Site not found')
-    // Empty override — worker merges site.default_scan_config at claim time.
+    // Empty override. Worker merges site.default_scan_config at claim time.
     await queueScanWithConfig(siteId, {}, deriveScanType(parseScanConfig(site.default_scan_config, site.url)))
   }
 

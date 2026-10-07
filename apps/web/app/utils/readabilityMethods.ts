@@ -150,7 +150,7 @@ export function coerceReadabilityMethods(value: unknown): ReadabilityMethodId[] 
   if (!filtered.length) return fallback
   if (filtered.length === 1) return [filtered[0]]
 
-  // Legacy sites may have stored multiple methods — default to FK-GL when available.
+  // Legacy sites may have stored multiple methods. Default to FK-GL when available.
   if (filtered.includes('flesch_kincaid_grade')) return ['flesch_kincaid_grade']
   return [filtered[0]]
 }

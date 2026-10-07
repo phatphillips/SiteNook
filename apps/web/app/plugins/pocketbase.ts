@@ -88,7 +88,7 @@ export default defineNuxtPlugin({
     if (!pb.authStore.isValid) return
 
     void refreshAuthToken().then((refreshed) => {
-      // Redirect only when refresh cleared an invalid/expired session — not on transient network errors.
+      // Redirect only when refresh cleared an invalid/expired session. Not on transient network errors.
       if (!refreshed && !pb.authStore.isValid) {
         handleSessionExpired()
       }

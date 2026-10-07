@@ -6,7 +6,7 @@ export interface MarketingFaqItem {
 export const LANDING_FAQ_ITEMS: MarketingFaqItem[] = [
   {
     label: 'How does the 30-day Team trial work?',
-    content: 'Start with full Team features — scheduled scans, SEO, readability, and up to 10 members — with no credit card. After 30 days, your organization falls back to Free unless you upgrade. Your scan history and first site stay available on Free.'
+    content: 'Start with full Team features. Scheduled scans, SEO, readability, and up to 10 members. With no credit card. After 30 days, your organization falls back to Free unless you upgrade. Your scan history and first site stay available on Free.'
   },
   {
     label: 'What’s included on Free vs Team?',
@@ -14,14 +14,14 @@ export const LANDING_FAQ_ITEMS: MarketingFaqItem[] = [
   },
   {
     label: 'Do I need to be technical to use SiteNook?',
-    content: 'No. Add a site URL, run a scan, and review plain-language findings about barriers that may exclude visitors. Hand issues to content editors or developers when you are ready — invite them from Settings.'
+    content: 'No. Add a site URL, run a scan, and review plain-language findings about barriers that may exclude visitors. Hand issues to content editors or developers when you are ready. Invite them from Settings.'
   },
   {
     label: 'What does a scan actually check?',
     content: 'Every scan crawls pages for WCAG accessibility issues (via axe-core), broken links, and spelling. Team and above also unlock SEO checks and readability scoring so you can see how inclusive and findable your content is.'
   },
   {
-    label: 'Monthly vs annual — how much do I save?',
+    label: 'Monthly vs annual. How much do I save?',
     content: 'Annual billing is about 15% less than paying month to month. For example, Team is $99/month or about $84/month when billed annually.'
   },
   {
@@ -34,7 +34,7 @@ export const LANDING_FAQ_ITEMS: MarketingFaqItem[] = [
   },
   {
     label: 'Is this a replacement for enterprise tools like SiteImprove?',
-    content: 'SiteNook covers the same core jobs — accessibility, QA, and SEO monitoring — without the enterprise price tag. Compliance-heavy orgs that need SSO, SLAs, or self-hosted deployment can talk to us about Enterprise.'
+    content: 'SiteNook covers the same core jobs. Accessibility, QA, and SEO monitoring. Without the enterprise price tag. Compliance-heavy orgs that need SSO, SLAs, or self-hosted deployment can talk to us about Enterprise.'
   },
   {
     label: 'How is my site data handled?',
@@ -49,7 +49,7 @@ export const PRICING_FAQ_ITEMS: MarketingFaqItem[] = [
   },
   {
     label: 'What is the Free plan limit?',
-    content: 'Free includes 1 site, 20 pages per scan, accessibility + QA checks, and manual scans for up to 2 members. It is a lasting safety net after a trial — not a full monitoring substitute for production sites.'
+    content: 'Free includes 1 site, 20 pages per scan, accessibility + QA checks, and manual scans for up to 2 members. It is a lasting safety net after a trial. Not a full monitoring substitute for production sites.'
   },
   {
     label: 'Can we pay by purchase order or invoice?',
@@ -73,7 +73,7 @@ export const PRICING_FAQ_ITEMS: MarketingFaqItem[] = [
   },
   {
     label: 'Is SiteNook a Siteimprove alternative?',
-    content: 'SiteNook covers the same core jobs — WCAG accessibility, QA (links and spelling), SEO, and multi-site monitoring — at self-serve pricing. Use Enterprise when you need SSO/SAML, invoice billing, SLAs, or self-hosted deployment.'
+    content: 'SiteNook covers the same core jobs. WCAG accessibility, QA (links and spelling), SEO, and multi-site monitoring. At self-serve pricing. Use Enterprise when you need SSO/SAML, invoice billing, SLAs, or self-hosted deployment.'
   },
   {
     label: 'What if I already know I want to pay?',

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * SiteNook wordmark + mark — single-color SVG.
+ * SiteNook wordmark + mark. Single-color SVG.
  * Fill follows `currentColor` so it flips with light / dark / solarized themes.
  */
 const props = withDefaults(defineProps<{
@@ -78,7 +78,7 @@ const boxStyle = computed(() => {
 
 <style scoped>
 .sitenook-logo {
-  /* Light UI — near-black so the mark reads clearly on pale chrome */
+  /* Light UI. Near-black so the mark reads clearly on pale chrome */
   color: #231f20;
 
   display: inline-flex;
@@ -103,7 +103,7 @@ const boxStyle = computed(() => {
 </style>
 
 <style>
-/* Dark UI — light fill so the logo stands out on dark chrome */
+/* Dark UI. Light fill so the logo stands out on dark chrome */
 html.dark .sitenook-logo {
   color: #f4f4f5;
 }

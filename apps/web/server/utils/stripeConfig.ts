@@ -229,7 +229,7 @@ export function parseCheckoutPlanInput(value: unknown): PaidCheckoutPlan | null 
   return isPaidCheckoutPlan(trimmed) ? trimmed : null
 }
 
-/** Paid checkout bypass for local dev — blocked in production builds. */
+/** Paid checkout bypass for local dev. Blocked in production builds. */
 export function isDevCheckoutBypassAllowed(
   event: H3Event,
   checkoutToken: unknown,

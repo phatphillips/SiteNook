@@ -20,7 +20,7 @@ export function parseTenantOnlyFlag(value: unknown): boolean {
 
 /**
  * When tenant-only mode is on, block dashboard and auth pages on the apex host.
- * Dev apex (localhost) is never blocked — see shouldEnforceTenantOnlyApex.
+ * Dev apex (localhost) is never blocked. See shouldEnforceTenantOnlyApex.
  */
 export function resolveTenantOnlyApexRedirect(
   path: string,

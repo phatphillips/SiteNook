@@ -1,7 +1,7 @@
 import type { AccessibilityIssue } from '~/types/sitenook'
 import { normalizePageUrl } from '~/utils/pageUrl'
 
-/** Plain-English “why it matters” copy — not the issue title or rule name. */
+/** Plain-English “why it matters” copy. Not the issue title or rule name. */
 const RULE_WHY_IT_MATTERS: Record<string, string> = {
   'heading-order':
     'Skipping heading levels confuses screen readers and breaks document structure, making it harder to navigate the page.',

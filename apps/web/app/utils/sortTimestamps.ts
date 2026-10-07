@@ -1,4 +1,4 @@
-/** PocketBase / API timestamps may be missing or non-string — safe descending sort key. */
+/** PocketBase / API timestamps may be missing or non-string. Safe descending sort key. */
 export function timestampSortKey(value: unknown): number {
   if (value == null || value === '') return 0
   const ms = Date.parse(String(value))

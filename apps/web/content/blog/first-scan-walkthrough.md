@@ -29,9 +29,9 @@ Open **Scans** to see pages crawled, elapsed time, and live crawl activity. You 
 
 When the scan completes:
 
-- **Accessibility** — score, trends, and open issues
-- **QA** — broken links and misspellings
-- **SEO** (Team+) — technical and content checks
+- **Accessibility**. Score, trends, and open issues
+- **QA**. Broken links and misspellings
+- **SEO** (Team+). Technical and content checks
 
 Start with critical/serious accessibility issues and anything blocking key journeys (forms, navigation, checkout).
 

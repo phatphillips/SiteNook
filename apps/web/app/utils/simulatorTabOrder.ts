@@ -57,7 +57,7 @@ export function scaleTabOrderMarkers(
   }))
 }
 
-/** Pure helper for unit tests — order focusable-like descriptors by tabindex rules. */
+/** Pure helper for unit tests. Order focusable-like descriptors by tabindex rules. */
 export function orderTabCandidates<T extends { tabindex: number }>(nodes: T[]): T[] {
   const positive = nodes
     .filter(n => n.tabindex > 0)

@@ -1,4 +1,4 @@
-/** Lightweight funnel analytics — logs structured events; wire to a vendor later if needed. */
+/** Lightweight funnel analytics. Logs structured events; wire to a vendor later if needed. */
 
 export type FunnelEventName
   = | 'trial_start'

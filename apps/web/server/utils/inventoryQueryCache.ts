@@ -73,7 +73,7 @@ export function setCachedInventoryList<T>(key: string, rows: T[]): void {
   })
 }
 
-/** Test helper — clears in-memory inventory cache between unit tests. */
+/** Test helper. Clears in-memory inventory cache between unit tests. */
 export function clearInventoryListCache(): void {
   inventoryListCache.clear()
 }

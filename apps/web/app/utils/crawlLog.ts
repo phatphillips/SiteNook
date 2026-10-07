@@ -122,7 +122,7 @@ export function pageToLine(page: PageRecord): CrawlLogLine {
     ts: Number.isFinite(ms) ? ms : Date.now(),
     level: 'success',
     message: page.title?.trim()
-      ? `Crawled ${page.title.trim()} — ${page.url}`
+      ? `Crawled ${page.title.trim()}. ${page.url}`
       : `Crawled ${page.url}`,
     url: page.url
   }
@@ -152,7 +152,7 @@ export function scanStatusToLine(scan: Scan, previous?: Scan): CrawlLogLine | nu
       id: `scan-background-${time}`,
       ts: time,
       level: 'warn',
-      message: `Background scan started — retrying ${n} blocked URL(s) (20s apart, up to 3 rounds)`
+      message: `Background scan started. Retrying ${n} blocked URL(s) (20s apart, up to 3 rounds)`
     }
   }
 
@@ -168,7 +168,7 @@ export function scanStatusToLine(scan: Scan, previous?: Scan): CrawlLogLine | nu
       id: `scan-complete-${time}`,
       ts: time,
       level: scan.status === 'complete_with_errors' ? 'warn' : 'success',
-      message: `Scan complete — ${scan.pages_crawled ?? 0} page(s) saved${suffix}`
+      message: `Scan complete. ${scan.pages_crawled ?? 0} page(s) saved${suffix}`
     }
   }
 

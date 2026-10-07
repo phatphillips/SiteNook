@@ -5,7 +5,7 @@ import { MIN_QUERY_LENGTH } from '~/utils/globalSearch'
 import GlobalSearchResultsTable from '~/components/search/GlobalSearchResultsTable.vue'
 import { buildSearchResultsCsv } from '~/utils/export/searchExport'
 
-/** USelectMenu cannot use empty string as a value — use a sentinel for “all sites”. */
+/** USelectMenu cannot use empty string as a value. Use a sentinel for “all sites”. */
 const ALL_SITES = '__all__'
 
 definePageMeta({ middleware: 'auth' })

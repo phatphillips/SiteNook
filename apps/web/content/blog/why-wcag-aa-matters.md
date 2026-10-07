@@ -9,7 +9,7 @@ image: /blog/wcag-aa.svg
 featured: false
 ---
 
-Public websites are often the first — and sometimes only — channel people use to access services. When those sites fail basic accessibility checks, the cost shows up as abandoned tasks, support tickets, and, increasingly, formal complaints.
+Public websites are often the first. And sometimes only. Channel people use to access services. When those sites fail basic accessibility checks, the cost shows up as abandoned tasks, support tickets, and, increasingly, formal complaints.
 
 ## What Level AA covers
 
@@ -26,7 +26,7 @@ AAA remains valuable for specialized audiences, but AA is the realistic target f
 
 ## Automated checks are necessary, not sufficient
 
-Tools like axe-core catch many high-impact failures quickly — missing names, contrast candidates, landmark issues. They do not replace human review of media alternatives, complex interactions, or content clarity.
+Tools like axe-core catch many high-impact failures quickly. Missing names, contrast candidates, landmark issues. They do not replace human review of media alternatives, complex interactions, or content clarity.
 
 The strongest programs combine:
 

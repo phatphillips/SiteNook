@@ -37,11 +37,11 @@ SiteNook gives you the same core power for free:
 
 One scan, five ways to use it:
 
-- ♿ **Accessibility** — Finds WCAG issues (the industry-standard checks) with a simple 0 to 100 score, so you know what to fix first
-- 🔍 **SEO** — Checks the technical and content stuff that helps pages get found
-- 🧹 **QA** — Catches broken links, spelling mistakes, and messy content
-- 📄 **PDF accessibility** — Checks your PDFs too, not just web pages
-- 🗂️ **Content Explorer** — Browse everything your site crawled and export it
+- ♿ **Accessibility**. Finds WCAG issues (the industry-standard checks) with a simple 0 to 100 score, so you know what to fix first
+- 🔍 **SEO**. Checks the technical and content stuff that helps pages get found
+- 🧹 **QA**. Catches broken links, spelling mistakes, and messy content
+- 📄 **PDF accessibility**. Checks your PDFs too, not just web pages
+- 🗂️ **Content Explorer**. Browse everything your site crawled and export it
 
 A few other things worth knowing:
 
@@ -88,7 +88,7 @@ docker compose up -d --build
 
 Go to **http://localhost** and sign in with the dashboard email/password above (or whatever you set in `.env`).
 
-> First build can take a few minutes — it's downloading a real browser to scan with.
+> First build can take a few minutes. It's downloading a real browser to scan with.
 
 ### Your first scan
 
@@ -134,10 +134,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run tests and which package ma
 
 ## 📚 More docs
 
-- [CONTRIBUTING.md](CONTRIBUTING.md) — local setup and how to send a PR
-- [SECURITY.md](SECURITY.md) — how to report a security issue
-- [docs/README.md](docs/README.md) — full documentation
-- [AGENTS.md](AGENTS.md) — notes for contributors and coding agents
+- [CONTRIBUTING.md](CONTRIBUTING.md). Local setup and how to send a PR
+- [SECURITY.md](SECURITY.md). How to report a security issue
+- [docs/README.md](docs/README.md). Full documentation
+- [AGENTS.md](AGENTS.md). Notes for contributors and coding agents
 
 ---
 
@@ -145,4 +145,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run tests and which package ma
 
 SiteNook is released under the [MIT License](LICENSE). Free to use, free to change, free to build on.
 
-Dependencies keep their own licences (MIT, Apache-2.0, MPL-2.0, etc). Typesense Server is GPL-3.0 and is only pulled in as an optional extra — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Dependencies keep their own licences (MIT, Apache-2.0, MPL-2.0, etc). Typesense Server is GPL-3.0 and is only pulled in as an optional extra. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

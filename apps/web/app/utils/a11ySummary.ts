@@ -1,4 +1,4 @@
-/** Site target baked into current_a11y — reconcile when these change. */
+/** Site target baked into current_a11y. Reconcile when these change. */
 
 export interface A11ySiteTargetSnapshot {
 

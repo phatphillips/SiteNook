@@ -15,7 +15,7 @@ const fetching = ref(false)
 
 const pageOptions = computed(() =>
   pages.value.map(page => ({
-    label: `${page.siteName} — ${page.url}`,
+    label: `${page.siteName}. ${page.url}`,
     value: `${page.siteId}::${page.url}`,
     siteId: page.siteId,
     url: page.url

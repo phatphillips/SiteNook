@@ -569,7 +569,7 @@ export interface PdfStructureOutline {
 
 export interface PdfDocument {
   id: string
-  /** Optional — crawl PDFs and site uploads have a site; org library uploads may not. */
+  /** Optional. Crawl PDFs and site uploads have a site; org library uploads may not. */
   site?: string
   organization?: string
   source: PdfDocumentSource
@@ -584,7 +584,7 @@ export interface PdfDocument {
   issue_count?: number
   accessibility_score?: number
   share_token?: string
-  /** SHA-256 of stored PDF bytes — used for crawl/upload dedup. */
+  /** SHA-256 of stored PDF bytes. Used for crawl/upload dedup. */
   content_hash?: string
   uploaded_by?: string
   validated_at?: string

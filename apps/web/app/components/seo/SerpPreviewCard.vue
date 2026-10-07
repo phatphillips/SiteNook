@@ -30,7 +30,7 @@ const dateLabel = computed(() =>
 const displayDescription = computed(() => {
   const desc = props.metaDescription.trim()
   if (!desc) {
-    return 'No meta description found — Google may use page body text instead.'
+    return 'No meta description found. Google may use page body text instead.'
   }
   return serpDescriptionPreview(desc, props.device, {
     includeDate: props.showDate && !!dateLabel.value,

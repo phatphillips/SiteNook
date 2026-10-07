@@ -26,7 +26,7 @@ export class FullListGuardError extends Error {
 
   constructor(collection: string, totalItems: number) {
     super(
-      `Collection "${collection}" has ${totalItems.toLocaleString()} records — use paginated loading instead.`
+      `Collection "${collection}" has ${totalItems.toLocaleString()} records. Use paginated loading instead.`
     )
     this.name = 'FullListGuardError'
     this.collection = collection

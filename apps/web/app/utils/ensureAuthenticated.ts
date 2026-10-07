@@ -14,7 +14,7 @@ export async function ensureAuthenticatedForRoute(
   try {
     await withTimeout(awaitAuthReady(), AUTH_READY_TIMEOUT_MS, 'Auth initialization')
   } catch {
-    // Plugin did not finish in time — treat as signed out.
+    // Plugin did not finish in time. Treat as signed out.
   }
 
   syncAuth()

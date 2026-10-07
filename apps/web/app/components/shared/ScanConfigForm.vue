@@ -264,7 +264,7 @@ defineExpose({
             {{ pageUrlCount }} URL{{ pageUrlCount === 1 ? '' : 's' }} entered
           </p>
           <p v-if="pagesTouched && invalidPageLines.length" class="text-sm text-error">
-            {{ invalidPageLines.length }} invalid URL line(s) — check format (https://…)
+            {{ invalidPageLines.length }} invalid URL line(s). Check format (https://…)
           </p>
         </div>
 

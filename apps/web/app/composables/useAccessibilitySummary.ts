@@ -9,7 +9,7 @@ import {
 } from '~/utils/a11yScoring'
 
 /**
- * Lightweight accessibility data for dashboard overview cards — no full issue dumps.
+ * Lightweight accessibility data for dashboard overview cards. No full issue dumps.
  */
 export function useAccessibilitySummary(siteId: Ref<string> | string) {
   const { pb, awaitAuthReady } = usePocketBase()

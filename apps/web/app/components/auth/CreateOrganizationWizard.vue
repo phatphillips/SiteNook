@@ -523,7 +523,7 @@ declare global {
       </UButton>
 
       <p class="text-center text-xs text-muted">
-        After you sign in, a short checklist helps you add a site and invite teammates. Colleagues join via Team Members invite — not from this page.
+        After you sign in, a short checklist helps you add a site and invite teammates. Colleagues join via Team Members invite. Not from this page.
       </p>
     </div>
   </div>

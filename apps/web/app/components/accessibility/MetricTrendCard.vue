@@ -305,7 +305,7 @@ const yAxisStep = computed(() => {
   return max / 2
 })
 
-/** First day with data — leading null days get a flat gray placeholder segment. */
+/** First day with data. Leading null days get a flat gray placeholder segment. */
 const leadingPlaceholder = computed(() => {
   const values = props.points.map(p => p.value)
   let firstIndex = -1
@@ -519,7 +519,7 @@ const chartOptions = computed(() => {
       },
       tooltip: {
         ...baseTooltip,
-        // Canvas tooltip off — HTML tooltip can sit beside the point and overflow.
+        // Canvas tooltip off. HTML tooltip can sit beside the point and overflow.
         enabled: false,
         external: externalTooltipHandler
       }
@@ -541,7 +541,7 @@ const chartOptions = computed(() => {
               minRotation: 0,
               autoSkip: false,
               /**
-               * Only start + end dates — keeps the day axis readable.
+               * Only start + end dates. Keeps the day axis readable.
                */
               callback(this: { getLabelForValue: (v: string | number) => string }, value: string | number, index: number, ticks: unknown[]) {
                 if (index === 0 || index === ticks.length - 1) {
@@ -584,7 +584,7 @@ const trendIcon = computed(() => {
   return null
 })
 
-/** Inline delta color — green when direction is favorable for the metric. */
+/** Inline delta color. Green when direction is favorable for the metric. */
 const inlineDeltaClass = computed(() => {
   if (!props.trendDirection) return 'text-muted'
   const up = props.trendDirection === 'up'

@@ -83,7 +83,7 @@ function chooseBillingInterval(next: BillingInterval) {
         1. Install Community (free)
       </h2>
       <p class="text-muted">
-        Requires Docker Compose. Typesense search is optional and pulled from the official upstream image — disabled by default.
+        Requires Docker Compose. Typesense search is optional and pulled from the official upstream image. Disabled by default.
       </p>
       <pre class="overflow-x-auto rounded-lg bg-muted/30 p-4 text-sm text-default"><code>{{ composeSnippet }}</code></pre>
       <p class="text-sm text-muted">
@@ -101,7 +101,7 @@ function chooseBillingInterval(next: BillingInterval) {
       </h2>
       <p class="text-muted">
         Mirrors hosted Business limits locally (policies, inventory, PDF checks, higher site/page caps).
-        Cancel anytime — Community Free caps remain if the key expires.
+        Cancel anytime. Community Free caps remain if the key expires.
       </p>
 
       <div class="flex flex-wrap items-center gap-3">

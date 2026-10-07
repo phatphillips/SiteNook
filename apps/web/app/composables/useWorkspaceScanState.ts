@@ -34,7 +34,7 @@ function isActiveScanStatus(status: string | undefined) {
 
 type QueueRow = { status?: string }
 
-/** Pending only — `processing` means the worker started and counts as scanning. */
+/** Pending only. `processing` means the worker started and counts as scanning. */
 function applyQueueFlags(queueItems: QueueRow[]) {
   const isQueued = queueItems.some(item => item.status === 'pending')
   const isStarting = queueItems.some(item => item.status === 'processing')

@@ -116,7 +116,7 @@ export async function syncStripeOrganizationBilling(
   }
 }
 
-/** Explicit refresh from billing UI — returns email delivery details. */
+/** Explicit refresh from billing UI. Returns email delivery details. */
 export async function refreshStripeOrganizationBilling(
   pb: PocketBase,
   stripe: Stripe,

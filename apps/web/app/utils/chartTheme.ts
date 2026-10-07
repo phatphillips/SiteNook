@@ -1,4 +1,4 @@
-/** Chart accent — data series only (not buttons or primary UI chrome). */
+/** Chart accent. Data series only (not buttons or primary UI chrome). */
 
 export const CHART_LINE_COLOR = '#00c16a'
 
@@ -69,7 +69,7 @@ export const A11Y_BAR_FILL_HOVER = CHART_PURPLE_COLOR
 export const A11Y_BAR_TRACK = '#111114'
 /** Score chip label on default (dark gray) fill. */
 export const A11Y_BAR_TEXT = '#ffffff'
-/** Score chip label on purple hover fill — black for contrast on #6366f1. */
+/** Score chip label on purple hover fill. Black for contrast on #6366f1. */
 export const A11Y_BAR_TEXT_ON_HOVER = '#000000'
 
 /** @deprecated Use A11Y_BAR_FILL */

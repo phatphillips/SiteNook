@@ -1,4 +1,4 @@
-# SiteNook — Agent Onboarding
+# SiteNook: Agent Onboarding
 
 You are joining an existing repo. Help implement and fix features **without breaking stack conventions**. Work incrementally, prefer small safe changes, and verify with tests or linters when relevant.
 
@@ -69,13 +69,13 @@ These are the highest-connectivity flows in the codebase (see `graphify-out/GRAP
 2. **Scheduled scans** — `scanScheduler.ts` ticks due sites → `enqueueScheduledScan()` → `scan_queue` → same pipeline as manual scans. Schedule math shared with web via `scheduleNextRun` utils (scanner + `apps/web/app/utils/scheduleNextRun.ts`).
 3. **Web data layer** — `usePocketBase` → feature composables (`useSites`, `useScans`, `useAccessibility`, `useQA`, `useInventory`) → PocketBase SDK + `reloadScheduler` debounced realtime refresh.
 4. **Auth** — `pocketbase.client.ts` plugin → `usePocketBase` → `auth.ts` / `guest.ts` middleware.
-5. **Global search** — scanner indexes crawl HTML/PDF text into **Typesense** (`apps/scanner/src/search/`); web `GET /api/global-search` queries Typesense (`TYPESENSE_ENABLED=1`). Backfill: `cd apps/scanner && npm run reindex-search`.
+5. **Global search**. Scanner indexes crawl HTML/PDF text into **Typesense** (`apps/scanner/src/search/`); web `GET /api/global-search` queries Typesense (`TYPESENSE_ENABLED=1`). Backfill: `cd apps/scanner && npm run reindex-search`.
 
 ## Key conventions
 
 ### Web (`apps/web`)
 
-- **PocketBase access**: use existing wiring — do not invent a second client.
+- **PocketBase access**: use existing wiring. Do not invent a second client.
   - `app/composables/usePocketBase.ts`
   - `app/plugins/pocketbase.client.ts`
   - Feature composables: `useSites`, `useScans`, `useScanQueue`, `useAccessibility`, `useQA`, `useInventory`
@@ -83,12 +83,12 @@ These are the highest-connectivity flows in the codebase (see `graphify-out/GRAP
   - UI areas: `components/scans/` (site-centric scan table, runs, pages), `components/accessibility/`, `components/qa/`, `components/shared/`
   - Nitro API: `server/api/sitemap-preview.get.ts`
 - **Auth**: PocketBase `users` collection (`authWithPassword`); guards `app/middleware/auth.ts` (protected) and `guest.ts` (login/signup); shared state via VueUse `createSharedComposable`.
-- **Package manager**: `package.json` declares `pnpm`; Docker dev may use `npm` — match scripts in the directory you are editing.
+- **Package manager**: `package.json` declares `pnpm`; Docker dev may use `npm`. Match scripts in the directory you are editing.
 
 ### Scanner (`apps/scanner`)
 
 - ESM TypeScript under `apps/scanner/src/`.
-- Entry: `src/index.ts` — polls `scan_queue`, runs `processQueueItem()`, handles cancellation and stale-job recovery.
+- Entry: `src/index.ts`. Polls `scan_queue`, runs `processQueueItem()`, handles cancellation and stale-job recovery.
 - Important modules: `config/scanConfig.ts`, `accessibility/` (axe, WCAG map, diff), `crawler/`, `qa/`, `db/recordSanitize.ts`, `scheduler/` (`scanScheduler.ts`, `scheduleNextRun.ts`), `search/` (Typesense indexer).
 
 ### Schema
@@ -96,7 +96,7 @@ These are the highest-connectivity flows in the codebase (see `graphify-out/GRAP
 - Collections and fields defined in `services/pocketbase/pb_migrations/`; do not edit `pb_data/` directly.
 - Recent additions: scan **cancellation** status (`1730000010`), site **schedule timestamps** (`1730000011`), **default daily schedule** on new sites (`1730000012`).
 - API rules typically require `@request.auth.id != ""` for app users; scanner uses admin env credentials.
-- No custom `pb_hooks/` — bootstrap via `entrypoint.sh`, `bootstrap.sh`, and `patch-*.sh` shell scripts.
+- No custom `pb_hooks/`. Bootstrap via `entrypoint.sh`, `bootstrap.sh`, and `patch-*.sh` shell scripts.
 
 ## How to run
 
@@ -146,7 +146,7 @@ docker compose build
 | Scanner unit | `cd apps/scanner && npm test` |
 | Scanner integration | `cd apps/scanner && npm run test:integration` |
 
-**Test PocketBase**: port **8091** (Docker profile `test`). **Dev PocketBase**: port **8090** — never point tests at dev data.
+**Test PocketBase**: port **8091** (Docker profile `test`). **Dev PocketBase**: port **8090**. Never point tests at dev data.
 
 Test credentials (integration): `test-admin@sitenook.test` / `test-password-123`; user: `test-user@sitenook.test` / `test-user-password-123`. Fixtures: `tests/fixtures/pb_data/`.
 
@@ -165,22 +165,27 @@ Agent test order: unit tests first → integration (scanner) → E2E (UI/auth).
 
 ## Things to avoid
 
-- Do not modify `pb_data/` directly — use migrations or PocketBase admin.
+- Do not modify `pb_data/` directly. Use migrations or PocketBase admin.
 - Do not commit `.env` or secrets.
 - Do not commit `graphify-out/manifest.json` or `graphify-out/cost.json`.
 - Do not treat `apps/web/.output/` or `apps/web/.nuxt/` as source.
 - Do not reintroduce pre-monorepo `frontend/`, `backend/`, or root WordPress auditor scripts.
 - Avoid editing production data in running containers without migrations.
 
+## Writing and delivery conventions
+
+- Do not use em dashes (`—`) or other long AI-style dashes in copy. Finish the sentence. Start a new one.
+- Once complete, tested and ensured it is all working: push to GitHub and pull a fresh copy so the user can simply open localhost to test.
+
 ## Reference files (read before large changes)
 
-- `CLAUDE.md` — operational commands and agent notes
-- `docs/README.md` — documentation index
-- `docs/platform-status.md` — shipped features, gaps, pre-launch checklist
-- `graphify-out/GRAPH_REPORT.md` — architecture map with god nodes, hyperedges, and cross-community bridges (regenerate via `/graphify`)
-- `graphify-out/graph.html` — interactive graph visualization
-- `docker-compose.yml` — services and env wiring
-- App `package.json` files — scripts and dependencies
+- `CLAUDE.md`: operational commands and agent notes
+- `docs/README.md`: documentation index
+- `docs/platform-status.md`: shipped features, gaps, pre-launch checklist
+- `graphify-out/GRAPH_REPORT.md`: architecture map with god nodes, hyperedges, and cross-community bridges (regenerate via `/graphify`)
+- `graphify-out/graph.html`: interactive graph visualization
+- `docker-compose.yml`: services and env wiring
+- App `package.json` files: scripts and dependencies
 
 ## How to work on a task
 
@@ -189,6 +194,7 @@ Agent test order: unit tests first → integration (scanner) → E2E (UI/auth).
 3. Keep diffs minimal; no drive-by refactors.
 4. Run relevant tests before finishing.
 5. Schema changes → new PocketBase migration, not manual DB edits.
+6. When the user asks you to finish and hand off for testing: push to GitHub, then pull a fresh clone and bring Docker up so they can open localhost.
 
 ## Your first step
 

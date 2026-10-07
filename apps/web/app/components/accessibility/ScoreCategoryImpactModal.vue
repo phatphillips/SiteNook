@@ -82,7 +82,7 @@ const viewAllLabel = computed(() =>
 )
 
 const modalTitle = computed(() =>
-  props.row ? `${props.row.label} — score impact` : 'Score impact'
+  props.row ? `${props.row.label}. Score impact` : 'Score impact'
 )
 
 const impactIntro = computed(() =>

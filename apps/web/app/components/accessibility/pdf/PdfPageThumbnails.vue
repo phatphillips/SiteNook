@@ -4,7 +4,7 @@ import { fetchAuthedPdfBuffer } from '~/utils/fetchAuthedPdf'
 
 const props = defineProps<{
   fileUrl: string | null
-  /** Shared bytes from parent — avoids a second network fetch when set. */
+  /** Shared bytes from parent. Avoids a second network fetch when set. */
   pdfData?: ArrayBuffer | null
   currentPage?: number
   issues?: PdfIssue[]

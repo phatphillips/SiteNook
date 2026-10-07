@@ -1,6 +1,6 @@
 ---
 title: Introducing accessibility score trends
-description: Track WCAG progress over time with plain-language issues — and see which fixes unlock the most points.
+description: Track WCAG progress over time with plain-language issues. And see which fixes unlock the most points.
 date: 2026-07-08
 category: product
 authors:
@@ -9,7 +9,7 @@ image: /blog/score-trends.svg
 featured: true
 ---
 
-Today we are shipping **accessibility score trends** across the overview and accessibility pages — so teams can see whether inclusion work is actually moving the needle.
+Today we are shipping **accessibility score trends** across the overview and accessibility pages. So teams can see whether inclusion work is actually moving the needle.
 
 Scores alone rarely tell the full story. You need open-issue counts trending down, category progress toward your site target, and a clear list of fixes that unlock the most points.
 
@@ -34,4 +34,4 @@ Teams we work with typically review trends weekly and assign the top three point
 
 Run a few completed scans on a site, then open **Accessibility → Overview**. Pick a 30- or 90-day range and watch the cards update as new crawls finish.
 
-If you are new to SiteNook, start a Team trial, add your first site URL, and queue a full scan — trends appear after the second completed run.
+If you are new to SiteNook, start a Team trial, add your first site URL, and queue a full scan. Trends appear after the second completed run.

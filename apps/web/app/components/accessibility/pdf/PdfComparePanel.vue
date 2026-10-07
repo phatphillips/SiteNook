@@ -65,7 +65,7 @@ const isBusy = computed(() =>
             Before & after assisted fix
           </h3>
           <p class="mt-1 text-sm text-muted">
-            See how score and issues changed after SiteNook applied an assisted structural fix, then re-checked with veraPDF. This is remediation help — not certified PDF/UA.
+            See how score and issues changed after SiteNook applied an assisted structural fix, then re-checked with veraPDF. This is remediation help. Not certified PDF/UA.
           </p>
           <p
             v-if="isComplete"
@@ -268,7 +268,7 @@ const isBusy = computed(() =>
                 v-if="remainingIssues === 0"
                 class="mt-1 text-xs text-highlighted"
               >
-                Re-check reported 0 issues. Still download and spot-check — assisted fix is not a PDF/UA certificate.
+                Re-check reported 0 issues. Still download and spot-check. Assisted fix is not a PDF/UA certificate.
               </p>
               <p
                 v-else

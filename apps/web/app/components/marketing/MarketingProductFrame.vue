@@ -6,7 +6,7 @@ const props = withDefaults(defineProps<{
   activeNav?: MarketingNavId
   title?: string
   badge?: string | null
-  /** Hide the demo sidebar — Cursor-style product panel without app nav. */
+  /** Hide the demo sidebar. Cursor-style product panel without app nav. */
   hideNav?: boolean
   /** Hide the in-frame page title row (title lives in the showcase content instead). */
   hideTitleBar?: boolean
@@ -312,7 +312,7 @@ const hoveredId = ref<string | null>(null)
     0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
-/* Grow with content — page scrolls, not nested panels (Cursor-style mobile). */
+/* Grow with content. Page scrolls, not nested panels (Cursor-style mobile). */
 .marketing-product-frame__body {
   overflow: visible;
   max-width: 100%;

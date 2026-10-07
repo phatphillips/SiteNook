@@ -4,7 +4,7 @@ import { fetchAuthedPdfBuffer } from '~/utils/fetchAuthedPdf'
 
 const props = defineProps<{
   fileUrl: string | null
-  /** Shared ArrayBuffer from parent — skips network fetch when set. */
+  /** Shared ArrayBuffer from parent. Skips network fetch when set. */
   pdfData?: ArrayBuffer | null
   initialPage?: number
   /** Optional audit cue shown when current page matches highlightPage. */
@@ -14,7 +14,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:page': [page: number]
-  /** Natural PDF page size in points (scale 1) — used by shell to size without a fit feedback loop. */
+  /** Natural PDF page size in points (scale 1). Used by shell to size without a fit feedback loop. */
   'update:pageSize': [size: { width: number, height: number }]
 }>()
 
@@ -189,7 +189,7 @@ async function emitNaturalPageSize(pageNum: number) {
     const natural = page.getViewport({ scale: 1 })
     emit('update:pageSize', { width: natural.width, height: natural.height })
   } catch {
-    // ignore — page may have changed mid-load
+    // ignore. Page may have changed mid-load
   }
 }
 

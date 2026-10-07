@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Authentication required' })
   }
 
-  // Full record — fields: strips collectionId and makes pocketBaseFileUrl() return "".
+  // Full record. Fields: strips collectionId and makes pocketBaseFileUrl() return "".
   const page = await pb.collection('pages').getOne(pageId) as {
     id: string
     site?: string

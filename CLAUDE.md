@@ -1,4 +1,4 @@
-# CLAUDE.md — Agent Instructions
+# CLAUDE.md. Agent Instructions
 
 ## Project Overview
 
@@ -31,7 +31,7 @@ SiteNook is a self-hosted web accessibility and QA monitoring platform (an open-
 - **Auth**: PocketBase `users` collection with `authWithPassword`; route guard in `app/middleware/auth.ts`; shared auth state via VueUse `createSharedComposable`.
 - **Scanner**: TypeScript ESM under `apps/scanner/src/`; queue processor in `index.ts` calls `parseRawConfig`, `createAuthenticatedContext`, and QA modules.
 - **Schema**: PocketBase collections defined as versioned JS migrations in `services/pocketbase/pb_migrations/` (sites, scans, pages, issues, qa_results, policies, scan_queue, etc.).
-- **Package managers**: `apps/web` declares `pnpm`; Docker dev images use `npm` — match the tool used in the target directory.
+- **Package managers**: `apps/web` declares `pnpm`; Docker dev images use `npm`. Match the tool used in the target directory.
 
 ## How to Run
 
@@ -88,7 +88,7 @@ Otherwise: **no automated test suite found** for the SiteNook apps.
 
 - Collections and schema live in: `services/pocketbase/pb_migrations/` (applied on container start; runtime SQLite in Docker volume `pb_data` mounted at `/pb/pb_data`)
 - Auth patterns used: PocketBase built-in `users` auth; web app `authWithPassword` / signup; API rules require `@request.auth.id != ""` on collections; scanner uses admin credentials (`POCKETBASE_ADMIN_EMAIL` / `POCKETBASE_ADMIN_PASSWORD`) from env
-- Custom PocketBase hooks or extensions: **none** — no `pb_hooks/` directory; bootstrap via `entrypoint.sh`, `bootstrap.sh`, `seed.sh`, `patch-users.sh`, `patch-rules.sh`
+- Custom PocketBase hooks or extensions: **none**. No `pb_hooks/` directory; bootstrap via `entrypoint.sh`, `bootstrap.sh`, `seed.sh`, `patch-users.sh`, `patch-rules.sh`
 
 ## Docker Notes
 
@@ -104,7 +104,7 @@ Otherwise: **no automated test suite found** for the SiteNook apps.
 - Do not modify `pb_data/` directly (use PocketBase admin or migrations)
 - Do not commit `.env` files
 - Do not commit `graphify-out/manifest.json` or `graphify-out/cost.json`
-- Do not treat `apps/web/.output/` or `apps/web/.nuxt/` as source — regenerate via build
+- Do not treat `apps/web/.output/` or `apps/web/.nuxt/` as source. Regenerate via build
 - Avoid editing production data in running containers without migrations
 - Do not reintroduce pre-monorepo `frontend/`, `backend/`, or root WordPress auditor scripts
 
@@ -139,7 +139,7 @@ npm run test:integration
 
 ### Test environment rules
 - Test PocketBase: port 8091 (Docker profile: test), uses same build as prod
-- Dev PocketBase: port 8090 — NEVER point tests at this
+- Dev PocketBase: port 8090. NEVER point tests at this
 - Test admin credentials: test-admin@sitenook.test / test-password-123
 - Test user credentials: test-user@sitenook.test / test-user-password-123
 - Fixtures live in: tests/fixtures/pb_data/
@@ -157,7 +157,7 @@ npm run test:integration
 - Auth and site list flows → apps/web/tests/e2e/
 
 ### For agents running tests
-1. Run unit tests first — fastest signal: cd apps/scanner && npm test
+1. Run unit tests first. Fastest signal: cd apps/scanner && npm test
 2. For scanner logic changes, also run: npm run test:integration
 3. For UI or auth changes, run: cd apps/web && npm run test:e2e
 4. Read apps/web/tests/results/e2e-results.json for structured pass/fail

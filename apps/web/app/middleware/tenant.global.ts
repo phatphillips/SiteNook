@@ -33,7 +33,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     && !isTenantHost.value
     && !loadError.value
 
-  // Always resolve (or refresh) tenant context — loadTenantContext no-ops when host is unchanged.
+  // Always resolve (or refresh) tenant context. LoadTenantContext no-ops when host is unchanged.
   try {
     await withTimeout(
       loadTenantContext(hostMismatch || !ready.value),
@@ -76,7 +76,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   try {
     await withTimeout(awaitAuthReady(), AUTH_READY_TIMEOUT_MS, 'Auth initialization')
   } catch {
-    // Continue — org mismatch checks require a loaded client when available.
+    // Continue. Org mismatch checks require a loaded client when available.
   }
   syncAuth()
 

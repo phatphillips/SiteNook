@@ -38,7 +38,7 @@ export function issueMatchesScoreCategory(
   if (categoryId === 'best_practice') {
     return isBestPracticeRule(issue.rule_id) && !isAriaRule(issue.rule_id)
   }
-  // Level A / AA / AAA — non-best-practice issues at that level
+  // Level A / AA / AAA. Non-best-practice issues at that level
   return !isBestPracticeRule(issue.rule_id) && issue.wcag_level === categoryId
 }
 

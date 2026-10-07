@@ -52,7 +52,7 @@ export function useA11yIssueActions(
   function applyLocalIssuePatch(issueIds: string[], patch: Record<string, unknown>) {
     if (!issueIds.length) return
     const idSet = new Set(issueIds)
-    // Mutate in place — `issues` is often a computed from useAccessibility.
+    // Mutate in place. `issues` is often a computed from useAccessibility.
     for (const issue of issues.value) {
       if (!idSet.has(issue.id)) continue
       Object.assign(issue, patch)
@@ -128,7 +128,7 @@ export function useA11yIssueActions(
         )
       )
 
-      // History is a single create — await it so the drawer shows the entry immediately.
+      // History is a single create. Await it so the drawer shows the entry immediately.
       if (history) {
         await logIssueAction({
           ...history,

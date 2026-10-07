@@ -35,7 +35,7 @@ onMounted(async () => {
     try {
       await loadTenantContext()
     } catch {
-      // tenant context unavailable — treat as non-apex
+      // tenant context unavailable. Treat as non-apex
     }
   }
 

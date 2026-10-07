@@ -9,7 +9,7 @@ export const MARKETING_APEX_PREFIXES = [
   '/product'
 ] as const
 
-/** @deprecated Prefer MARKETING_APEX_EXACT_PATHS — kept for older imports. */
+/** @deprecated Prefer MARKETING_APEX_EXACT_PATHS. Kept for older imports. */
 export const MARKETING_APEX_PATHS = MARKETING_APEX_EXACT_PATHS
 
 export function parseMarketingSiteFlag(value: unknown): boolean {
@@ -28,7 +28,7 @@ function parseCommercialFlag(value: unknown): boolean {
 /**
  * Paid / hosted apex marketing (Nuxt landing, pricing, trial CTAs).
  * Requires NUXT_PUBLIC_MARKETING_SITE and SITENOOK_COMMERCIAL.
- * OSS downloads use github.io for marketing — not this flag alone.
+ * OSS downloads use github.io for marketing. Not this flag alone.
  * See docs/oss-launch-surface.md
  */
 export function isMarketingSiteActive(

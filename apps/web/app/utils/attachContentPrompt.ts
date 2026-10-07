@@ -6,7 +6,7 @@ function htmlCommentSafe(text: string): string {
 
 /**
  * Temporarily prepend a task prompt to page content for copy/download.
- * Does not persist — callers decide when to apply it.
+ * Does not persist. Callers decide when to apply it.
  */
 export function attachPromptToPageContent(
   content: string,

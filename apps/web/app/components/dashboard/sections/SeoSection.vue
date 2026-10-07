@@ -109,7 +109,7 @@ const openIssuesTrendDirection = computed((): 'up' | 'down' | null => {
           SEO monitoring is locked
         </p>
         <p class="text-sm text-muted">
-          Unlock SEO scoring — see technical, content, and crawlability insights for your sites.
+          Unlock SEO scoring. See technical, content, and crawlability insights for your sites.
         </p>
       </div>
       <UButton to="/settings/billing" variant="outline" size="sm">

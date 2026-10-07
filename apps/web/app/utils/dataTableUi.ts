@@ -1,7 +1,7 @@
 import { h, resolveComponent } from 'vue'
 import type { Column } from '@tanstack/vue-table'
 
-/** Skeleton bar color — subtle on table-surface (overrides USkeleton default bg-elevated). */
+/** Skeleton bar color. Subtle on table-surface (overrides USkeleton default bg-elevated). */
 export const DATA_TABLE_SKELETON_CLASS = 'rounded-md !bg-elevated/30'
 
 export const DATA_TABLE_TH_PADDING = 'p-0 px-4 py-3'
@@ -9,7 +9,7 @@ export const DATA_TABLE_TD_PADDING = 'p-0 px-4 py-3'
 export const DATA_TABLE_TH_PADDING_DENSE = 'p-0 px-4 py-2'
 export const DATA_TABLE_TD_PADDING_DENSE = 'p-0 px-4 py-2'
 
-/** Custom HTML `<thead>` row styling — matches DATA_TABLE_UI thead. */
+/** Custom HTML `<thead>` row styling. Matches DATA_TABLE_UI thead. */
 export const DATA_TABLE_THEAD_CLASS = 'border-b border-default bg-elevated/20 text-left'
 
 /** UTable `ui` config aligned with DataTableSkeleton (muted headers, fixed layout, row dividers). */

@@ -160,7 +160,7 @@ export const PROVIDER_FIELD_SCHEMAS: Record<AnalyticsProvider, CredentialFieldDe
       type: 'text',
       required: true,
       placeholder: 'example.com',
-      help: 'Exact domain in Plausible (e.g. plausible.io) — not your API key'
+      help: 'Exact domain in Plausible (e.g. plausible.io). Not your API key'
     },
     {
       key: 'apiKey',

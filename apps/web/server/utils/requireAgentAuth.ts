@@ -31,7 +31,7 @@ export interface AgentAuthContext {
 }
 
 /**
- * Auth for /api/agent/* — accepts org API keys (`ak_…`) or a PocketBase user JWT.
+ * Auth for /api/agent/*. Accepts org API keys (`ak_…`) or a PocketBase user JWT.
  * API-key path uses the admin PB client and enforces org scoping in handlers.
  */
 export async function requireAgentAuth(event: H3Event): Promise<AgentAuthContext> {

@@ -51,7 +51,7 @@ async function onCreate() {
     const result = await createKey(name.value.trim() || 'MCP key', scopes)
     createdPlaintext.value = result.key
     showCreated.value = true
-    toast.add({ title: 'API key created', description: 'Copy it now — it will not be shown again.', color: 'success' })
+    toast.add({ title: 'API key created', description: 'Copy it now. It will not be shown again.', color: 'success' })
   } catch (err) {
     toast.add({ title: 'Could not create key', description: formatPbClientError(err), color: 'error' })
   }
@@ -97,7 +97,7 @@ watch(() => props.canManage, (ok) => {
       </h2>
       <p class="text-sm text-muted max-w-2xl">
         Optional. Create a key so Cursor (or another MCP client) can list sites, read issues, and enqueue scans.
-        The dashboard works fine without this — only enable it if you want agent access.
+        The dashboard works fine without this. Only enable it if you want agent access.
       </p>
     </div>
 

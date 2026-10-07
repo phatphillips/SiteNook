@@ -14,7 +14,7 @@ export function resolveServerPocketBaseUrl(event?: H3Event): string {
     return publicUrl
   }
 
-  // Browser-relative URL (e.g. /api behind nginx) — server needs an absolute PocketBase URL.
+  // Browser-relative URL (e.g. /api behind nginx). Server needs an absolute PocketBase URL.
   if (publicUrl?.startsWith('/')) {
     return process.env.NUXT_POCKETBASE_URL?.trim() || 'http://127.0.0.1:8090'
   }

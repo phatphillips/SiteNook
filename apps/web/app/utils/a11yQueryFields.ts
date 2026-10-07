@@ -1,8 +1,8 @@
-/** Page fields for accessibility list loads — omit html_snapshot; include expand.scan timestamps for latest-page selection. */
+/** Page fields for accessibility list loads. Omit html_snapshot; include expand.scan timestamps for latest-page selection. */
 export const A11Y_PAGE_FIELDS =
   'id,url,title,scan,site,expand.scan.completed_at,expand.scan.started_at,expand.scan.created'
 
-/** Issue fields for list/overview — omit html_snippet and fix_suggestion (load on drawer open). */
+/** Issue fields for list/overview. Omit html_snippet and fix_suggestion (load on drawer open). */
 export const A11Y_ISSUE_LIST_FIELDS =
   'id,scan,page,rule_id,wcag_level,wcag_sc,wcag_version,impact,type,element_type,responsible_role,help_url,description,css_selector,status,dismissed_at,dismiss_reason,updated,created'
 

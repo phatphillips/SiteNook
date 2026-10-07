@@ -260,7 +260,7 @@ onMounted(async () => {
             Analytics providers
           </h2>
           <p class="text-sm text-muted mb-4 max-w-2xl">
-            Connect traffic analytics for each SiteNook site. Data syncs in the background into encrypted snapshots — dashboards never call providers on page load.
+            Connect traffic analytics for each SiteNook site. Data syncs in the background into encrypted snapshots. Dashboards never call providers on page load.
           </p>
 
           <div

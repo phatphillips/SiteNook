@@ -165,7 +165,7 @@ function readFetchErrorMessage(error: unknown, fallback: string): string {
           Choose the plan that fits how many sites you care for
         </h1>
         <p class="mt-6 text-lg leading-relaxed text-muted">
-          Start with a 30-day Team trial — no credit card — or subscribe when you are ready.
+          Start with a 30-day Team trial. No credit card. Or subscribe when you are ready.
           Annual billing saves about {{ annualSavingsPercent }}%. Free remains available with 1 site and 20 pages per scan.
         </p>
         <p class="mt-4 text-sm text-muted">
@@ -279,7 +279,7 @@ function readFetchErrorMessage(error: unknown, fallback: string): string {
             Inclusion is not a one-off audit. It is ongoing care for every visitor.
           </h2>
           <p class="mt-4 text-muted">
-            Start monitoring accessibility, QA, and SEO on the sites you already manage — then invite the people who fix the findings.
+            Start monitoring accessibility, QA, and SEO on the sites you already manage. Then invite the people who fix the findings.
           </p>
           <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
             <UButton

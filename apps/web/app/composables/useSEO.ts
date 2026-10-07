@@ -17,7 +17,7 @@ const READABILITY_RULES = new Set(['low-readability', 'thin-content'])
 type SeoDetailPart = 'issues' | 'pages'
 
 export type UseSEOOptions = {
-  /** When true (default), load category counts only — no bulk issue/page arrays. */
+  /** When true (default), load category counts only. No bulk issue/page arrays. */
   summary?: boolean
   parts?: SeoDetailPart[]
 }

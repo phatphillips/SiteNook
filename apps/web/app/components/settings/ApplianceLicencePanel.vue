@@ -66,7 +66,7 @@ onMounted(() => {
         </h2>
         <p class="text-sm text-muted">
           Free installs allow 1 site and 20 pages per scan. A Polar licence key unlocks full local limits.
-          Scanning runs on this machine — there is no SiteNook cloud scan API.
+          Scanning runs on this machine. There is no SiteNook cloud scan API.
         </p>
       </div>
     </template>

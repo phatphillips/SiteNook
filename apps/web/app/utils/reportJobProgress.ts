@@ -37,7 +37,7 @@ export function reportStatusHeadline(
   progressLabel?: string
 ): string {
   if (progressLabel?.trim()) return progressLabel.trim()
-  if (status === 'pending') return 'Queued — waiting for the scanner'
+  if (status === 'pending') return 'Queued. Waiting for the scanner'
   if (status === 'processing') return 'Generating your report'
   if (status === 'complete') return 'Report ready'
   if (status === 'failed') return 'Report generation failed'

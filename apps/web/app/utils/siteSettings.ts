@@ -174,7 +174,7 @@ export function parseSiteSettings(
 }
 
 export function serializeSiteSettings(settings: SiteSettings): Record<string, unknown> {
-  // Explicit plain object — structuredClone/toRaw fail on Vue reactive proxies.
+  // Explicit plain object. StructuredClone/toRaw fail on Vue reactive proxies.
   return {
     wcagVersion: settings.wcagVersion,
     wcagConformance: settings.wcagConformance,

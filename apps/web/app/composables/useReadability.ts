@@ -11,7 +11,7 @@ import {
 import { resolvePageReadabilityScores } from '~/utils/readabilityScoring'
 import { siteSettingsForSite } from '~/utils/siteSettings'
 
-/** Page fields for the readability table — omit html_snapshot to keep list loads reliable. */
+/** Page fields for the readability table. Omit html_snapshot to keep list loads reliable. */
 const READABILITY_PAGE_FIELDS =
   'id,url,title,word_count,readability_score,readability_scores,scan,site,created'
 

@@ -8,7 +8,7 @@ const WORKSPACE_NEUTRAL_PREFIXES = [
   '/settings'
 ] as const
 
-/** Routes that are not tied to a single site — switching workspace should not navigate away. */
+/** Routes that are not tied to a single site. Switching workspace should not navigate away. */
 export function isWorkspaceNeutralPath(path: string): boolean {
   if (path === '/' || path === '/sites') return true
   return WORKSPACE_NEUTRAL_PREFIXES.some(

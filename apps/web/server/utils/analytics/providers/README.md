@@ -3,7 +3,7 @@
 Research notes and field maps for SiteNook analytics integrations.
 
 Metric mapping rules:
-- Never coerce missing values to `0` — use `null`.
+- Never coerce missing values to `0`. Use `null`.
 - Sync window: last **28 complete UTC days** (excludes today).
 - Bounce rates stored as `0–1` when available.
 

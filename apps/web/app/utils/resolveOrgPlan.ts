@@ -28,7 +28,7 @@ export async function resolveEffectiveOrganizationPlan(): Promise<OrganizationPl
     try {
       await loadTenantContext()
     } catch {
-      // Tenant host resolution failed — still try user org below.
+      // Tenant host resolution failed. Still try user org below.
     }
   }
 

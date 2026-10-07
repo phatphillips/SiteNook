@@ -81,7 +81,7 @@ const descCounterClass = computed(() =>
       <UTextarea
         v-model="metaDescription"
         :rows="4"
-        placeholder="No meta description found — Google may use page body text instead"
+        placeholder="No meta description found. Google may use page body text instead"
       />
       <p class="text-xs text-right mt-1" :class="descCounterClass">
         Description {{ metaDescription.length }} / {{ descriptionMax }}

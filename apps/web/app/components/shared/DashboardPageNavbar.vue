@@ -6,7 +6,7 @@ defineProps<{
 
 <template>
   <UDashboardNavbar
-    class="dashboard-page-navbar"
+    class="dashboard-page-navbar -ms-[0.375rem] ps-[0.375rem]"
     :toggle="{
       color: 'neutral',
       variant: 'ghost',

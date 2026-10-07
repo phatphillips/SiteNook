@@ -88,7 +88,7 @@ export function canChangeRole(
     if (countAdmins(allOrgUsers) <= 1) {
       return {
         allowed: false,
-        reason: 'This is the last Admin — promote another member before changing this role.'
+        reason: 'This is the last Admin. Promote another member before changing this role.'
       }
     }
 
@@ -99,7 +99,7 @@ export function canChangeRole(
     ) {
       return {
         allowed: false,
-        reason: 'Organization must have at least one billing contact — assign another admin as billing contact first.'
+        reason: 'Organization must have at least one billing contact. Assign another admin as billing contact first.'
       }
     }
   }
@@ -131,7 +131,7 @@ export function canRemoveMember(
   ) {
     return {
       allowed: false,
-      reason: 'Organization must have at least one billing contact — assign another admin as billing contact first.'
+      reason: 'Organization must have at least one billing contact. Assign another admin as billing contact first.'
     }
   }
 
@@ -157,7 +157,7 @@ export function canToggleBillingContact(
   ) {
     return {
       allowed: false,
-      reason: 'Organization must have at least one billing contact — assign another admin as billing contact first.'
+      reason: 'Organization must have at least one billing contact. Assign another admin as billing contact first.'
     }
   }
 

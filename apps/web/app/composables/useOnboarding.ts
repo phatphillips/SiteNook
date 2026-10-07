@@ -138,7 +138,7 @@ export function useOnboarding() {
         await markFirstScanComplete()
       }
     } catch {
-      // Best-effort milestone sync — ignore permission / network blips.
+      // Best-effort milestone sync. Ignore permission / network blips.
     }
   }
 

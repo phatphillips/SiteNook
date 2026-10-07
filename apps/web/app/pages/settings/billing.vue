@@ -473,7 +473,7 @@ watch(() => route.query.portal, async (portal) => {
               This SiteNook instance runs without Stripe or Polar billing.
               Local limits are unlimited. To enable the commercial module, set
               <code class="text-xs">SITENOOK_COMMERCIAL=1</code>
-              and configure Stripe or Polar — see
+              and configure Stripe or Polar. See
               <span class="font-medium text-default">docs/commercial.md</span>
               in the repository.
             </p>
@@ -565,7 +565,7 @@ watch(() => route.query.portal, async (portal) => {
             color="warning"
             variant="subtle"
             icon="i-lucide-clock"
-            title="Subscription canceled — 30-day retention"
+            title="Subscription canceled. 30-day retention"
             :description="purgeScheduledLabel
               ? `Your subscription has been canceled. Data is kept until ${purgeScheduledLabel}.`
               : 'Your subscription has been canceled. Your account remains accessible during retention.'"

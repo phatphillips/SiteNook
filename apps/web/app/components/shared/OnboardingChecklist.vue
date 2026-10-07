@@ -27,7 +27,7 @@ const steps = computed(() => {
     {
       id: 'crawl',
       title: 'Complete a site crawl',
-      description: 'Run a scan and wait until it finishes — scores and issues appear after the crawl completes.',
+      description: 'Run a scan and wait until it finishes. Scores and issues appear after the crawl completes.',
       done: Boolean(state.firstScanStarted),
       to: '/scans',
       cta: 'View scans'
@@ -43,7 +43,7 @@ const steps = computed(() => {
     {
       id: 'schedule',
       title: 'Turn on a schedule',
-      description: 'Don’t rely on memory — check weekly or daily.',
+      description: 'Don’t rely on memory. Check weekly or daily.',
       done: Boolean(state.scheduleEnabled),
       to: '/sites',
       cta: 'Open sites',
@@ -99,13 +99,13 @@ function runStepCta(step: { openAddSite?: boolean, to?: string }) {
 <template>
   <section
     v-if="showChecklist && canManageOnboarding"
-    class="onboarding-checklist w-full"
+    class="onboarding-checklist w-full rounded-xl border border-default bg-elevated/20 px-5 py-4 sm:px-6 sm:py-5"
     :aria-labelledby="titleId"
   >
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
       <div class="min-w-0 flex-1">
         <p
-          class="inline-flex items-center gap-1.5 rounded-md border border-dashed border-default bg-elevated/20 px-2 py-1 text-xs font-medium uppercase tracking-wide text-muted"
+          class="inline-flex items-center gap-1.5 rounded-md border border-dashed border-info/40 bg-info/10 px-2 py-1 text-xs font-medium uppercase tracking-wide text-info"
         >
           <UIcon name="i-lucide-list-checks" class="size-3.5 shrink-0" aria-hidden="true" />
           Getting set up
@@ -124,8 +124,8 @@ function runStepCta(step: { openAddSite?: boolean, to?: string }) {
         </div>
         <p class="mt-1 text-sm leading-relaxed text-muted">
           Follow these steps to finish setup. Start with
-          <span class="font-medium text-highlighted">{{ nextStep?.title || 'your checklist' }}</span>
-          — you can dismiss this anytime.
+          <span class="font-medium text-highlighted">{{ nextStep?.title || 'your checklist' }}</span>.
+          You can dismiss this anytime.
         </p>
       </div>
 

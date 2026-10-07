@@ -822,7 +822,7 @@ watch(
   async () => {
     await nextTick()
     updateScrollChrome()
-    // Nested table mounts after expand — remeasure until geometry + colgroup settle.
+    // Nested table mounts after expand. Remeasure until geometry + colgroup settle.
     requestAnimationFrame(() => {
       syncIssueColumnWidthVar()
       requestAnimationFrame(() => {
@@ -1072,7 +1072,7 @@ defineExpose({
   background-color: var(--ui-bg);
 }
 
-/* Flexible column — absorbs leftover width so metrics sit on the right edge. */
+/* Flexible column. Absorbs leftover width so metrics sit on the right edge. */
 .issues-table-panel :deep(.issues-table-issue-col) {
   width: auto;
   min-width: 28rem;
@@ -1097,7 +1097,7 @@ defineExpose({
   max-width: 100%;
 }
 
-/* Fixed metric widths — wide enough for sort button + label without overlap. */
+/* Fixed metric widths. Wide enough for sort button + label without overlap. */
 .issues-table-panel :deep(.issues-metric-col--site) {
   width: 10rem;
   min-width: 10rem;
@@ -1328,7 +1328,7 @@ defineExpose({
 }
 
 @media (max-width: 1023px) {
-  /* Unstick — column mins + table min-width prevent Issue/Site overlap. */
+  /* Unstick. Column mins + table min-width prevent Issue/Site overlap. */
   .issues-table-panel :deep(.issues-table-issue-col) {
     width: auto;
     min-width: 28rem;

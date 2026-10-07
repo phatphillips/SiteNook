@@ -137,6 +137,6 @@ export async function touchApiKeyLastUsed(pb: PocketBase, keyId: string): Promis
       last_used_at: new Date().toISOString()
     })
   } catch {
-    // Non-fatal — auth still succeeds
+    // Non-fatal. Auth still succeeds
   }
 }

@@ -32,7 +32,7 @@ const _useTenantOrg = () => {
         const config = useRuntimeConfig()
         const parsed = parseHostSubdomain(readRequestHost(), config.public.appDomain)
         if (parsed.isApex || !parsed.subdomain) {
-          // Resolve apex in-process — internal fetch deadlocks Nuxt dev SSR.
+          // Resolve apex in-process. Internal fetch deadlocks Nuxt dev SSR.
           data = { mode: 'apex', subdomain: null, organization: null }
         } else {
           const requestFetch = useRequestFetch()

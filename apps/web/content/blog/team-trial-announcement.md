@@ -1,6 +1,6 @@
 ---
 title: Announcing the SiteNook Team trial
-description: Try scheduled scans, SEO, readability, and up to 10 members for 30 days — no credit card required.
+description: Try scheduled scans, SEO, readability, and up to 10 members for 30 days. No credit card required.
 date: 2026-05-01
 category: company
 authors:
@@ -35,4 +35,4 @@ No credit card is required to start. When the trial ends, your organization can 
 
 From the marketing site, choose **Start free trial**, create your organization, add a site, and run your first crawl. Invite colleagues from Settings once you are ready to share findings.
 
-Questions about invoice billing or Enterprise self-hosting? Use **Contact** in the header — we are happy to help.
+Questions about invoice billing or Enterprise self-hosting? Use **Contact** in the header. We are happy to help.

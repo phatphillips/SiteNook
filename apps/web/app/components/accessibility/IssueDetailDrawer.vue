@@ -30,7 +30,7 @@ const props = defineProps<{
   readOnly?: boolean
   /** Parent is processing a dismiss/fix. */
   busy?: boolean
-  /** Preferred async handlers — awaited so the drawer can show loading/success correctly. */
+  /** Preferred async handlers. Awaited so the drawer can show loading/success correctly. */
   onDismissIssue?: (reason: DismissReason) => void | Promise<void>
   onMarkIssueFixed?: () => void | Promise<void>
 }>()

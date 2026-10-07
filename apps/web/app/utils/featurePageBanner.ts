@@ -29,7 +29,7 @@ const COPY: Record<FeaturePageBannerKey, FeaturePageBannerCopy> = {
   'accessibility-overview': {
     title: 'Understand your accessibility health',
     description:
-      'Track your site target score, conformance progress, and open WCAG issues from the latest scan — then drill into fixes that move the score.'
+      'Track your site target score, conformance progress, and open WCAG issues from the latest scan. Then drill into fixes that move the score.'
   },
   'qa-overview': {
     title: 'Monitor quality across your site',
@@ -39,12 +39,12 @@ const COPY: Record<FeaturePageBannerKey, FeaturePageBannerCopy> = {
   'seo-overview': {
     title: 'Improve search visibility across your sites',
     description:
-      'Track SEO scores, technical blockers, and content issues from the latest scans — then drill into the sites that need attention first.'
+      'Track SEO scores, technical blockers, and content issues from the latest scans. Then drill into the sites that need attention first.'
   },
   'accessibility-issues': {
     title: 'Prioritize fixes that move your score',
     description:
-      'Review open WCAG issues by rule or by page, dismiss false positives, and queue rescans for pages you are actively fixing. The list and score only include checks in your site target — use A + AA to match Siteimprove-style reporting.'
+      'Review open WCAG issues by rule or by page, dismiss false positives, and queue rescans for pages you are actively fixing. The list and score only include checks in your site target. Use A + AA to match Siteimprove-style reporting.'
   },
   'accessibility-simulator': {
     title: 'Experience your pages with different abilities',

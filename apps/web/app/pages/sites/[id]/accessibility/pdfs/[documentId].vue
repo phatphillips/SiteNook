@@ -437,7 +437,7 @@ async function onIgnoredChange(ignored: boolean) {
         </div>
 
         <p class="text-xs text-muted sm:text-sm">
-          Assisted fix is remediation help — not certified PDF/UA. Re-check with validation, then export a pack.
+          Assisted fix is remediation help. Not certified PDF/UA. Re-check with validation, then export a pack.
         </p>
 
         <UAlert
@@ -452,7 +452,7 @@ async function onIgnoredChange(ignored: boolean) {
           color="warning"
           variant="subtle"
           title="Waiting for scanner to store this PDF"
-          description="Crawl PDFs are downloaded automatically by the scanner after discovery. If this stays empty, the remote URL may be blocked — upload a copy from the PDF library, or re-run a site scan."
+          description="Crawl PDFs are downloaded automatically by the scanner after discovery. If this stays empty, the remote URL may be blocked. Upload a copy from the PDF library, or re-run a site scan."
         />
 
         <component

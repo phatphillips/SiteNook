@@ -1,4 +1,4 @@
-/** Mirror of scanner truncateHtmlSnapshot — keep body when capping snapshot size. */
+/** Mirror of scanner truncateHtmlSnapshot. Keep body when capping snapshot size. */
 import { ASTRA_EMPTY_DESKTOP_HEADER_CSS } from './astraHeaderPreviewCss'
 
 export const HTML_SNAPSHOT_MAX_CHARS = 200_000

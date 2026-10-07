@@ -48,7 +48,7 @@ export function assertRateLimit(
   })
 }
 
-/** Test helper — clears in-memory buckets between unit tests. */
+/** Test helper. Clears in-memory buckets between unit tests. */
 export function resetRateLimitsForTests(): void {
   buckets.clear()
 }

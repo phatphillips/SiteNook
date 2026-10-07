@@ -6,7 +6,7 @@ const COMMERCIAL_API_PREFIXES = [
   '/api/licence'
 ]
 
-/** Onboarding milestones are OSS — not gated by commercial billing. */
+/** Onboarding milestones are OSS. Not gated by commercial billing. */
 const COMMERCIAL_API_ALLOWLIST = new Set([
   '/api/billing/onboarding-state'
 ])

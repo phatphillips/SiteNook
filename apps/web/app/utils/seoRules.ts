@@ -55,10 +55,10 @@ export const SEO_RULE_LABELS: Record<string, string> = {
   'low-readability': 'Low readability'
 }
 
-/** Plain-English context for editors — why the rule matters for search visibility. */
+/** Plain-English context for editors. Why the rule matters for search visibility. */
 export const SEO_RULE_WHY: Record<string, string> = {
   'missing-title': 'Search engines use the title tag as the primary headline in results. Without it, your page is harder to rank and click.',
-  'missing-meta-description': 'The meta description is often shown as the snippet below your title in search results — a missing or weak description reduces clicks.',
+  'missing-meta-description': 'The meta description is often shown as the snippet below your title in search results. A missing or weak description reduces clicks.',
   'duplicate-title': 'Duplicate titles confuse search engines about which page to rank and can dilute visibility across your site.',
   'missing-h1': 'A clear H1 helps search engines understand the main topic and aligns with what users expect on the page.',
   'thin-content': 'Pages with very little text may be seen as low value and rank poorly compared to more substantive content.',
@@ -68,7 +68,7 @@ export const SEO_RULE_WHY: Record<string, string> = {
   'robots-unreachable': 'Crawlers expect a robots.txt file at your site root to learn crawl rules and find your sitemap.',
   'robots-missing-sitemap-directive': 'Declaring your sitemap in robots.txt helps search engines discover it reliably.',
   'sitemap-unreachable': 'An unreachable sitemap means search engines may miss pages you intended to submit for indexing.',
-  'llms-missing': 'llms.txt gives AI crawlers a curated summary of your site — increasingly expected for AI discoverability.',
+  'llms-missing': 'llms.txt gives AI crawlers a curated summary of your site. Increasingly expected for AI discoverability.',
   'ai-bot-blocked': 'Blocking AI search bots may reduce visibility in AI-powered search results.',
   'sitemap-bad-urls': 'Listing broken or redirecting URLs in your sitemap wastes crawl budget and signals poor site health.',
   'sitemap-noindex-urls': 'Submitting noindex pages in a sitemap sends conflicting signals to search engines.'
@@ -76,7 +76,7 @@ export const SEO_RULE_WHY: Record<string, string> = {
 
 /** Example corrected markup shown in the issue drawer. */
 export const SEO_RULE_FIX_EXAMPLES: Record<string, string> = {
-  'missing-title': '<title>Descriptive page title — Brand Name</title>',
+  'missing-title': '<title>Descriptive page title. Brand Name</title>',
   'title-too-short': '<title>Expand this title to describe the page topic clearly</title>',
   'title-too-long': '<title>Keep titles under ~60 characters for mobile SERPs</title>',
   'missing-meta-description': '<meta name="description" content="A concise summary of this page for search results.">',
@@ -93,7 +93,7 @@ export const SEO_RULE_FIX_EXAMPLES: Record<string, string> = {
   'llms-missing': '# Example Site\n\n> A brief description of your site and what it offers.\n\n## Key pages\n- [Home](https://example.com/)'
 }
 
-/** axe rules that overlap — link from SEO drawer to accessibility issues. */
+/** axe rules that overlap. Link from SEO drawer to accessibility issues. */
 export const SEO_AXE_RULE_LINKS: Record<string, string> = {
   'missing-title': 'document-title',
   'missing-h1': 'page-has-heading-one',
