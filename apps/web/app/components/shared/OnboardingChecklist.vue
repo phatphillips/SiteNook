@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import ProseCallout from '@nuxt/ui/components/prose/Callout.vue'
-
 const {
   onboardingState,
   showChecklist,
@@ -104,123 +102,117 @@ function runStepCta(step: { openAddSite?: boolean, to?: string }) {
     class="onboarding-checklist w-full"
     :aria-labelledby="titleId"
   >
-    <ProseCallout
-      color="info"
-      class="w-full"
-      :ui="{
-        base: 'my-0 w-full rounded-xl border-dashed px-5 py-4 text-default sm:px-6 sm:py-5'
-      }"
-    >
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-        <div class="min-w-0 flex-1">
-          <p class="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-info">
-            <UIcon name="i-lucide-list-checks" class="size-3.5 shrink-0" aria-hidden="true" />
-            Getting set up
-          </p>
-          <div class="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <h2
-              :id="titleId"
-              class="text-base font-semibold text-highlighted sm:text-lg"
-            >
-              Here’s what to do next
-            </h2>
-            <p class="text-sm text-muted">
-              {{ progressLabel }}
-              <span v-if="trialHint"> · {{ trialHint }}</span>
-            </p>
-          </div>
-          <p class="mt-1 text-sm leading-relaxed text-muted">
-            Follow these steps to finish setup. Start with
-            <span class="font-medium text-highlighted">{{ nextStep?.title || 'your checklist' }}</span>
-            — you can dismiss this anytime.
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+      <div class="min-w-0 flex-1">
+        <p
+          class="inline-flex items-center gap-1.5 rounded-md border border-dashed border-default bg-elevated/20 px-2 py-1 text-xs font-medium uppercase tracking-wide text-muted"
+        >
+          <UIcon name="i-lucide-list-checks" class="size-3.5 shrink-0" aria-hidden="true" />
+          Getting set up
+        </p>
+        <div class="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <h2
+            :id="titleId"
+            class="text-base font-semibold text-highlighted sm:text-lg"
+          >
+            Here’s what to do next
+          </h2>
+          <p class="text-sm text-muted">
+            {{ progressLabel }}
+            <span v-if="trialHint"> · {{ trialHint }}</span>
           </p>
         </div>
-
-        <div class="flex shrink-0 flex-wrap items-center gap-2">
-          <UButton
-            v-if="nextStep"
-            size="sm"
-            color="neutral"
-            @click="runStepCta(nextStep)"
-          >
-            {{ nextStep.cta }}
-          </UButton>
-          <UButton
-            size="sm"
-            variant="ghost"
-            color="neutral"
-            @click="dismissChecklist()"
-          >
-            Dismiss
-          </UButton>
-        </div>
+        <p class="mt-1 text-sm leading-relaxed text-muted">
+          Follow these steps to finish setup. Start with
+          <span class="font-medium text-highlighted">{{ nextStep?.title || 'your checklist' }}</span>
+          — you can dismiss this anytime.
+        </p>
       </div>
 
-      <ol class="mt-5 space-y-0">
-        <li
-          v-for="(step, index) in steps"
-          :key="step.id"
-          class="relative flex gap-3 pb-5 last:pb-0"
+      <div class="flex shrink-0 flex-wrap items-center gap-2">
+        <UButton
+          v-if="nextStep"
+          size="sm"
+          color="neutral"
+          @click="runStepCta(nextStep)"
         >
-          <div class="flex w-7 shrink-0 flex-col items-center">
-            <span
-              class="relative z-10 flex size-7 items-center justify-center rounded-full border text-xs font-semibold"
-              :class="{
-                'border-success bg-success/15 text-success': stepStatus(step) === 'done',
-                'border-info bg-info text-inverted': stepStatus(step) === 'current',
-                'border-default bg-default text-muted': stepStatus(step) === 'upcoming'
-              }"
-              :aria-hidden="true"
-            >
-              <UIcon
-                v-if="step.done"
-                name="i-lucide-check"
-                class="size-3.5"
-              />
-              <span v-else>{{ index + 1 }}</span>
-            </span>
-            <span
-              v-if="index < steps.length - 1"
-              class="mt-1 w-px flex-1 min-h-4"
-              :class="step.done ? 'bg-success/40' : 'bg-default'"
-              aria-hidden="true"
-            />
-          </div>
+          {{ nextStep.cta }}
+        </UButton>
+        <UButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          @click="dismissChecklist()"
+        >
+          Dismiss
+        </UButton>
+      </div>
+    </div>
 
-          <div class="min-w-0 flex-1 pt-0.5">
-            <p
-              class="text-sm font-medium"
-              :class="stepStatus(step) === 'upcoming' ? 'text-muted' : 'text-highlighted'"
-            >
-              {{ step.title }}
-              <span v-if="step.optional" class="font-normal text-muted">(optional)</span>
-            </p>
-            <p class="mt-0.5 text-xs leading-relaxed text-muted">
-              {{ step.description }}
-            </p>
-            <UButton
-              v-if="!step.done && nextStep?.id === step.id"
-              size="xs"
-              variant="link"
-              color="neutral"
-              class="mt-1 px-0"
-              @click="runStepCta(step)"
-            >
-              {{ step.cta }} →
-            </UButton>
-            <UButton
-              v-else-if="!step.done"
-              size="xs"
-              variant="link"
-              color="neutral"
-              class="mt-1 px-0"
-              @click="runStepCta(step)"
-            >
-              {{ step.cta }}
-            </UButton>
-          </div>
-        </li>
-      </ol>
-    </ProseCallout>
+    <ol class="mt-5 space-y-0">
+      <li
+        v-for="(step, index) in steps"
+        :key="step.id"
+        class="relative flex gap-3 pb-5 last:pb-0"
+      >
+        <div class="flex w-7 shrink-0 flex-col items-center">
+          <span
+            class="relative z-10 flex size-7 items-center justify-center rounded-full border text-xs font-semibold"
+            :class="{
+              'border-success bg-success/15 text-success': stepStatus(step) === 'done',
+              'border-highlighted bg-inverted text-inverted': stepStatus(step) === 'current',
+              'border-default bg-default text-muted': stepStatus(step) === 'upcoming'
+            }"
+            :aria-hidden="true"
+          >
+            <UIcon
+              v-if="step.done"
+              name="i-lucide-check"
+              class="size-3.5"
+            />
+            <span v-else>{{ index + 1 }}</span>
+          </span>
+          <span
+            v-if="index < steps.length - 1"
+            class="mt-1 w-px flex-1 min-h-4"
+            :class="step.done ? 'bg-success/40' : 'bg-default'"
+            aria-hidden="true"
+          />
+        </div>
+
+        <div class="min-w-0 flex-1 pt-0.5">
+          <p
+            class="text-sm font-medium"
+            :class="stepStatus(step) === 'upcoming' ? 'text-muted' : 'text-highlighted'"
+          >
+            {{ step.title }}
+            <span v-if="step.optional" class="font-normal text-muted">(optional)</span>
+          </p>
+          <p class="mt-0.5 text-xs leading-relaxed text-muted">
+            {{ step.description }}
+          </p>
+          <UButton
+            v-if="!step.done && nextStep?.id === step.id"
+            size="xs"
+            variant="link"
+            color="neutral"
+            class="mt-1 px-0"
+            @click="runStepCta(step)"
+          >
+            {{ step.cta }} →
+          </UButton>
+          <UButton
+            v-else-if="!step.done"
+            size="xs"
+            variant="link"
+            color="neutral"
+            class="mt-1 px-0"
+            @click="runStepCta(step)"
+          >
+            {{ step.cta }}
+          </UButton>
+        </div>
+      </li>
+    </ol>
   </section>
 </template>
