@@ -112,12 +112,12 @@ async function startScan() {
     :title="step === 1 ? 'Add Site' : 'Configure Scan'"
     :description="step === 2 ? siteInfo.url : undefined"
     :ui="{
-      content: step === 2 ? 'sm:max-w-4xl' : 'sm:max-w-lg',
-      body: step === 2 ? 'min-h-[28rem] max-h-[28rem] overflow-y-auto' : undefined
+      content: 'sm:max-w-4xl',
+      body: 'min-h-[32rem] max-h-[32rem] overflow-y-auto'
     }"
   >
     <template #body>
-      <form v-if="step === 1" class="w-full space-y-4" @submit.prevent="goToStep2">
+      <form v-if="step === 1" class="flex w-full min-h-full flex-col justify-center space-y-4" @submit.prevent="goToStep2">
         <UFormField label="Title" required class="w-full">
           <UInput v-model="siteInfo.name" class="w-full" required />
         </UFormField>

@@ -70,10 +70,10 @@ const authTypeItems = [
 const pageUrlCount = computed(() => countPageUrls(pagesText.value))
 
 const tabItems = [
-  { label: 'Scope', value: 'scope' },
-  { label: 'Browser', value: 'browser' },
-  { label: 'Authentication', value: 'auth' },
-  { label: 'Advanced', value: 'advanced' }
+  { label: 'Scope', value: 'scope', icon: 'i-lucide-radar' },
+  { label: 'Browser', value: 'browser', icon: 'i-lucide-app-window' },
+  { label: 'Authentication', value: 'auth', icon: 'i-lucide-key-round' },
+  { label: 'Advanced', value: 'advanced', icon: 'i-lucide-sliders-horizontal' }
 ]
 
 const tabSummary = computed(() => {
@@ -215,8 +215,14 @@ defineExpose({
       :content="false"
       :items="tabItems"
       color="neutral"
-      size="sm"
-      class="w-full"
+      variant="link"
+      size="md"
+      class="w-full scan-config-tabs"
+      :ui="{
+        list: 'gap-4 border-b border-default',
+        trigger: 'grow px-1 pb-2.5 text-muted data-[state=active]:text-highlighted',
+        leadingIcon: 'size-4'
+      }"
     />
     <p class="text-sm text-muted">{{ tabSummary }}</p>
 

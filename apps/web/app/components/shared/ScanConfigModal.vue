@@ -97,7 +97,11 @@ async function submit() {
     v-model:open="open"
     title="Configure Scan"
     :description="hostname"
-    :ui="{ content: 'sm:max-w-4xl', description: 'text-gray-400' }"
+    :ui="{
+      content: 'sm:max-w-4xl',
+      description: 'text-muted',
+      body: 'min-h-[32rem] max-h-[32rem] overflow-y-auto'
+    }"
   >
     <template #body>
       <ScanConfigForm
