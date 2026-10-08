@@ -1,16 +1,10 @@
 <script setup lang="ts">
-import type { AccessibilityIssue } from '~/types/sitenook'
 import AccessibilityIssuesTrendExpandModal from '~/components/accessibility/IssuesTrendExpandModal.vue'
 import AccessibilityScoreTrendExpandModal from '~/components/accessibility/ScoreTrendExpandModal.vue'
 import type { OrgDashboardAggregates } from '~/utils/dashboardAggregates'
 import { siteIssueBarPoints } from '~/utils/orgSiteMetrics'
-import {
-  buildUrlsByRule,
-  sortOpenByPointsToGain,
-  uniqueByRule
-} from '~/utils/accessibilityIssues'
-import { affectedPagesForRule } from '~/utils/affectedPages'
 import { trendDelta } from '~/utils/scanTrendSeries'
+import { trafficLightFromCount } from '~/utils/trafficLightStatus'
 
 const props = defineProps<{
   siteId?: string
@@ -23,15 +17,10 @@ const isOrgMode = computed(() => !props.siteId && !!props.orgAggregates)
 const siteIdRef = computed(() => props.siteId ?? '')
 
 const {
-  previewIssues: issues,
-  scans,
+  currentA11y,
   loading,
   displayScore,
-  scoreableTargetIssues,
-  pointsToGainByRule,
-  scoreElementTotals,
-  openIssueCount,
-  fetchSummary
+  openIssueCount
 } = useAccessibilitySummary(siteIdRef)
 
 const orgSiteIds = computed(() =>
@@ -53,15 +42,6 @@ const {
   latestOpenCount,
   loading: openIssuesTrendLoading
 } = useOrgA11yOpenIssuesTrend(orgSiteIds)
-
-const previewOpenIssues = computed(() => {
-  const unique = uniqueByRule(issues.value.filter(i => i.status === 'open'))
-  return sortOpenByPointsToGain(unique, issues.value).slice(0, 5)
-})
-
-const openUrlsByRule = computed(() =>
-  buildUrlsByRule(issues.value, ['open'])
-)
 
 const issuesBySiteBars = computed(() => {
   if (!props.orgAggregates) return []
@@ -101,32 +81,42 @@ const issueSummary = computed(() => {
   return `${total} open issue${total === 1 ? '' : 's'} across all sites`
 })
 
-const selectedIssue = ref<AccessibilityIssue | null>(null)
-const drawerOpen = ref(false)
+const severity = computed(() =>
+  currentA11y.value?.by_severity ?? { critical: 0, serious: 0, moderate: 0, minor: 0 }
+)
 
-const overviewOpenColumnVisibility = {
-  issue: true,
-  impact: true,
-  pointsToGain: true,
-  wcag_level: false,
-  wcag_sc: false,
-  responsible_role: false,
-  element_type: false,
-  pages: false,
-  occurrences: false
-}
-
-const issuesPageLink = computed(() => `/sites/${props.siteId}/accessibility/issues`)
-
-const selectedAffectedPages = computed(() => {
-  if (!selectedIssue.value) return []
-  return affectedPagesForRule(issues.value, selectedIssue.value.rule_id)
+const metricCards = computed(() => {
+  const s = severity.value
+  return [
+    {
+      label: 'Critical',
+      count: s.critical,
+      to: `/sites/${props.siteId}/accessibility/issues?impact=critical`
+    },
+    {
+      label: 'Serious',
+      count: s.serious,
+      to: `/sites/${props.siteId}/accessibility/issues?impact=serious`
+    },
+    {
+      label: 'Moderate',
+      count: s.moderate,
+      to: `/sites/${props.siteId}/accessibility/issues?impact=moderate`
+    },
+    {
+      label: 'Minor',
+      count: s.minor,
+      to: `/sites/${props.siteId}/accessibility/issues?impact=minor`
+    }
+  ]
 })
 
-function openPreview(issue: AccessibilityIssue) {
-  selectedIssue.value = issue
-  drawerOpen.value = true
+function ringColor(count: number) {
+  if (count === 0) return 'text-green-500'
+  if (count <= 10) return 'text-amber-500'
+  return 'text-red-500'
 }
+
 </script>
 
 <template>
@@ -274,39 +264,25 @@ function openPreview(issue: AccessibilityIssue) {
           </p>
         </div>
 
-        <div class="min-w-0">
-          <AccessibilityIssuesTable
-            v-if="previewOpenIssues.length"
-            table-title="Top open issues"
-            :default-column-visibility="overviewOpenColumnVisibility"
-            :issues="previewOpenIssues"
-            :scoring-issues="scoreableTargetIssues"
-            :score-element-totals="scoreElementTotals"
-            :points-to-gain-by-rule="pointsToGainByRule"
-            :pages-by-rule="openUrlsByRule"
-            :site-id="siteId"
-            read-only
-            hide-toolbar
-            :page-size="5"
-            :footer-link="{ to: issuesPageLink, label: 'View all issues' }"
-            @open="openPreview"
-          />
-          <p v-else class="py-4 text-sm text-muted">
-            No open accessibility issues on the latest scan.
-          </p>
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <NuxtLink
+            v-for="card in metricCards"
+            :key="card.label"
+            :to="card.to"
+            class="rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/40"
+          >
+            <div class="mb-1 flex items-center gap-2">
+              <TrafficLightDot :status="trafficLightFromCount(card.count)" />
+              <p class="text-sm text-muted">
+                {{ card.label }}
+              </p>
+            </div>
+            <p class="text-2xl font-bold" :class="ringColor(card.count)">
+              {{ card.count }}
+            </p>
+          </NuxtLink>
         </div>
       </div>
-
-      <AccessibilityIssueDetailDrawer
-        :issue="selectedIssue"
-        :affected-pages="selectedAffectedPages"
-        :open="drawerOpen"
-        :site-id="siteId"
-        :scans="scans"
-        :on-refresh="() => fetchSummary()"
-        read-only
-        @update:open="drawerOpen = $event"
-      />
     </template>
   </div>
 </template>

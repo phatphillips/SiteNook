@@ -40,6 +40,15 @@ const tableSearch = ref('')
 const showAddModal = ref(false)
 const submitting = ref(false)
 const formError = ref('')
+const smtpEnabled = ref(false)
+const smtpChecked = ref(false)
+const inviteCreated = ref<{
+  name: string
+  email: string
+  password: string
+  emailSent: boolean
+  emailError?: string
+} | null>(null)
 
 const drawerMember = ref<TeamMember | null>(null)
 const showMemberDrawer = ref(false)
@@ -97,6 +106,26 @@ onMounted(async () => {
   await awaitAuthReady()
   pageReady.value = true
   fetchMembers().catch(() => {})
+})
+
+watch(showAddModal, async (isOpen) => {
+  if (!isOpen) {
+    inviteCreated.value = null
+    formError.value = ''
+    return
+  }
+  smtpChecked.value = false
+  try {
+    const token = usePocketBase().pb?.authStore.token
+    const status = await $fetch<{ enabled: boolean }>('/api/mail-status', {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined
+    })
+    smtpEnabled.value = Boolean(status.enabled)
+  } catch {
+    smtpEnabled.value = false
+  } finally {
+    smtpChecked.value = true
+  }
 })
 
 watch(showActivityLog, async (isOpen) => {
@@ -178,17 +207,21 @@ async function submitCreate(payload: {
   name: string
   email: string
   role: OrgUserRole
+  password: string
+  sendSetupEmail: boolean
 }) {
   formError.value = ''
   submitting.value = true
   try {
-    await createMember(payload)
-    showAddModal.value = false
+    const result = await createMember(payload)
+    inviteCreated.value = {
+      name: payload.name.trim(),
+      email: payload.email.trim(),
+      password: payload.password,
+      emailSent: result.emailSent,
+      emailError: result.emailError
+    }
     formError.value = ''
-    toast.add({
-      title: 'Invite sent',
-      description: `${payload.email} will receive an email to set their password.`
-    })
   } catch (e: unknown) {
     const status = e && typeof e === 'object' && 'status' in e ? Number((e as { status: number }).status) : 0
     const msg = formatPbClientError(e)
@@ -396,6 +429,9 @@ async function confirmRemoveMembers() {
     v-model:open="showAddModal"
     :loading="submitting"
     :error="formError"
+    :smtp-enabled="smtpEnabled"
+    :smtp-checked="smtpChecked"
+    :created="inviteCreated"
     @submit="submitCreate"
   />
 

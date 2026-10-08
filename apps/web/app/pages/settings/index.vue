@@ -5,7 +5,7 @@ import { formatPbClientError } from '~/utils/pbClientError'
 
 definePageMeta({ middleware: 'auth' })
 
-const { sessionUser, awaitAuthReady, syncAuth, pb } = usePocketBase()
+const { sessionUser, awaitAuthReady, syncAuth, pb, changePassword } = usePocketBase()
 const toast = useToast()
 
 const pageReady = ref(false)
@@ -14,6 +14,40 @@ const showCloseModal = ref(false)
 const confirmName = ref('')
 const closeLoading = ref(false)
 const closeError = ref('')
+const passwordSaving = ref(false)
+const passwordError = ref('')
+const passwordForm = reactive({
+  current: '',
+  next: '',
+  confirm: ''
+})
+
+async function savePassword() {
+  passwordError.value = ''
+  if (passwordForm.next.length < 8) {
+    passwordError.value = 'New password must be at least 8 characters.'
+    return
+  }
+  if (passwordForm.next !== passwordForm.confirm) {
+    passwordError.value = 'New passwords do not match.'
+    return
+  }
+  passwordSaving.value = true
+  try {
+    await changePassword(passwordForm.current, passwordForm.next)
+    passwordForm.current = ''
+    passwordForm.next = ''
+    passwordForm.confirm = ''
+    toast.add({
+      title: 'Password updated',
+      description: 'Use your new password the next time you sign in.'
+    })
+  } catch (error) {
+    passwordError.value = formatPbClientError(error)
+  } finally {
+    passwordSaving.value = false
+  }
+}
 
 const canCloseOrg = computed(() => pageReady.value && isOrgAdmin(sessionUser.value))
 
@@ -73,6 +107,34 @@ onMounted(async () => {
     <template #body>
       <div class="max-w-2xl space-y-6">
         <UCard>
+          <template #header>
+            <div class="space-y-1">
+              <h2 class="text-base font-semibold text-highlighted">
+                Password
+              </h2>
+              <p class="text-sm text-muted">
+                Change the password you use to sign in.
+              </p>
+            </div>
+          </template>
+          <form class="space-y-4" @submit.prevent="savePassword">
+            <UFormField label="Current password" required class="w-full">
+              <UInput v-model="passwordForm.current" class="w-full" type="password" autocomplete="current-password" />
+            </UFormField>
+            <UFormField label="New password" required class="w-full">
+              <UInput v-model="passwordForm.next" class="w-full" type="password" autocomplete="new-password" />
+            </UFormField>
+            <UFormField label="Confirm new password" required class="w-full">
+              <UInput v-model="passwordForm.confirm" class="w-full" type="password" autocomplete="new-password" />
+            </UFormField>
+            <UAlert v-if="passwordError" color="error" variant="subtle" :title="passwordError" />
+            <UButton type="submit" :loading="passwordSaving">
+              Update password
+            </UButton>
+          </form>
+        </UCard>
+
+        <UCard>
           <p class="text-muted text-sm">
             General application settings for your organization.
           </p>
@@ -85,14 +147,14 @@ onMounted(async () => {
                 Danger zone
               </h2>
               <p class="text-sm text-muted">
-                Permanently close this organization and cancel billing.
+                Permanently close this organization.
               </p>
             </div>
           </template>
 
           <p class="text-sm text-muted leading-relaxed mb-4">
-            Closing starts a 30-day retention period. Active subscriptions are canceled, scans stop,
-            and data is scheduled for permanent deletion after 30 days.
+            Closing starts a 30-day retention period. Scans stop, and data is scheduled for
+            permanent deletion after 30 days.
           </p>
 
           <UButton color="error" variant="outline" icon="i-lucide-building-2" @click="openCloseModal">

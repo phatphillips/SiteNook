@@ -63,6 +63,10 @@
   --color-chart-line-rgb: 133, 153, 0;
   --color-action-solid: var(--solarized-base01);
   --color-action-solid-text: var(--solarized-base3);
+
+  --sidebar-nav-active-bg: #e4dcc8;
+  --sidebar-nav-hover-bg: rgba(7, 54, 66, 0.06);
+  --sidebar-nav-active-shadow: none;
 }
 
 .solarized-light .auth-page {

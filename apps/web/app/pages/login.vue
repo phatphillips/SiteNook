@@ -32,10 +32,12 @@ async function submit() {
   try {
     await login(email.value.trim(), password.value)
     syncAuth()
+    // Clear the spinner before navigation — the dashboard route can take a long
+    // time on cold Nuxt compile, which made sign-in look stuck/failed.
+    loading.value = false
     await navigateTo(resolveLoginRedirectPath(route.query.redirect), { replace: true })
   } catch (e: unknown) {
     error.value = getAuthErrorMessage(e)
-  } finally {
     loading.value = false
   }
 }

@@ -1,0 +1,65 @@
+/**
+ * Light — calm zinc canvas with white elevated surfaces.
+ * Applied when html has class `light` (@nuxtjs/color-mode).
+ *
+ * Pattern: muted page background, white cards/sidebar chrome,
+ * readable secondary text, soft (not pure-black) primary actions.
+ */
+:root.light,
+.light {
+  --ui-primary: #3f3f46;
+  --ui-secondary: #71717a;
+  --ui-success: #00a155;
+  --ui-info: #2563eb;
+  --ui-warning: #d97706;
+  --ui-error: #e5484d;
+
+  --ui-text-dimmed: #a1a1aa;
+  --ui-text-muted: #71717a;
+  --ui-text-toned: #52525b;
+  --ui-text: #3f3f46;
+  --ui-text-highlighted: #18181b;
+  --ui-text-inverted: #fafafa;
+
+  /* Slightly cool grey canvas; cards/panels lift to white. */
+  --ui-bg: #f4f4f5;
+  --ui-bg-muted: #ebebed;
+  --ui-bg-elevated: #ffffff;
+  --ui-bg-accented: #e4e4e7;
+  --ui-bg-inverted: #27272a;
+
+  --ui-border: #e4e4e7;
+  --ui-border-muted: #ececee;
+  --ui-border-accented: #d4d4d8;
+  --ui-border-inverted: #3f3f46;
+
+  --color-background-secondary: rgba(24, 24, 27, 0.04);
+  --color-background-primary: rgba(24, 24, 27, 0.02);
+  --color-background-warning: rgba(245, 158, 11, 0.12);
+  --color-text-danger: #e5484d;
+  --color-text-warning: #d97706;
+  --color-text-info: #2563eb;
+  --color-text-success: #00a155;
+  --color-text-tertiary: #a1a1aa;
+  --color-text-secondary: #71717a;
+  --color-border-secondary: rgba(24, 24, 27, 0.1);
+  --color-border-tertiary: rgba(24, 24, 27, 0.06);
+  --color-chart-line: #00c16a;
+  --color-chart-line-rgb: 0, 193, 106;
+
+  /* Soft charcoal CTA — readable, not pure black. */
+  --color-action-solid: #3f3f46;
+  --color-action-solid-text: #fafafa;
+
+  /* Active nav: soft fill on the light rail (not white-on-white). */
+  --sidebar-nav-active-bg: #ebebed;
+  --sidebar-nav-hover-bg: rgba(24, 24, 27, 0.05);
+  --sidebar-nav-active-shadow: none;
+}
+
+.light .auth-page {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(63, 63, 70, 0.05), transparent),
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(0, 193, 106, 0.04), transparent),
+    var(--ui-bg);
+}

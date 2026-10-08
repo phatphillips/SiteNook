@@ -6,7 +6,7 @@ import {
   dataTableTdClass,
   dataTableThClass
 } from '~/utils/dataTableUi'
-import { formatAccessibilityScore, scoreRingColor } from '~/utils/siteimproveScore'
+import { formatAccessibilityScore } from '~/utils/siteimproveScore'
 import { compareTimestampsDesc } from '~/utils/sortTimestamps'
 import {
   A11Y_BAR_FILL,
@@ -96,6 +96,17 @@ function formatLastScan(iso: string | null) {
 
 function scoreBarWidth(score: number): string {
   return `${Math.max(0, Math.min(100, score))}%`
+}
+
+function scoreChipStyle(score: number) {
+  return {
+    '--bar-fill': A11Y_BAR_FILL,
+    '--bar-fill-hover': A11Y_BAR_FILL_HOVER,
+    '--bar-track': A11Y_BAR_TRACK,
+    '--bar-text': A11Y_BAR_TEXT,
+    '--bar-text-hover': A11Y_BAR_TEXT_ON_HOVER,
+    '--score-pct': scoreBarWidth(score)
+  }
 }
 </script>
 
@@ -200,19 +211,9 @@ function scoreBarWidth(score: number): string {
                 v-if="site.accessibilityScore != null"
                 :to="`/sites/${site.siteId}/accessibility`"
                 class="a11y-score-chip group relative flex h-8 w-full max-w-[8.5rem] items-center justify-center overflow-hidden rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                :style="{
-                  '--bar-fill': A11Y_BAR_FILL,
-                  '--bar-fill-hover': A11Y_BAR_FILL_HOVER,
-                  '--bar-track': A11Y_BAR_TRACK,
-                  '--bar-text': A11Y_BAR_TEXT,
-                  '--bar-text-hover': A11Y_BAR_TEXT_ON_HOVER,
-                  '--score-pct': scoreBarWidth(site.accessibilityScore)
-                }"
+                :style="scoreChipStyle(site.accessibilityScore)"
               >
-                <span
-                  class="a11y-score-chip__track absolute inset-0 rounded-md"
-                  aria-hidden="true"
-                />
+                <span class="a11y-score-chip__track absolute inset-0 rounded-md" aria-hidden="true" />
                 <span
                   class="a11y-score-chip__bar absolute inset-y-0 left-0 rounded-md"
                   :style="{ width: 'var(--score-pct)' }"
@@ -234,10 +235,24 @@ function scoreBarWidth(score: number): string {
               <NuxtLink
                 v-if="site.qaScore != null"
                 :to="`/sites/${site.siteId}/qa`"
-                class="inline-flex items-center rounded-md bg-elevated px-2.5 py-1 text-sm font-semibold tabular-nums ring-1 ring-inset ring-default transition-colors hover:bg-elevated/80"
-                :style="{ color: scoreRingColor(site.qaScore) }"
+                class="a11y-score-chip group relative flex h-8 w-full max-w-[8.5rem] items-center justify-center overflow-hidden rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                :style="scoreChipStyle(site.qaScore)"
               >
-                {{ formatAccessibilityScore(site.qaScore) }} / 100
+                <span class="a11y-score-chip__track absolute inset-0 rounded-md" aria-hidden="true" />
+                <span
+                  class="a11y-score-chip__bar absolute inset-y-0 left-0 rounded-md"
+                  :style="{ width: 'var(--score-pct)' }"
+                  aria-hidden="true"
+                />
+                <span class="a11y-score-chip__text a11y-score-chip__text--base absolute inset-0 z-10 flex items-center justify-center text-sm font-semibold tabular-nums">
+                  {{ formatAccessibilityScore(site.qaScore) }}%
+                </span>
+                <span
+                  class="a11y-score-chip__text a11y-score-chip__text--on-fill absolute inset-0 z-20 flex items-center justify-center text-sm font-semibold tabular-nums"
+                  aria-hidden="true"
+                >
+                  {{ formatAccessibilityScore(site.qaScore) }}%
+                </span>
               </NuxtLink>
               <span v-else class="text-muted">—</span>
             </td>
@@ -245,10 +260,24 @@ function scoreBarWidth(score: number): string {
               <NuxtLink
                 v-if="site.seoScore != null"
                 :to="`/sites/${site.siteId}/seo`"
-                class="inline-flex items-center rounded-md bg-elevated px-2.5 py-1 text-sm font-semibold tabular-nums ring-1 ring-inset ring-default transition-colors hover:bg-elevated/80"
-                :style="{ color: scoreRingColor(site.seoScore) }"
+                class="a11y-score-chip group relative flex h-8 w-full max-w-[8.5rem] items-center justify-center overflow-hidden rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                :style="scoreChipStyle(site.seoScore)"
               >
-                {{ formatAccessibilityScore(site.seoScore) }} / 100
+                <span class="a11y-score-chip__track absolute inset-0 rounded-md" aria-hidden="true" />
+                <span
+                  class="a11y-score-chip__bar absolute inset-y-0 left-0 rounded-md"
+                  :style="{ width: 'var(--score-pct)' }"
+                  aria-hidden="true"
+                />
+                <span class="a11y-score-chip__text a11y-score-chip__text--base absolute inset-0 z-10 flex items-center justify-center text-sm font-semibold tabular-nums">
+                  {{ formatAccessibilityScore(site.seoScore) }}%
+                </span>
+                <span
+                  class="a11y-score-chip__text a11y-score-chip__text--on-fill absolute inset-0 z-20 flex items-center justify-center text-sm font-semibold tabular-nums"
+                  aria-hidden="true"
+                >
+                  {{ formatAccessibilityScore(site.seoScore) }}%
+                </span>
               </NuxtLink>
               <span v-else class="text-muted">—</span>
             </td>

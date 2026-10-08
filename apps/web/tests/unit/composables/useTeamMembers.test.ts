@@ -94,54 +94,75 @@ describe('useTeamMembers', () => {
     expect(mockGetFullList).toHaveBeenCalledWith({ sort: 'name' })
   })
 
-  it('creates a member scoped to the admin organization and sends set-password email', async () => {
+  it('creates a member with the shared password and does not email unless asked', async () => {
     mockCreate.mockResolvedValue({
       id: 'u2',
       name: 'Bob',
       email: 'bob@test',
       role: 'viewer',
       is_billing_contact: false,
-      verified: false,
+      verified: true,
       created: '2026-01-02'
     })
 
     const { createMember } = useTeamMembers()
-    const member = await createMember({
+    vi.mocked($fetch).mockResolvedValueOnce({
+      id: 'u2',
       name: 'Bob',
       email: 'bob@test',
-      role: 'viewer'
-    })
-
-    expect(member.email).toBe('bob@test')
-    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
-      email: 'bob@test',
-      organization: 'org-1',
       role: 'viewer',
       is_billing_contact: false,
-      passwordConfirm: expect.any(String)
+      verified: true,
+      created: '2026-01-02',
+      emailSent: false
+    })
+    const result = await createMember({
+      name: 'Bob',
+      email: 'bob@test',
+      role: 'viewer',
+      password: 'Snk-test-pass-word'
+    })
+
+    expect(result.member.email).toBe('bob@test')
+    expect(result.emailSent).toBe(false)
+    expect($fetch).toHaveBeenCalledWith('/api/team-members', expect.objectContaining({
+      method: 'POST',
+      body: expect.objectContaining({
+        email: 'bob@test',
+        role: 'viewer',
+        password: 'Snk-test-pass-word',
+        sendSetupEmail: false
+      })
     }))
-    expect(mockRequestPasswordReset).toHaveBeenCalledWith('bob@test')
+    expect(mockCreate).not.toHaveBeenCalled()
+    expect(mockRequestPasswordReset).not.toHaveBeenCalled()
   })
 
-  it('rolls back the user when the invite email fails', async () => {
-    mockCreate.mockResolvedValue({
+  it('keeps the account when the optional setup email fails', async () => {
+    vi.mocked($fetch).mockResolvedValueOnce({
       id: 'u-fail',
       name: 'Fail',
       email: 'fail@test',
       role: 'viewer',
       is_billing_contact: false,
-      created: ''
+      verified: true,
+      created: '',
+      emailSent: false,
+      emailError: 'SMTP not configured'
     })
-    mockDelete.mockResolvedValue(true)
-    mockRequestPasswordReset.mockRejectedValue(new Error('SMTP not configured'))
 
     const { createMember } = useTeamMembers()
-    await expect(createMember({
+    const result = await createMember({
       name: 'Fail',
       email: 'fail@test',
-      role: 'viewer'
-    })).rejects.toThrow(/set-password email/)
-    expect(mockDelete).toHaveBeenCalledWith('u-fail')
+      role: 'viewer',
+      password: 'Snk-test-pass-word',
+      sendSetupEmail: true
+    })
+
+    expect(result.emailSent).toBe(false)
+    expect(result.emailError).toMatch(/SMTP/)
+    expect(mockDelete).not.toHaveBeenCalled()
   })
 
   it('rejects create when the current user is not an org admin', async () => {

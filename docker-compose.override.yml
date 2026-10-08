@@ -3,6 +3,12 @@ services:
   nginx:
     ports: !override
       - "127.0.0.1:80:80"
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_started
+      pocketbase:
+        condition: service_healthy
 
   web:
     build:
@@ -17,9 +23,24 @@ services:
       - /app/.output
     ports: !override
       - "127.0.0.1:3500:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('net').connect(3000,'127.0.0.1').on('connect',function(){this.end();process.exit(0)}).on('error',function(){process.exit(1)})"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      # Dev cold start: pnpm install + Nuxt compile can take several minutes.
+      start_period: 300s
     environment:
-      NUXT_PUBLIC_POCKETBASE_URL: http://localhost:8090
-      NUXT_PUBLIC_APP_URL: http://localhost:3500
+      # Same-origin via nginx (:80). PocketBase SDK calls /api/... on the page host.
+      # Direct :3500 still uses host-mapped PocketBase on :8090 (see .env fallback).
+      NUXT_PUBLIC_POCKETBASE_URL: ${NUXT_PUBLIC_POCKETBASE_URL:-}
+      NUXT_PUBLIC_APP_URL: ${NUXT_PUBLIC_APP_URL:-http://localhost}
       NUXT_PUBLIC_APP_DOMAIN: localhost
       NUXT_DEV_HMR_CLIENT_PORT: "3500"
       NUXT_POCKETBASE_URL: http://pocketbase:8090

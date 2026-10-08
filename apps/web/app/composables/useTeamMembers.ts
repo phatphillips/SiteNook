@@ -14,7 +14,6 @@ import {
   normalizeOrganizationPlan
 } from '~/utils/planLimits'
 import type { TeamActivityLogEntry } from '~/utils/teamActivityLog'
-import { generateInvitePassword } from '~/utils/inviteUser'
 import { tryRefreshAuthSession } from '~/utils/sessionRefresh'
 import { isCommercialEnabled } from '~/utils/commercial'
 
@@ -39,7 +38,17 @@ export interface CreateTeamMemberInput {
   name: string
   email: string
   role: OrgUserRole
+  /** Password the admin will share. Generated in the invite form. */
+  password: string
+  /** When true and SMTP works, also send a PocketBase setup email. */
+  sendSetupEmail?: boolean
   is_billing_contact?: boolean
+}
+
+export interface CreateTeamMemberResult {
+  member: TeamMember
+  emailSent: boolean
+  emailError?: string
 }
 
 function toTeamMember(record: RecordModel): TeamMember {
@@ -84,7 +93,7 @@ function _useTeamMembers() {
     }
   }
 
-  async function createMember(input: CreateTeamMemberInput): Promise<TeamMember> {
+  async function createMember(input: CreateTeamMemberInput): Promise<CreateTeamMemberResult> {
     const currentUser = requireUser()
     if (!isOrgAdmin(currentUser)) {
       throw new Error('Only organization admins can add team members.')
@@ -115,29 +124,38 @@ function _useTeamMembers() {
     const organizationId = userOrgId
     const name = input.name.trim()
     const email = input.email.trim()
+    const password = input.password.trim()
 
     if (!name || !email) {
       throw new Error('Name and email are required.')
     }
-
-    const tempPassword = generateInvitePassword()
-    const record = await pb.collection('users').create({
-      name,
-      email,
-      password: tempPassword,
-      passwordConfirm: tempPassword,
-      role: input.role,
-      is_billing_contact: input.role === 'admin' ? Boolean(input.is_billing_contact) : false,
-      organization: organizationId,
-      emailVisibility: true
-    }) as RecordModel
-
-    try {
-      await pb.collection('users').requestPasswordReset(email)
-    } catch {
-      await pb.collection('users').delete(record.id).catch(() => {})
-      throw new Error('Account was created but the set-password email could not be sent. Check SMTP settings and try again.')
+    if (password.length < 8) {
+      throw new Error('Password must be at least 8 characters.')
     }
+
+    const record = await $fetch<{
+      id: string
+      name: string
+      email: string
+      role: string
+      is_billing_contact: boolean
+      verified: boolean
+      created: string
+      emailSent: boolean
+      emailError?: string
+    }>('/api/team-members', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${pb.authStore.token}`
+      },
+      body: {
+        name,
+        email,
+        role: input.role,
+        password,
+        sendSetupEmail: Boolean(input.sendSetupEmail)
+      }
+    })
 
     const member = toTeamMember(record)
     members.value = [...members.value, member].sort((a, b) => a.name.localeCompare(b.name))
@@ -147,7 +165,7 @@ function _useTeamMembers() {
       await markTeammateInvited().catch(() => {})
     }
 
-    return member
+    return { member, emailSent: record.emailSent, emailError: record.emailError }
   }
 
   async function updateMember(memberId: string, input: UpdateTeamMemberInput): Promise<TeamMember> {

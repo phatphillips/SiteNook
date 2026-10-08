@@ -1,5 +1,6 @@
 @import "tailwindcss" theme(static);
 @import "@nuxt/ui";
+@import "./themes/light.css";
 @import "./themes/solarized-light.css";
 
 /* Tailwind v4 + theme(static) can emit overflow-y: unset for .overflow-y-auto; use scroll-region instead. */
@@ -18,13 +19,38 @@
   animation-duration: 1.35s;
 }
 
+/*
+ * Shared app tokens. Light semantic UI colors live in themes/light.css.
+ * Keep :root readable for the colorMode light fallback (no white-on-white text).
+ */
 :root {
+  --border-radius-md: 0.375rem;
+  --border-radius-lg: 0.5rem;
+  --color-background-secondary: rgba(24, 24, 27, 0.04);
+  --color-background-primary: rgba(24, 24, 27, 0.02);
+  --color-background-warning: rgba(245, 158, 11, 0.12);
+  --color-text-danger: #e5484d;
+  --color-text-warning: #d97706;
+  --color-text-info: #2563eb;
+  --color-text-success: #00a155;
+  --color-text-tertiary: #a1a1aa;
+  --color-text-secondary: #71717a;
+  --color-border-secondary: rgba(24, 24, 27, 0.1);
+  --color-border-tertiary: rgba(24, 24, 27, 0.06);
+  --color-chart-line: #00c16a;
+  --color-chart-line-rgb: 0, 193, 106;
+  --color-action-solid: #3f3f46;
+  --color-action-solid-text: #fafafa;
+  --sidebar-nav-active-bg: #ebebed;
+  --sidebar-nav-hover-bg: rgba(24, 24, 27, 0.05);
+  --sidebar-nav-active-shadow: none;
+}
+
+:root.dark,
+.dark {
   --color-background-secondary: rgba(255, 255, 255, 0.04);
   --color-background-primary: rgba(255, 255, 255, 0.02);
   --color-background-warning: rgba(251, 191, 36, 0.12);
-  --border-radius-md: 0.375rem;
-  --border-radius-lg: 0.5rem;
-  --color-text-danger: #e5484d;
   --color-text-warning: #fbbf24;
   --color-text-info: #60a5fa;
   --color-text-success: #00c16a;
@@ -32,27 +58,8 @@
   --color-text-secondary: rgba(255, 255, 255, 0.6);
   --color-border-secondary: rgba(255, 255, 255, 0.1);
   --color-border-tertiary: rgba(255, 255, 255, 0.07);
-  --color-chart-line: #00c16a;
-  --color-chart-line-rgb: 0, 193, 106;
-  --color-action-solid: #09090b;
-  --color-action-solid-text: #fafafa;
-  --sidebar-nav-active-bg: rgba(0, 0, 0, 0.06);
-  --sidebar-nav-hover-bg: rgba(0, 0, 0, 0.04);
-}
-
-:root.light,
-.light {
-  --color-action-solid: #09090b;
-  --color-action-solid-text: #fafafa;
-  --sidebar-nav-active-bg: #ececef;
-  --sidebar-nav-hover-bg: #f4f4f5;
-  --sidebar-nav-active-shadow: 0 0 10px rgba(0, 0, 0, 0.06);
-}
-
-:root.dark,
-.dark {
-  --color-action-solid: #fafafa;
-  --color-action-solid-text: #09090b;
+  --color-action-solid: #e4e4e7;
+  --color-action-solid-text: #18181b;
 
   --ui-bg: rgb(19, 20, 24);
   --ui-bg-muted: rgb(24, 25, 30);
@@ -145,16 +152,19 @@
     var(--ui-bg);
 }
 
-/** High-contrast primary actions — solid black (light) / white (dark), no green fill. */
-button[data-slot="base"][data-variant="solid"]:not([data-color="error"]):not([data-color="warning"]):not([data-color="success"]):not([data-color="info"]),
-a[data-slot="base"][data-variant="solid"]:not([data-color="error"]):not([data-color="warning"]):not([data-color="success"]):not([data-color="info"]) {
+/**
+ * Primary solid actions — charcoal (light) / zinc-200 (dark), no green fill.
+ * Skip tabs/segmented triggers: those should use the white-pill pattern, not CTAs.
+ */
+button[data-slot="base"][data-variant="solid"]:not([role="tab"]):not([data-color="error"]):not([data-color="warning"]):not([data-color="success"]):not([data-color="info"]),
+a[data-slot="base"][data-variant="solid"]:not([role="tab"]):not([data-color="error"]):not([data-color="warning"]):not([data-color="success"]):not([data-color="info"]) {
   background-color: var(--color-action-solid);
   color: var(--color-action-solid-text);
 }
 
-button[data-slot="base"][data-variant="solid"]:not([data-color="error"]):not([data-color="warning"]):not([data-color="success"]):not([data-color="info"]):hover:not(:disabled),
-a[data-slot="base"][data-variant="solid"]:not([data-color="error"]):not([data-color="warning"]):not([data-color="success"]):not([data-color="info"]):hover {
-  opacity: 0.9;
+button[data-slot="base"][data-variant="solid"]:not([role="tab"]):not([data-color="error"]):not([data-color="warning"]):not([data-color="success"]):not([data-color="info"]):hover:not(:disabled),
+a[data-slot="base"][data-variant="solid"]:not([role="tab"]):not([data-color="error"]):not([data-color="warning"]):not([data-color="success"]):not([data-color="info"]):hover {
+  filter: brightness(1.1);
 }
 
 button[data-slot="base"].action-solid,
@@ -165,7 +175,7 @@ a[data-slot="base"].action-solid {
 
 button[data-slot="base"].action-solid:hover:not(:disabled),
 a[data-slot="base"].action-solid:hover {
-  opacity: 0.9;
+  filter: brightness(1.08);
 }
 
 /**
@@ -181,6 +191,13 @@ a[data-slot="base"].action-solid:hover {
 .team-member-add-modal [data-slot="base"] {
   width: 100%;
   max-width: 100%;
+}
+
+/** Keep password Show/Hide as an inline trailing control, not a stretched field. */
+.team-member-add-modal .team-member-password-field [data-slot="trailing"] {
+  width: auto;
+  max-width: none;
+  flex-shrink: 0;
 }
 
 /* Class is on the portaled content panel itself, not a wrapper ancestor. */
@@ -293,9 +310,21 @@ a[data-slot="base"].action-solid:hover {
   padding: 0 1px;
 }
 
-/** Sidebar navigation — Supabase-style flat active pill (no border / indicator). */
+/**
+ * Sidebar shell — elevated surface against the muted canvas, clear edge.
+ * (Resize handle draws the vertical rule; keep component border off.)
+ */
+.dashboard-sidebar {
+  background-color: var(--ui-bg-elevated);
+}
+
+.light .dashboard-sidebar {
+  background-color: #fafafa;
+}
+
+/** Sidebar navigation — white active pill on muted rail (Linear / Notion style). */
 .dashboard-sidebar-nav {
-  --sidebar-nav-radius: 0.375rem;
+  --sidebar-nav-radius: 0.5rem;
 }
 
 .dashboard-sidebar-nav [data-slot="list"] {
@@ -307,25 +336,25 @@ a[data-slot="base"].action-solid:hover {
   border-radius: var(--sidebar-nav-radius);
   border: none;
   font-weight: 500;
-  transition: color 0.15s ease;
+  /* Background only — color transitions on mount flash dark → muted. */
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .dashboard-sidebar-nav [data-slot="link"]:not([data-active]),
 .dashboard-sidebar-nav [data-slot="child-link"]:not([data-active]) {
-  color: var(--color-text-secondary);
+  color: var(--ui-text-toned, var(--ui-text-muted));
 }
 
 .dashboard-sidebar-nav [data-slot="link"]:not([data-active]):hover,
 .dashboard-sidebar-nav [data-slot="child-link"]:not([data-active]):hover {
-  color: var(--ui-text);
+  color: var(--ui-text-highlighted);
 }
 
 .dashboard-sidebar-nav [data-slot="link"][data-active],
 .dashboard-sidebar-nav [data-slot="child-link"][data-active] {
   color: var(--ui-text-highlighted) !important;
-  font-weight: 500;
+  font-weight: 600;
   border: none !important;
-  box-shadow: none !important;
 }
 
 /* Nuxt UI `highlight` draws a 1px inverted bar on nested active links. */
@@ -348,6 +377,7 @@ a[data-slot="base"].action-solid:hover {
 .dashboard-sidebar-nav [data-slot="link"]:not([data-active])::before,
 .dashboard-sidebar-nav [data-slot="child-link"]:not([data-active])::before {
   background-color: transparent !important;
+  box-shadow: none !important;
   opacity: 1 !important;
 }
 
@@ -355,6 +385,7 @@ a[data-slot="base"].action-solid:hover {
 .dashboard-sidebar-nav [data-slot="child-link"]:not([data-active]):hover::before {
   background-color: var(--sidebar-nav-hover-bg) !important;
   border-radius: var(--sidebar-nav-radius) !important;
+  box-shadow: none !important;
   opacity: 1 !important;
 }
 
@@ -369,7 +400,26 @@ a[data-slot="base"].action-solid:hover {
 .dashboard-sidebar-nav [data-slot="child-link"]:not([data-active]) [class*="icon"],
 .dashboard-sidebar-nav [data-slot="link"]:not([data-active]) svg,
 .dashboard-sidebar-nav [data-slot="child-link"]:not([data-active]) svg {
-  color: var(--color-text-tertiary);
+  color: var(--ui-text-muted);
+}
+
+/*
+ * Overlays (modal / slideover): Nuxt UI applies transition-colors on chrome.
+ * On mount, color interpolates from inherited text → muted/dimmed (brief dark flash).
+ * Keep bg/border/opacity motion; drop color from the transition set.
+ */
+[role="dialog"] :is(
+  [data-slot="close"],
+  [data-slot="description"],
+  [data-slot="title"],
+  .text-muted,
+  .text-dimmed,
+  [class*="text-muted"],
+  [class*="text-dimmed"],
+  svg,
+  [class*="icon"]
+) {
+  transition-property: background-color, border-color, opacity, box-shadow, transform, filter;
 }
 
 .workspace-switcher-panel {
@@ -669,10 +719,10 @@ a[data-slot="base"].action-solid:hover {
  * Default track: sidebar light gray. Hover: soft purple. Selected: high-contrast white.
  */
 .a11y-segmented-control {
-  --a11y-segment-track: var(--sidebar-nav-active-bg);
-  --a11y-segment-hover: color-mix(in srgb, #6366f1 28%, transparent);
-  --a11y-segment-selected-bg: #ffffff;
-  --a11y-segment-selected-fg: rgb(10 10 10);
+  --a11y-segment-track: var(--ui-bg-muted);
+  --a11y-segment-hover: color-mix(in srgb, var(--ui-text) 8%, transparent);
+  --a11y-segment-selected-bg: var(--ui-bg-elevated);
+  --a11y-segment-selected-fg: var(--ui-text-highlighted);
   display: inline-flex;
   height: 2rem;
   width: auto;

@@ -1,5 +1,11 @@
 export type SerpDevice = 'mobile' | 'desktop'
 
+export interface SerpPagePickerItem {
+  label: string
+  description?: string
+  value: string
+}
+
 export interface SerpPreviewLimits {
   titleMax: number
   descriptionMax: number

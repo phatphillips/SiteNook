@@ -116,6 +116,17 @@ const _usePocketBase = () => {
     await pb.collection('users').requestPasswordReset(email.trim())
   }
 
+  async function changePassword(currentPassword: string, nextPassword: string) {
+    if (!pb) throw new Error('Password changes are only available in the browser.')
+    const record = requireUser()
+    await pb.collection('users').update(record.id, {
+      oldPassword: currentPassword,
+      password: nextPassword,
+      passwordConfirm: nextPassword
+    })
+    syncAuth()
+  }
+
   async function confirmPasswordReset(token: string, password: string) {
     if (!pb) throw new Error('Password reset is only available in the browser.')
     await pb.collection('users').confirmPasswordReset(token, password, password)
@@ -178,7 +189,7 @@ const _usePocketBase = () => {
     return scan
   }
 
-  // Read the synced Vue state — pb.authStore is not reactive, so a computed that
+  // Read the synced Vue state. Pb.authStore is not reactive, so a computed that
   // touches it directly will cache the first signed-in user until a full reload.
   const sessionUser = computed(() => (isAuthenticated.value ? user.value : null))
 
@@ -192,6 +203,7 @@ const _usePocketBase = () => {
     signup,
     requestPasswordReset,
     confirmPasswordReset,
+    changePassword,
     logout,
     restoreAuth,
     awaitAuthReady,

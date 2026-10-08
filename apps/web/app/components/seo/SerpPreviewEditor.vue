@@ -5,7 +5,6 @@ import { ruleLabel } from '~/utils/seoRules'
 import { isOverSerpLimit, serpLimitsForDevice } from '~/utils/serpPreview'
 import { trafficLightClass, trafficLightFromSeverity } from '~/utils/trafficLightStatus'
 
-const url = defineModel<string>('url', { default: '' })
 const title = defineModel<string>('title', { default: '' })
 const metaDescription = defineModel<string>('metaDescription', { default: '' })
 const device = defineModel<SerpDevice>('device', { default: 'mobile' })
@@ -14,12 +13,10 @@ const showDate = defineModel<boolean>('showDate', { default: true })
 const showFavicon = defineModel<boolean>('showFavicon', { default: true })
 
 defineProps<{
-  fetching?: boolean
   contentIssues?: SeoIssue[]
 }>()
 
 const emit = defineEmits<{
-  fetch: []
   issueClick: [issue: SeoIssue]
 }>()
 
@@ -37,70 +34,108 @@ const titleCounterClass = computed(() =>
 const descCounterClass = computed(() =>
   isOverSerpLimit(metaDescription.value, descriptionMax.value) ? 'text-amber-500' : 'text-muted'
 )
+
+const deviceMenuOpen = ref(false)
 </script>
 
 <template>
-  <div class="space-y-3">
-    <UFormField label="URL">
-      <div class="flex gap-2">
-        <UInput v-model="url" type="url" placeholder="https://example.com/page" class="flex-1" />
-        <UButton
-          :loading="fetching"
-          :disabled="!url.trim()"
-          @click="emit('fetch')"
+  <div class="space-y-5">
+    <div
+      v-if="contentIssues?.length"
+      class="space-y-2"
+    >
+      <p class="text-xs font-semibold uppercase tracking-wide text-muted">
+        Content issues on this page
+      </p>
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="issue in contentIssues"
+          :key="issue.id"
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-md border border-default bg-elevated/30 px-2 py-1 text-xs transition-colors hover:bg-elevated/60"
+          @click="emit('issueClick', issue)"
         >
-          Fetch
-        </UButton>
+          <span
+            class="size-1.5 shrink-0 rounded-full"
+            :class="trafficLightClass(trafficLightFromSeverity(issue.severity))"
+          />
+          {{ issue.title || ruleLabel(issue.rule_id) }}
+        </button>
       </div>
-    </UFormField>
+    </div>
 
-    <div v-if="contentIssues?.length" class="flex flex-wrap gap-2">
-      <button
-        v-for="issue in contentIssues"
-        :key="issue.id"
-        type="button"
-        class="inline-flex items-center gap-1.5 rounded-full border border-default bg-elevated/30 px-2 py-0.5 text-xs transition-colors hover:bg-elevated/60"
-        @click="emit('issueClick', issue)"
+    <section class="space-y-4">
+      <UFormField
+        label="Page title"
+        class="w-full"
+        :ui="{ hint: titleCounterClass }"
       >
-        <span
-          class="size-1.5 shrink-0 rounded-full"
-          :class="trafficLightClass(trafficLightFromSeverity(issue.severity))"
-        />
-        {{ issue.title || ruleLabel(issue.rule_id) }}
-      </button>
-    </div>
-
-    <UFormField label="Page Title">
-      <UInput v-model="title" placeholder="Page title" />
-      <p class="text-xs text-right mt-1" :class="titleCounterClass">
-        Title {{ title.length }} / {{ titleLimits }}
-      </p>
-    </UFormField>
-
-    <UFormField label="Meta Description">
-      <UTextarea
-        v-model="metaDescription"
-        :rows="4"
-        placeholder="No meta description found. Google may use page body text instead"
-      />
-      <p class="text-xs text-right mt-1" :class="descCounterClass">
-        Description {{ metaDescription.length }} / {{ descriptionMax }}
-      </p>
-    </UFormField>
-
-    <div class="flex flex-wrap items-end gap-3">
-      <UFormField label="Device" class="min-w-[8rem]">
-        <USelectMenu
-          v-model="device"
-          :items="deviceItems"
-          value-key="value"
+        <template #hint>
+          <span class="tabular-nums">{{ title.length }} / {{ titleLimits }}</span>
+        </template>
+        <UInput
+          v-model="title"
+          placeholder="Page title"
+          class="w-full"
         />
       </UFormField>
-      <UFormField label="Description max length" class="w-28">
-        <UInput v-model.number="descriptionMax" type="number" min="80" max="320" />
+
+      <UFormField
+        label="Meta description"
+        class="w-full"
+        :ui="{ hint: descCounterClass }"
+      >
+        <template #hint>
+          <span class="tabular-nums">{{ metaDescription.length }} / {{ descriptionMax }}</span>
+        </template>
+        <UTextarea
+          v-model="metaDescription"
+          :rows="4"
+          class="w-full"
+          placeholder="No meta description found. Google may use page body text instead"
+        />
       </UFormField>
-      <UCheckbox v-model="showDate" label="Date" />
-      <UCheckbox v-model="showFavicon" label="Favicon" />
-    </div>
+    </section>
+
+    <section class="space-y-3 border-t border-default pt-4">
+      <p class="text-xs font-semibold uppercase tracking-wide text-muted">
+        Preview options
+      </p>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <UFormField label="Device">
+          <USelectMenu
+            v-model="device"
+            v-model:open="deviceMenuOpen"
+            :items="deviceItems"
+            value-key="value"
+            :search-input="false"
+            class="w-full"
+            @update:model-value="deviceMenuOpen = false"
+          />
+        </UFormField>
+        <div class="flex flex-wrap items-end gap-4 pb-1">
+          <UCheckbox
+            v-model="showDate"
+            label="Date"
+          />
+          <UCheckbox
+            v-model="showFavicon"
+            label="Favicon"
+          />
+        </div>
+      </div>
+      <UFormField
+        label="Description max length"
+        help="Characters shown before truncation in the preview."
+        class="max-w-[12rem]"
+      >
+        <UInput
+          v-model.number="descriptionMax"
+          type="number"
+          min="80"
+          max="320"
+        />
+      </UFormField>
+    </section>
   </div>
 </template>

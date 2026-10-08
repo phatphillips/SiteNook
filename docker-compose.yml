@@ -3,6 +3,10 @@ services:
     build: ./nginx
     ports:
       - "80:80"
+    restart: unless-stopped
+    # web: service_started is enough — nginx.conf uses Docker DNS + variables so
+    # missing/restarting upstreams yield 502 instead of an nginx crash. Entrypoint
+    # also waits for DNS. Prefer this over service_healthy (Nuxt cold start is slow).
     depends_on:
       web:
         condition: service_started
@@ -13,6 +17,7 @@ services:
 
   web:
     build: ./apps/web
+    restart: unless-stopped
     environment:
       NUXT_PUBLIC_POCKETBASE_URL: ${NUXT_PUBLIC_POCKETBASE_URL:-http://localhost}
       NUXT_PUBLIC_APP_URL: http://localhost
@@ -58,8 +63,23 @@ services:
       TYPESENSE_ENABLED: ${TYPESENSE_ENABLED:-0}
       SITENOOK_COMMERCIAL: ${SITENOOK_COMMERCIAL:-0}
     depends_on:
-      - pocketbase
-      - typesense
+      pocketbase:
+        condition: service_healthy
+      typesense:
+        condition: service_started
+    healthcheck:
+      # TCP accept is enough — first Nuxt HTTP responses can exceed 5–10s while compiling.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('net').connect(3000,'127.0.0.1').on('connect',function(){this.end();process.exit(0)}).on('error',function(){process.exit(1)})"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 36
+      start_period: 45s
 
   verapdf:
     profiles: ["pdf"]

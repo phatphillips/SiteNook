@@ -367,10 +367,18 @@ watch(
         v-model="tableTab"
         :content="false"
         :items="tableTabItems"
-        variant="pill"
         color="neutral"
         size="xs"
         class="scanner-info__tabs shrink-0"
+        :ui="{
+          list: 'relative flex h-8 p-0.5 rounded-lg bg-default border border-default w-auto',
+          indicator: 'inset-y-0.5 rounded-md shadow-sm bg-white dark:bg-elevated',
+          trigger: [
+            'h-7 grow justify-center px-3 text-xs font-medium min-w-0',
+            'data-[state=inactive]:text-muted hover:data-[state=inactive]:not-disabled:text-default',
+            'data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-highlighted'
+          ].join(' ')
+        }"
       />
     </div>
 

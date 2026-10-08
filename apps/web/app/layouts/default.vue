@@ -132,7 +132,7 @@ const sidebarNavUi = {
       mode="slideover"
       collapsible
       resizable
-      class="bg-elevated/25 !border-e-0"
+      class="dashboard-sidebar !border-e-0"
       :menu="{ side: 'left' }"
       :ui="{
         header: 'h-(--ui-header-height) shrink-0 flex items-center gap-1.5 px-4',
