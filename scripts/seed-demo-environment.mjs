@@ -71,9 +71,9 @@ const DEMO_SITES = [
     description: 'Community-driven accessibility patterns and checklist'
   },
   {
-    name: 'W3C WAI',
-    url: 'https://www.w3.org/WAI/',
-    description: 'W3C Web Accessibility Initiative hub'
+    name: 'Inclusive Components',
+    url: 'https://inclusive-components.design',
+    description: 'Heydon Pickering inclusive component patterns'
   },
   {
     name: 'GOV.UK Design System',
