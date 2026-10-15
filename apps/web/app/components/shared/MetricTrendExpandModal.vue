@@ -15,11 +15,13 @@ import { format, parseISO, isValid } from 'date-fns'
 import { Line } from 'vue-chartjs'
 import type { Scan } from '~/types/sitenook'
 import {
+  chartAreaFill,
   chartExportBackgroundColor,
   chartGridColor,
   chartPlaceholderLineColor,
   chartPointBorderColor,
-  chartPurpleLineColor,
+  chartPrimaryColor,
+  chartPrimaryRgb,
   chartTooltipPalette,
   resolveChartThemeVariant
 } from '~/utils/chartTheme'
@@ -153,8 +155,9 @@ const chartKey = ref(0)
 const chartRef = ref<{ chart?: Chart } | null>(null)
 
 const colorMode = useColorMode()
+const { primary } = usePrimaryColor()
 const chartVariant = computed(() => resolveChartThemeVariant(colorMode.value))
-const seriesColor = computed(() => chartPurpleLineColor(chartVariant.value))
+const seriesColor = computed(() => chartPrimaryColor(primary.value))
 
 const bounds = computed(() => scoreTrendExpandBounds(range.value))
 
@@ -178,12 +181,26 @@ const summary = computed(() => scoreTrendSummaryStats(points.value))
 
 const labels = computed(() => points.value.map(p => p.label))
 
-const presetItems = [
-  { label: '7d', value: 7 as const },
-  { label: '30d', value: 30 as const },
-  { label: '90d', value: 90 as const },
-  { label: '12mo', value: 365 as const }
-] as const
+const presetTabItems = [
+  { label: '7d', value: '7' },
+  { label: '30d', value: '30' },
+  { label: '90d', value: '90' },
+  { label: '12mo', value: '365' }
+]
+
+const activePreset = computed({
+  get(): string {
+    const preset = range.value.preset
+    if (preset === 'custom') return ''
+    return String(preset)
+  },
+  set(value: string) {
+    const parsed = Number(value)
+    if (parsed === 7 || parsed === 30 || parsed === 90 || parsed === 365) {
+      selectPreset(parsed)
+    }
+  }
+})
 
 const hoverTooltip = ref<{
   show: boolean
@@ -239,7 +256,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => [bounds.value.dayCount, bounds.value.start.getTime(), bounds.value.end.getTime(), chartVariant.value, props.scans] as const,
+  () => [bounds.value.dayCount, bounds.value.start.getTime(), bounds.value.end.getTime(), chartVariant.value, primary.value, props.scans] as const,
   () => {
     if (!mounted.value || !open.value) return
     void remountChart()
@@ -284,8 +301,10 @@ function lastPointIndex(values: Array<number | null>): number {
 }
 
 const chartData = computed(() => {
+  void primary.value
   const variant = chartVariant.value
   const placeholderColor = chartPlaceholderLineColor(variant)
+  const lineRgb = chartPrimaryRgb(primary.value)
   const values = points.value.map(p => p.value)
   const pad = leadingPlaceholderInfo(points.value)
   const endIndex = lastPointIndex(values)
@@ -315,9 +334,14 @@ const chartData = computed(() => {
     label: seriesLabel.value,
     data: mainData,
     borderColor: seriesColor.value,
-    backgroundColor: 'transparent',
+    backgroundColor: (context: { chart: { ctx: CanvasRenderingContext2D, chartArea?: { top: number, bottom: number } } }) => {
+      const { chart } = context
+      const { ctx, chartArea } = chart
+      if (!chartArea) return `rgba(${lineRgb}, 0.12)`
+      return chartAreaFill(ctx, chartArea, 0.38, lineRgb)
+    },
     borderWidth: 3,
-    fill: false,
+    fill: true,
     tension: 0.35,
     spanGaps: false,
     pointRadius: (ctx: { dataIndex: number }) => (ctx.dataIndex === endIndex ? 4 : 0),
@@ -392,9 +416,7 @@ const chartOptions = computed(() => {
   const gridColor = chartGridColor(variant)
   const tickColor = variant === 'dark'
     ? 'rgba(255, 255, 255, 0.5)'
-    : variant === 'solarized-light'
-      ? 'rgba(88, 110, 117, 0.9)'
-      : 'rgba(75, 85, 99, 0.9)'
+    : 'rgba(75, 85, 99, 0.9)'
   const yMax = issuesYMax.value
 
   return {
@@ -558,22 +580,24 @@ const tooltipPalette = computed(() => chartTooltipPalette(chartVariant.value))
 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <div
-              class="a11y-segmented-control"
-              role="group"
+            <UTabs
+              v-model="activePreset"
+              :content="false"
+              :items="presetTabItems"
+              color="neutral"
+              size="sm"
+              class="overview-date-range-tabs h-8 shrink-0"
+              :ui="{
+                list: 'relative flex h-8 w-auto p-0.5 rounded-lg bg-elevated border border-default',
+                indicator: 'inset-y-0.5 rounded-md shadow-sm bg-default',
+                trigger: [
+                  'h-7 grow justify-center px-2.5 text-sm font-medium min-w-0',
+                  'data-[state=inactive]:text-muted hover:data-[state=inactive]:not-disabled:text-default',
+                  'data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-highlighted'
+                ].join(' ')
+              }"
               :aria-label="periodAriaLabel"
-            >
-              <button
-                v-for="item in presetItems"
-                :key="item.value"
-                type="button"
-                class="a11y-segmented-control__btn"
-                :aria-pressed="range.preset === item.value"
-                @click="selectPreset(item.value)"
-              >
-                {{ item.label }}
-              </button>
-            </div>
+            />
 
             <UPopover v-model:open="customOpen">
               <UButton
@@ -581,11 +605,16 @@ const tooltipPalette = computed(() => chartTooltipPalette(chartVariant.value))
                 variant="outline"
                 size="sm"
                 class="h-8"
-                :class="range.preset === 'custom' ? 'ring-1 ring-default border-default' : ''"
+                :aria-pressed="range.preset === 'custom'"
+                :ui="{
+                  base: range.preset === 'custom'
+                    ? 'h-8 border border-default ring-1 ring-primary/30'
+                    : 'h-8'
+                }"
                 @click="openCustom"
               >
                 Custom
-                <UIcon name="i-lucide-chevron-down" class="size-4 ms-1 opacity-70" />
+                <UIcon name="i-lucide-chevron-down" class="ms-1 size-4 opacity-80" aria-hidden="true" />
               </UButton>
 
               <template #content>

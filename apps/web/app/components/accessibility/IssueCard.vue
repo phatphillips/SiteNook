@@ -53,7 +53,7 @@ function onKeydown(event: KeyboardEvent) {
     role="button"
     tabindex="0"
     :aria-label="ariaLabel"
-    class="rounded-lg border border-default bg-elevated/25 p-4 cursor-pointer transition-colors hover:border-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-default"
+    class="rounded-lg border border-default bg-elevated p-4 cursor-pointer transition-colors hover:border-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-default"
     @click="openDrawer"
     @keydown="onKeydown"
   >

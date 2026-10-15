@@ -24,18 +24,6 @@ function pocketBaseErrorMessage(error: unknown): string {
 
 }
 
-function generateShareToken(): string {
-
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-
-    return crypto.randomUUID().replace(/-/g, '')
-
-  }
-
-  return `${Date.now()}_${Math.random().toString(36).slice(2)}`
-
-}
-
 export function usePdfDocuments(siteId: Ref<string> | string) {
 
   const { pb } = usePocketBase()
@@ -288,8 +276,6 @@ export function usePdfDocuments(siteId: Ref<string> | string) {
 
         formData.append('status', 'pending')
 
-        formData.append('share_token', generateShareToken())
-
         if (userId) formData.append('uploaded_by', userId)
 
         const orgId = typeof pb.authStore.record?.organization === 'string'
@@ -434,26 +420,6 @@ export function usePdfDocuments(siteId: Ref<string> | string) {
     if (!doc.file && !doc.url) return null
 
     return `/api/pdf-documents/${doc.id}/file`
-
-  }
-
-  function buildShareUrl(token: string): string {
-
-    const config = useRuntimeConfig()
-
-    const base = config.public.appUrl || (import.meta.client ? window.location.origin : '')
-
-    return `${base.replace(/\/$/, '')}/pdf-report/${token}`
-
-  }
-
-  async function copyShareLink(token: string) {
-
-    const url = buildShareUrl(token)
-
-    await navigator.clipboard.writeText(url)
-
-    return url
 
   }
 
@@ -690,10 +656,6 @@ export function usePdfDocuments(siteId: Ref<string> | string) {
     fetchDocument,
 
     getFileUrl,
-
-    buildShareUrl,
-
-    copyShareLink,
 
     exportCsv,
     fetchRemediation,

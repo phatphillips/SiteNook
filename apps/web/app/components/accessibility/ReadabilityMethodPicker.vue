@@ -171,7 +171,7 @@ async function save() {
           v-model="referenceOpen"
           type="multiple"
           :items="[{ label: 'Readability test reference', value: 'reference', slot: 'reference' }]"
-          :ui="{ item: 'border border-default rounded-lg bg-elevated/25 px-4' }"
+          :ui="{ item: 'border border-default rounded-lg bg-elevated px-4' }"
         >
           <template #reference-body>
             <p class="text-sm text-muted mb-4">

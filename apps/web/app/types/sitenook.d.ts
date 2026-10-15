@@ -583,7 +583,6 @@ export interface PdfDocument {
   has_pdf_tags?: boolean
   issue_count?: number
   accessibility_score?: number
-  share_token?: string
   /** SHA-256 of stored PDF bytes. Used for crawl/upload dedup. */
   content_hash?: string
   uploaded_by?: string

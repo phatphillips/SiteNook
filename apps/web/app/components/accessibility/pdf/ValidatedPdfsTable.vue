@@ -10,7 +10,7 @@ import {
   VALIDATED_PDFS_VALIDATE_SKELETON_COLUMNS,
   VALIDATED_PDFS_VALIDATE_WITH_SITE_SKELETON_COLUMNS
 } from '~/utils/dataTableSkeletonColumns'
-import { DATA_TABLE_UI } from '~/utils/dataTableUi'
+import { DATA_TABLE_UI, dataTableSortableHeader } from '~/utils/dataTableUi'
 import { scrollDataTableIntoView } from '~/utils/dataTableScroll'
 
 const props = withDefaults(defineProps<{
@@ -43,7 +43,6 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   delete: [id: string]
   validate: [id: string]
-  copyShare: [token: string]
   open: [doc: PdfDocument]
   export: []
   selectionChange: [ids: string[]]
@@ -107,21 +106,7 @@ function sortableHeader(
   label: string,
   align: 'left' | 'right' | 'center' = 'left'
 ) {
-  const isSorted = column.getIsSorted()
-  const button = h(UButton, {
-    color: 'neutral',
-    variant: 'ghost',
-    label,
-    icon: isSorted
-      ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow')
-      : 'i-lucide-arrow-up-down',
-    class: '-mx-2.5',
-    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
-  })
-  if (align === 'left') return button
-  return h('div', {
-    class: align === 'right' ? 'flex justify-end' : 'flex justify-center'
-  }, [button])
+  return dataTableSortableHeader(column, label, align)
 }
 
 function formatUploadedOn(doc: PdfDocument): string {
@@ -161,8 +146,6 @@ const PDFS_TABLE_UI = {
   base: 'w-max min-w-full table-auto border-collapse',
   thead: 'border-b border-default',
   tbody: '',
-  th: 'p-0 px-3 py-2 text-xs font-medium text-muted whitespace-normal normal-case',
-  td: 'p-0 px-3 py-2 align-middle text-sm text-default whitespace-normal',
   tr: ''
 }
 
@@ -452,23 +435,6 @@ const columns = computed<TableColumn<PdfDocument>[]>(() => {
           })
         ]
 
-        if (doc.share_token) {
-          buttons.push(h(UButton, {
-            color: 'neutral',
-            variant: 'ghost',
-            icon: 'i-lucide-link',
-            square: true,
-            size: 'xs',
-            'aria-label': 'Copy share link',
-            title: 'Copy share link',
-            onClick: (event: MouseEvent) => {
-              event.preventDefault()
-              event.stopPropagation()
-              emit('copyShare', doc.share_token!)
-            }
-          }))
-        }
-
         buttons.push(h(UButton, {
           color: 'error',
           variant: 'ghost',
@@ -659,7 +625,7 @@ onBeforeUnmount(() => {
 
     <div
       v-if="!documents.length && !loading"
-      class="rounded-lg border border-default bg-elevated/25 px-6 py-16 text-center"
+      class="rounded-lg border border-default bg-elevated px-6 py-16 text-center"
     >
       <UIcon
         name="i-lucide-file-text"
@@ -779,7 +745,7 @@ onBeforeUnmount(() => {
 }
 
 .validated-pdfs-table-scroll--overflow-right {
-  box-shadow: inset -22px 0 22px -12px color-mix(in srgb, #000 24%, transparent 76%);
+  box-shadow: inset -12px 0 12px -8px color-mix(in srgb, #000 12%, transparent 88%);
 }
 
 .validated-pdfs-table-panel :deep(.validated-pdfs-table-scroll table) {
@@ -792,7 +758,7 @@ onBeforeUnmount(() => {
 .validated-pdfs-table-panel :deep(.validated-pdfs-table-scroll th),
 .validated-pdfs-table-panel :deep(.validated-pdfs-table-scroll td) {
   border-right: none;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg));
 }
 
 /* Select gutter with horizontal padding; title width tracked to panel */
@@ -849,17 +815,17 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-/* Sticky cols: opaque cover using muted (one step up from --ui-bg). */
+/* Sticky cols: opaque cover matching table surface. */
 .validated-pdfs-table-panel :deep(.validated-pdfs-table-scroll .validated-pdfs-sticky-col) {
   position: sticky;
   z-index: 3;
   overflow: visible;
-  background-color: var(--ui-bg-muted);
+  background-color: var(--table-surface-bg, var(--ui-bg));
 }
 
 .validated-pdfs-table-panel :deep(.validated-pdfs-table-scroll thead .validated-pdfs-sticky-col) {
   z-index: 5;
-  background-color: var(--ui-bg-muted);
+  background-color: var(--table-surface-bg, var(--ui-bg));
 }
 
 .validated-pdfs-table-panel :deep(.validated-pdfs-table-scroll .validated-pdfs-sticky-col--1) {
@@ -933,15 +899,15 @@ onBeforeUnmount(() => {
   right: 0;
   bottom: 0;
   z-index: 12;
-  width: 28px;
+  width: 12px;
   pointer-events: none;
   opacity: 0;
   transition: opacity 180ms ease;
   border-top-right-radius: 0.5rem;
   background: linear-gradient(
     to left,
-    color-mix(in srgb, #000 32%, transparent 68%) 0%,
-    color-mix(in srgb, #000 16%, transparent 84%) 50%,
+    color-mix(in srgb, #000 14%, transparent 86%) 0%,
+    color-mix(in srgb, #000 6%, transparent 94%) 50%,
     transparent 100%
   );
 }
@@ -961,7 +927,7 @@ onBeforeUnmount(() => {
   background: linear-gradient(
     to right,
     transparent 0%,
-    var(--ui-bg) 100%
+    var(--table-surface-bg, var(--ui-bg)) 100%
   );
 }
 

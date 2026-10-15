@@ -21,7 +21,6 @@ const {
   deletePdfs,
   requestValidation,
   requestBulkValidation,
-  copyShareLink,
   maxUploadFiles,
   maxFileSizeMb
 } = useOrgPdfDocuments(siteFilter)
@@ -63,11 +62,6 @@ async function onUpload(files: File[]) {
 async function onDelete(id: string) {
   await deletePdf(id)
   toast.add({ title: 'PDF removed', color: 'neutral' })
-}
-
-async function onCopyShare(token: string) {
-  await copyShareLink(token)
-  toast.add({ title: 'Share link copied', color: 'success' })
 }
 
 async function onValidate(id: string) {
@@ -257,7 +251,6 @@ watch(siteFilter, () => {
           :footer-summary="footerSummary"
           @delete="onDelete"
           @validate="onValidate"
-          @copy-share="onCopyShare"
           @open="onOpen"
           @selection-change="onSelectionChange"
         />

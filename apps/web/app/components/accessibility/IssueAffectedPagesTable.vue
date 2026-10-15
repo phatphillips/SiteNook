@@ -8,7 +8,7 @@ import type { AccessibilityIssue } from '~/types/sitenook'
 import type { AffectedPageSummary } from '~/utils/affectedPages'
 import { pageDisplayTitle } from '~/utils/affectedPages'
 import { AFFECTED_PAGES_METRICS_SKELETON_COLUMNS, AFFECTED_PAGES_METRICS_WITH_SITE_SKELETON_COLUMNS } from '~/utils/dataTableSkeletonColumns'
-import { DATA_TABLE_UI_DENSE } from '~/utils/dataTableUi'
+import { DATA_TABLE_UI_DENSE, dataTableSortableHeader } from '~/utils/dataTableUi'
 import { issueRowActionGroups, type DismissReason } from '~/utils/issueActions'
 import { issuePageRowKey } from '~/utils/issueRowExit'
 import { formatPointsToGain } from '~/composables/useAccessibility'
@@ -88,26 +88,7 @@ function sortableHeader(
   label: string,
   align: 'left' | 'right' | 'center' = 'left'
 ) {
-  const isSorted = column.getIsSorted()
-  const button = h(UButton, {
-    color: 'neutral',
-    variant: 'ghost',
-    size: 'xs',
-    label,
-    icon: isSorted
-      ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow')
-      : 'i-lucide-arrow-up-down',
-    class: align === 'left' ? '-ms-2' : '',
-    ui: {
-      base: 'font-medium',
-      leadingIcon: 'size-3.5'
-    },
-    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
-  })
-  if (align === 'left') return button
-  return h('div', {
-    class: align === 'right' ? 'flex justify-end' : 'flex justify-center'
-  }, [button])
+  return dataTableSortableHeader(column, label, align)
 }
 
 function pagePointsToGain(page: AffectedPageSummary): number {
@@ -638,7 +619,7 @@ watch(
   /* Must stay visible so Title can stick to the parent scroller. */
   overflow: visible;
   padding: 0;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 
 .issue-affected-pages-frame {
@@ -647,7 +628,7 @@ watch(
   min-width: 100%;
   border: none;
   border-radius: 0;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 
 .issue-affected-pages-heading {
@@ -659,7 +640,7 @@ watch(
   max-width: var(--issues-affected-sticky-bar-width, 100%);
   margin: 0;
   padding: 0.5rem 1rem 0.35rem calc(var(--issues-expand-col-width, 2.75rem) + 1rem);
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 
 .issue-affected-pages-split {
@@ -680,7 +661,7 @@ watch(
   max-width: var(--issues-frozen-rail-width, 30.75rem);
   flex-shrink: 0;
   box-sizing: border-box;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
   border-right: 1px solid color-mix(in srgb, var(--ui-border) 92%, transparent 8%);
   box-shadow: 6px 0 10px -8px color-mix(in srgb, #000 22%, transparent 78%);
 }
@@ -693,7 +674,7 @@ watch(
   align-items: center;
   padding: 0.35rem 1rem 0.35rem calc(var(--issues-expand-col-width, 2.75rem) + 1rem);
   overflow: hidden;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
   border-bottom: 1px solid color-mix(in srgb, var(--ui-border) 90%, transparent 10%);
 }
 
@@ -719,7 +700,7 @@ watch(
   flex: 0 0 auto;
   flex-shrink: 0;
   min-width: max-content;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 
 /* Match main IssuesTable fixed metric widths. */
@@ -793,7 +774,7 @@ watch(
 .issue-affected-pages-tail {
   flex: 1 1 auto;
   min-width: 0;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 
 .issue-affected-pages-metrics :deep(table) {
@@ -806,7 +787,7 @@ watch(
 
 .issue-affected-pages-metrics :deep([data-slot='root']) {
   overflow: visible !important;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 
 .issue-affected-pages-metrics :deep(thead th),
@@ -814,7 +795,7 @@ watch(
   box-sizing: border-box;
   padding: 0.35rem 1rem !important;
   vertical-align: middle;
-  background-color: var(--ui-bg) !important;
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated)) !important;
   border-right: 1px solid color-mix(in srgb, var(--ui-border) 90%, transparent 10%);
   border-bottom: 1px solid color-mix(in srgb, var(--ui-border) 90%, transparent 10%);
 }
@@ -847,7 +828,7 @@ watch(
   min-width: 0;
   border-collapse: separate;
   border-spacing: 0;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 
 .issue-affected-pages-metrics :deep(.data-table-skeleton thead tr) {
@@ -859,7 +840,7 @@ watch(
   box-sizing: border-box;
   padding: 0.35rem 1rem !important;
   vertical-align: middle;
-  background-color: var(--ui-bg) !important;
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated)) !important;
   border-right: 1px solid color-mix(in srgb, var(--ui-border) 90%, transparent 10%);
   border-bottom: 1px solid color-mix(in srgb, var(--ui-border) 90%, transparent 10%);
 }
@@ -907,7 +888,7 @@ watch(
   max-width: var(--issues-affected-sticky-bar-width, 100%);
   border-top: 1px solid color-mix(in srgb, var(--ui-border) 90%, transparent 10%);
   padding: 0.5rem 1rem 0.5rem calc(var(--issues-expand-col-width, 2.75rem) + 1rem);
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 
 .issue-affected-pages-pagination :deep(nav),

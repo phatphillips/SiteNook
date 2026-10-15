@@ -15,8 +15,8 @@ import {
   buildChartTooltipOptions,
   chartAreaFill,
   chartAxisTickColor,
-  chartLineColor,
-  chartLineRgb,
+  chartPrimaryColor,
+  chartPrimaryRgb,
   chartPointBorderColor,
   resolveChartThemeVariant
 } from '~/utils/chartTheme'
@@ -32,6 +32,7 @@ const props = defineProps<{
 const mounted = ref(false)
 const chartKey = ref(0)
 const colorMode = useColorMode()
+const { primary } = usePrimaryColor()
 const chartVariant = computed(() => resolveChartThemeVariant(colorMode.value))
 
 onMounted(async () => {
@@ -41,7 +42,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => colorMode.value,
+  () => [colorMode.value, primary.value] as const,
   async () => {
     if (!mounted.value) return
     await nextTick()
@@ -95,8 +96,8 @@ const hasData = computed(() =>
 const chartData = computed(() => {
   const labels = dailyScores.value.map(p => p.label)
   const data = dailyScores.value.map(p => (hasData.value ? (p.score ?? 0) : null))
-  const lineColor = chartLineColor(chartVariant.value)
-  const lineRgb = chartLineRgb(chartVariant.value)
+  const lineColor = chartPrimaryColor(primary.value)
+  const lineRgb = chartPrimaryRgb(primary.value)
 
   return {
     labels,

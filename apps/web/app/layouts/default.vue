@@ -11,13 +11,35 @@ const { isBusy: scanBusy } = useActiveWorkspaceScanState()
 const { open: addSiteOpen } = useAddSiteWizard()
 
 const open = ref(false)
+const logoShine = ref(false)
+let logoShineTimer: ReturnType<typeof setTimeout> | undefined
+
+function triggerLogoShine() {
+  logoShine.value = false
+  void nextTick(() => {
+    logoShine.value = true
+    clearTimeout(logoShineTimer)
+    logoShineTimer = setTimeout(() => {
+      logoShine.value = false
+    }, 1150)
+  })
+}
 
 onMounted(async () => {
+  const nuxtApp = useNuxtApp()
+  nuxtApp.hook('page:start', () => {
+    triggerLogoShine()
+  })
+
   const { awaitAuthReady, isAuthenticated } = usePocketBase()
   await awaitAuthReady()
   if (isAuthenticated.value) {
     await fetchSites()
   }
+})
+
+onBeforeUnmount(() => {
+  clearTimeout(logoShineTimer)
 })
 
 const featureLinks = computed<NavigationMenuItem[]>(() => {
@@ -117,113 +139,138 @@ const groups = computed(() => [{
 }])
 
 const sidebarNavUi = {
-  link: 'rounded-md px-3 py-2 font-medium text-muted before:rounded-md data-[active=true]:text-highlighted data-[active=true]:before:bg-[var(--sidebar-nav-active-bg)] data-[active=true]:before:opacity-100',
-  childLink: 'rounded-md px-3 py-2 font-medium text-muted before:rounded-md data-[active=true]:text-highlighted data-[active=true]:before:bg-[var(--sidebar-nav-active-bg)] data-[active=true]:before:opacity-100',
-  linkLeadingIcon: 'text-dimmed group-data-[active=true]:text-highlighted',
-  childLinkIcon: 'text-dimmed group-data-[active=true]:text-highlighted'
+  link: 'rounded-md px-3 py-2 font-medium text-[var(--sidebar-nav-fg)] before:rounded-md data-[active=true]:text-highlighted data-[active=true]:before:bg-[var(--sidebar-nav-active-bg)] data-[active=true]:before:opacity-100',
+  childLink: 'rounded-md px-3 py-2 font-medium text-[var(--sidebar-nav-fg)] before:rounded-md data-[active=true]:text-highlighted data-[active=true]:before:bg-[var(--sidebar-nav-active-bg)] data-[active=true]:before:opacity-100',
+  linkLeadingIcon: 'text-[var(--sidebar-nav-icon)] group-data-[active=true]:text-highlighted',
+  childLinkIcon: 'text-[var(--sidebar-nav-icon)] group-data-[active=true]:text-highlighted'
 }
 </script>
 
 <template>
-  <UDashboardGroup unit="rem">
-    <UDashboardSidebar
-      id="default"
-      v-model:open="open"
-      mode="slideover"
-      collapsible
-      resizable
-      class="dashboard-sidebar !border-e-0"
-      :menu="{ side: 'left' }"
-      :ui="{
-        header: 'h-(--ui-header-height) shrink-0 flex items-center gap-1.5 px-4',
-        content: 'lg:hidden w-72 max-w-[calc(100vw-2.5rem)]',
-        overlay: 'lg:hidden bg-black/20'
-      }"
-    >
-      <template #header="{ collapsed }">
+  <UDashboardGroup
+    unit="rem"
+    class="flex-col"
+  >
+    <ApplianceLicenceBanner />
+
+    <header class="dashboard-app-header">
+      <div class="dashboard-app-header-left">
+        <UDashboardSidebarToggle
+          class="lg:hidden"
+          color="neutral"
+          variant="ghost"
+          :ui="{ leadingIcon: 'size-4' }"
+        />
         <NuxtLink
           to="/"
-          class="flex shrink-0 items-center rounded-md px-1 py-1 text-highlighted transition-colors hover:bg-[var(--sidebar-nav-hover-bg)]"
+          class="dashboard-app-header-logo"
           aria-label="SiteNook home"
         >
-          <SiteNookLogo size="sm" :compact="Boolean(collapsed)" />
+          <SiteNookLogo
+            size="sm"
+            :shine="logoShine"
+          />
         </NuxtLink>
-      </template>
-
-      <template #default="{ collapsed }">
-        <UNavigationMenu
-          :collapsed="collapsed"
-          :items="links[0]"
-          orientation="vertical"
-          variant="pill"
-          tooltip
-          popover
-          :ui="sidebarNavUi"
-          class="dashboard-sidebar-nav"
-        >
-          <template #scans-label="{ item }">
-            <span class="inline-flex items-center gap-1.5">
-              <span>{{ item.label }}</span>
-              <span
-                v-if="scanBusy"
-                class="scans-nav-pulse"
-                role="status"
-                aria-label="Scan in progress"
-              >
-                <span class="scans-nav-pulse__dot" />
-                <span class="scans-nav-pulse__ring" aria-hidden="true" />
-              </span>
-            </span>
-          </template>
-        </UNavigationMenu>
-        <UNavigationMenu
-          :collapsed="collapsed"
-          :items="links[1]"
-          orientation="vertical"
-          variant="pill"
-          tooltip
-          :ui="sidebarNavUi"
-          class="dashboard-sidebar-nav mt-auto"
+        <WorkspaceSwitcher variant="navbar" />
+      </div>
+      <div class="dashboard-app-header-right">
+        <div
+          id="dashboard-app-header-actions"
+          class="dashboard-app-header-actions-slot"
         />
-      </template>
+        <UserMenu variant="header" />
+      </div>
+    </header>
 
-      <template #resize-handle="{ onMouseDown, onTouchStart, onDoubleClick, ui: sidebarUi }">
-        <UDashboardResizeHandle
-          aria-controls="dashboard-sidebar-default"
-          data-slot="handle"
-          class="sidebar-resize-handle"
-          :class="sidebarUi.handle()"
-          @mousedown="onMouseDown"
-          @touchstart="onTouchStart"
-          @dblclick="onDoubleClick"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="sidebar-resize-handle-grip size-4"
-            aria-hidden="true"
+    <div class="dashboard-app-body">
+      <UDashboardSidebar
+        id="default"
+        v-model:open="open"
+        mode="slideover"
+        resizable
+        class="dashboard-sidebar"
+        :menu="{ side: 'left' }"
+        :ui="{
+          body: 'flex flex-col gap-2 flex-1 overflow-y-auto px-4 pt-2 pb-2',
+          content: 'lg:hidden w-72 max-w-[calc(100vw-2.5rem)]',
+          overlay: 'lg:hidden bg-black/20'
+        }"
+      >
+        <template #default="{ collapsed }">
+          <UNavigationMenu
+            :collapsed="collapsed"
+            :items="links[0]"
+            orientation="vertical"
+            variant="pill"
+            tooltip
+            popover
+            :ui="sidebarNavUi"
+            class="dashboard-sidebar-nav"
           >
-            <circle cx="9" cy="12" r="1" />
-            <circle cx="9" cy="5" r="1" />
-            <circle cx="9" cy="19" r="1" />
-            <circle cx="15" cy="12" r="1" />
-            <circle cx="15" cy="5" r="1" />
-            <circle cx="15" cy="19" r="1" />
-          </svg>
-        </UDashboardResizeHandle>
-      </template>
-    </UDashboardSidebar>
+            <template #scans-label="{ item }">
+              <span class="inline-flex items-center gap-1.5">
+                <span>{{ item.label }}</span>
+                <span
+                  v-if="scanBusy"
+                  class="scans-nav-pulse"
+                  role="status"
+                  aria-label="Scan in progress"
+                >
+                  <span class="scans-nav-pulse__dot" />
+                  <span class="scans-nav-pulse__ring" aria-hidden="true" />
+                </span>
+              </span>
+            </template>
+          </UNavigationMenu>
+          <UNavigationMenu
+            :collapsed="collapsed"
+            :items="links[1]"
+            orientation="vertical"
+            variant="pill"
+            tooltip
+            popover
+            :ui="sidebarNavUi"
+            class="dashboard-sidebar-nav mt-auto shrink-0"
+          />
+        </template>
 
-    <div class="min-h-0 min-w-0 flex-1 flex flex-col h-full overflow-hidden">
-      <ApplianceLicenceBanner />
-      <UDashboardSearch :groups="groups" />
-      <div class="min-h-0 flex-1 flex flex-col overflow-hidden">
-        <slot />
+        <template #resize-handle="{ onMouseDown, onTouchStart, onDoubleClick, ui: sidebarUi }">
+          <UDashboardResizeHandle
+            aria-controls="dashboard-sidebar-default"
+            data-slot="handle"
+            class="sidebar-resize-handle"
+            :class="sidebarUi.handle()"
+            @mousedown="onMouseDown"
+            @touchstart="onTouchStart"
+            @dblclick="onDoubleClick"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="sidebar-resize-handle-grip size-4"
+              aria-hidden="true"
+            >
+              <circle cx="9" cy="12" r="1" />
+              <circle cx="9" cy="5" r="1" />
+              <circle cx="9" cy="19" r="1" />
+              <circle cx="15" cy="12" r="1" />
+              <circle cx="15" cy="5" r="1" />
+              <circle cx="15" cy="19" r="1" />
+            </svg>
+          </UDashboardResizeHandle>
+        </template>
+      </UDashboardSidebar>
+
+      <div class="min-h-0 min-w-0 flex-1 flex flex-col overflow-hidden">
+        <UDashboardSearch :groups="groups" />
+        <div class="min-h-0 flex-1 flex flex-col overflow-hidden">
+          <slot />
+        </div>
       </div>
     </div>
 

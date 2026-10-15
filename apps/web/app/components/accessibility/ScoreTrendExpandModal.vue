@@ -15,10 +15,12 @@ import { format, parseISO, isValid } from 'date-fns'
 import { Line } from 'vue-chartjs'
 import type { Scan } from '~/types/sitenook'
 import {
+  chartAreaFill,
   chartExportBackgroundColor,
   chartGridColor,
   chartPlaceholderLineColor,
   chartPointBorderColor,
+  chartPrimaryRgb,
   chartTooltipPalette,
   resolveChartThemeVariant
 } from '~/utils/chartTheme'
@@ -28,6 +30,7 @@ import {
   buildScoreTrendCsv,
   buildScoreTrendSeriesMap,
   chartToPngDataUrl,
+  colorForScoreTrendSeries,
   defaultVisibleSeriesIds,
   downloadDataUrl,
   formatScoreTrendDelta,
@@ -74,6 +77,7 @@ const chartKey = ref(0)
 const chartRef = ref<{ chart?: Chart } | null>(null)
 
 const colorMode = useColorMode()
+const { primary } = usePrimaryColor()
 const chartVariant = computed(() => resolveChartThemeVariant(colorMode.value))
 
 const bounds = computed(() => scoreTrendExpandBounds(range.value))
@@ -86,12 +90,26 @@ const summary = computed(() => scoreTrendSummaryStats(seriesMap.value.overall))
 
 const labels = computed(() => seriesMap.value.overall.map(p => p.label))
 
-const presetItems = [
-  { label: '7d', value: 7 as const },
-  { label: '30d', value: 30 as const },
-  { label: '90d', value: 90 as const },
-  { label: '12mo', value: 365 as const }
-] as const
+const presetTabItems = [
+  { label: '7d', value: '7' },
+  { label: '30d', value: '30' },
+  { label: '90d', value: '90' },
+  { label: '12mo', value: '365' }
+]
+
+const activePreset = computed({
+  get(): string {
+    const preset = range.value.preset
+    if (preset === 'custom') return ''
+    return String(preset)
+  },
+  set(value: string) {
+    const parsed = Number(value)
+    if (parsed === 7 || parsed === 30 || parsed === 90 || parsed === 365) {
+      selectPreset(parsed)
+    }
+  }
+})
 
 const hoverTooltip = ref<{
   show: boolean
@@ -134,7 +152,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => [seriesMap.value, visibleIds.value, chartVariant.value, open.value] as const,
+  () => [seriesMap.value, visibleIds.value, chartVariant.value, primary.value, open.value] as const,
   async () => {
     if (!mounted.value || !open.value) return
     await nextTick()
@@ -201,6 +219,8 @@ function lastPointIndex(values: Array<number | null>): number {
 const chartData = computed(() => {
   const variant = chartVariant.value
   const placeholderColor = chartPlaceholderLineColor(variant)
+  // Re-read when primary changes (watched via `primary` → chartKey remount).
+  void primary.value
   const datasets: Array<Record<string, unknown>> = []
 
   for (const def of SCORE_TREND_SERIES) {
@@ -209,6 +229,7 @@ const chartData = computed(() => {
     const values = points.map(p => p.value)
     const pad = leadingPlaceholderInfo(points)
     const endIndex = lastPointIndex(values)
+    const color = colorForScoreTrendSeries(def.id)
 
     if (pad) {
       datasets.push({
@@ -231,19 +252,29 @@ const chartData = computed(() => {
       ? values.map((v, i) => (i < pad.firstIndex ? null : v))
       : values
 
+    const lineRgb = chartPrimaryRgb(primary.value)
+    const usePrimaryFill = def.id === 'overall'
+
     datasets.push({
       label: seriesLabelForMode(def, props.mode),
       seriesId: def.id,
       data: mainData,
-      borderColor: def.color,
-      backgroundColor: 'transparent',
+      borderColor: color,
+      backgroundColor: usePrimaryFill
+        ? (context: { chart: { ctx: CanvasRenderingContext2D, chartArea?: { top: number, bottom: number } } }) => {
+            const { chart } = context
+            const { ctx, chartArea } = chart
+            if (!chartArea) return `rgba(${lineRgb}, 0.12)`
+            return chartAreaFill(ctx, chartArea, 0.34, lineRgb)
+          }
+        : 'transparent',
       borderWidth: def.id === 'overall' ? 3 : 2,
-      fill: false,
+      fill: usePrimaryFill,
       tension: 0.35,
       spanGaps: false,
       pointRadius: (ctx: { dataIndex: number }) => (ctx.dataIndex === endIndex ? 4 : 0),
       pointHoverRadius: 5,
-      pointBackgroundColor: def.color,
+      pointBackgroundColor: color,
       pointBorderColor: chartPointBorderColor(variant),
       pointBorderWidth: 2,
       order: 2
@@ -288,7 +319,7 @@ function externalTooltipHandler(context: {
         label: seriesLabelForMode(def, props.mode),
         value: formatScoreTrendPercent(value),
         delta: value == null ? '—' : formatScoreTrendDelta(delta),
-        color: def.color
+        color: colorForScoreTrendSeries(def.id)
       }
     })
     .filter(row => row.value !== '—')
@@ -322,9 +353,7 @@ const chartOptions = computed(() => {
   const gridColor = chartGridColor(variant)
   const tickColor = variant === 'dark'
     ? 'rgba(255, 255, 255, 0.5)'
-    : variant === 'solarized-light'
-      ? 'rgba(88, 110, 117, 0.9)'
-      : 'rgba(75, 85, 99, 0.9)'
+    : 'rgba(75, 85, 99, 0.9)'
 
   return {
     responsive: true,
@@ -480,22 +509,23 @@ const tooltipPalette = computed(() => chartTooltipPalette(chartVariant.value))
 
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <div
-              class="a11y-segmented-control"
-              role="group"
-              aria-label="Score trend period"
-            >
-              <button
-                v-for="item in presetItems"
-                :key="item.value"
-                type="button"
-                class="a11y-segmented-control__btn"
-                :aria-pressed="range.preset === item.value"
-                @click="selectPreset(item.value)"
-              >
-                {{ item.label }}
-              </button>
-            </div>
+            <UTabs
+              v-model="activePreset"
+              :content="false"
+              :items="presetTabItems"
+              color="neutral"
+              size="sm"
+              class="overview-date-range-tabs h-8 shrink-0"
+              :ui="{
+                list: 'relative flex h-8 w-auto p-0.5 rounded-lg bg-elevated border border-default',
+                indicator: 'inset-y-0.5 rounded-md shadow-sm bg-default',
+                trigger: [
+                  'h-7 grow justify-center px-2.5 text-sm font-medium min-w-0',
+                  'data-[state=inactive]:text-muted hover:data-[state=inactive]:not-disabled:text-default',
+                  'data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-highlighted'
+                ].join(' ')
+              }"
+            />
 
             <UPopover v-model:open="customOpen">
               <UButton
@@ -503,11 +533,16 @@ const tooltipPalette = computed(() => chartTooltipPalette(chartVariant.value))
                 variant="outline"
                 size="sm"
                 class="h-8"
-                :class="range.preset === 'custom' ? 'ring-1 ring-default border-default' : ''"
+                :aria-pressed="range.preset === 'custom'"
+                :ui="{
+                  base: range.preset === 'custom'
+                    ? 'h-8 border border-default ring-1 ring-primary/30'
+                    : 'h-8'
+                }"
                 @click="openCustom"
               >
                 Custom
-                <UIcon name="i-lucide-chevron-down" class="size-4 ms-1 opacity-70" />
+                <UIcon name="i-lucide-chevron-down" class="ms-1 size-4 opacity-80" aria-hidden="true" />
               </UButton>
 
               <template #content>
@@ -585,7 +620,7 @@ const tooltipPalette = computed(() => chartTooltipPalette(chartVariant.value))
             />
             <span
               class="inline-block size-2.5 shrink-0 rounded-full"
-              :style="{ backgroundColor: def.color }"
+              :style="{ backgroundColor: colorForScoreTrendSeries(def.id) }"
               aria-hidden="true"
             />
             {{ seriesLabelForMode(def, mode) }}

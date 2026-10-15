@@ -1,5 +1,5 @@
 import type { Scan } from '~/types/sitenook'
-import { SCORE_TREND_SERIES_COLORS } from '~/utils/chartTheme'
+import { SCORE_TREND_SERIES_COLORS, scoreTrendSeriesColors } from '~/utils/chartTheme'
 import { buildCsv } from '~/utils/csvExport'
 import type { DateRangeBounds } from '~/utils/overviewDateRange'
 import {
@@ -75,6 +75,11 @@ export const SCORE_TREND_SERIES: ScoreTrendSeriesDef[] = [
 ]
 
 export const OPEN_ISSUES_SERIES_COLOR = SCORE_TREND_SERIES_COLORS.aaa
+
+/** Live series colour (Overall tracks the active Nuxt UI primary). */
+export function colorForScoreTrendSeries(id: ScoreTrendSeriesId): string {
+  return scoreTrendSeriesColors()[id]
+}
 
 export type ScoreTrendSeriesMap = Record<ScoreTrendSeriesId, TrendPoint[]>
 

@@ -9,7 +9,6 @@ export interface RemediationPackInput {
   structureMarkdown?: string
   issueCsv: string
   summary: Record<string, unknown>
-  shareUrl?: string
 }
 
 export async function buildRemediationPackZip(input: RemediationPackInput): Promise<Buffer> {
@@ -31,7 +30,6 @@ export async function buildRemediationPackZip(input: RemediationPackInput): Prom
     JSON.stringify(
       {
         ...input.summary,
-        shareUrl: input.shareUrl || null,
         disclaimer:
           'Suggested Tagged PDF is remediation assist only. Tagged PDF is not certified PDF/UA.'
       },

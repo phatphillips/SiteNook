@@ -1,16 +1,19 @@
 <script setup lang="ts">
 /**
  * SiteNook wordmark + mark. Single-color SVG.
- * Fill follows `currentColor` so it flips with light / dark / solarized themes.
+ * Fill follows `currentColor` so it flips with light / dark themes.
  */
 const props = withDefaults(defineProps<{
   /** sm: sidebar · md: chrome · lg: auth / hero */
   size?: 'sm' | 'md' | 'lg'
   /** Bird mark only for collapsed nav */
   compact?: boolean
+  /** Sweep a shiny highlight across the mark (e.g. during page navigation). */
+  shine?: boolean
 }>(), {
   size: 'md',
-  compact: false
+  compact: false,
+  shine: false
 })
 
 /** Full logo ≈ 197×75; compact crops to the bird on the left */
@@ -36,7 +39,8 @@ const boxStyle = computed(() => {
     class="sitenook-logo"
     :class="[
       `sitenook-logo--${size}`,
-      compact ? 'sitenook-logo--compact' : 'sitenook-logo--full'
+      compact ? 'sitenook-logo--compact' : 'sitenook-logo--full',
+      shine ? 'sitenook-logo--shine' : null
     ]"
     :style="boxStyle"
     aria-hidden="true"
@@ -81,13 +85,14 @@ const boxStyle = computed(() => {
   /* Light UI. Near-black so the mark reads clearly on pale chrome */
   color: #231f20;
 
+  position: relative;
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
   line-height: 0;
   user-select: none;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .sitenook-logo__svg {
@@ -100,15 +105,61 @@ const boxStyle = computed(() => {
   border-radius: 0.375rem;
   background: var(--sidebar-nav-active-bg, rgba(0, 0, 0, 0.06));
 }
+
+/* Shiny-text style sweep (reactbits-inspired) while navigating. */
+.sitenook-logo--shine::after {
+  content: '';
+  position: absolute;
+  inset: -10% -40%;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    color-mix(in srgb, white 72%, transparent) 48%,
+    color-mix(in srgb, white 88%, transparent) 52%,
+    transparent 65%
+  );
+  transform: translateX(-55%) skewX(-12deg);
+  animation: sitenook-logo-shine 1.15s ease;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+}
+
+html.dark .sitenook-logo--shine::after {
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    color-mix(in srgb, white 55%, transparent) 48%,
+    color-mix(in srgb, white 80%, transparent) 52%,
+    transparent 65%
+  );
+  mix-blend-mode: overlay;
+}
+
+@keyframes sitenook-logo-shine {
+  0% {
+    transform: translateX(-55%) skewX(-12deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(55%) skewX(-12deg);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sitenook-logo--shine::after {
+    animation: none;
+    display: none;
+  }
+}
 </style>
 
 <style>
 /* Dark UI. Light fill so the logo stands out on dark chrome */
 html.dark .sitenook-logo {
   color: #f4f4f5;
-}
-
-html.solarized-light .sitenook-logo {
-  color: #073642;
 }
 </style>

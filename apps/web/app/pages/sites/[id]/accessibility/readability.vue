@@ -213,7 +213,7 @@ const {
 
         >
 
-          <div class="rounded-lg border border-default bg-elevated/25 p-4 sm:p-5">
+          <div class="rounded-lg border border-default bg-elevated p-4 sm:p-5">
 
             <AccessibilityReadabilityScoreGauge
 

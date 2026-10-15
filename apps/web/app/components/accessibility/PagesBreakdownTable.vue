@@ -3,20 +3,25 @@ import { h, resolveComponent } from 'vue'
 import { upperFirst } from 'scule'
 import { getExpandedRowModel, getPaginationRowModel, getSortedRowModel } from '@tanstack/vue-table'
 import type { TableColumn } from '@nuxt/ui'
-import type { Column, Row, SortingState } from '@tanstack/vue-table'
+import type { Row, SortingState } from '@tanstack/vue-table'
 import type { AccessibilityIssue } from '~/types/sitenook'
 import { formatIssueSeverity, parsePageUrl } from '~/utils/issueExplanation'
 import { normalizePageUrl, preferPageUrlDisplay } from '~/utils/pageUrl'
 import { issueRowActionGroups } from '~/utils/issueActions'
+import { PAGES_BREAKDOWN_TABLE_SKELETON_COLUMNS } from '~/utils/dataTableSkeletonColumns'
+import { DATA_TABLE_UI, dataTableSortableHeader } from '~/utils/dataTableUi'
+import { scrollDataTableIntoView } from '~/utils/dataTableScroll'
 
 const props = withDefaults(defineProps<{
   issues: AccessibilityIssue[]
   siteId: string
   hideToolbar?: boolean
+  loading?: boolean
   /** Shown in the table footer (e.g. filter summary). */
   footerSummary?: string
 }>(), {
-  hideToolbar: false
+  hideToolbar: false,
+  loading: false
 })
 
 const globalFilter = defineModel<string>('search', { default: '' })
@@ -31,8 +36,11 @@ const emit = defineEmits<{
 const UButton = resolveComponent('UButton')
 const UDropdownMenu = resolveComponent('UDropdownMenu')
 const table = useTemplateRef<{ tableApi?: { getAllColumns: () => Array<{ id: string, getCanHide: () => boolean, getIsVisible: () => boolean }>, getColumn: (id: string) => { toggleVisibility: (v: boolean) => void } | undefined, getFilteredRowModel: () => { rows: unknown[] }, getState: () => { pagination: { pageIndex: number } }, setPageIndex: (i: number) => void } }>('table')
+const tablePanelRef = useTemplateRef<HTMLElement>('tablePanelRef')
 
-const pagination = ref({ pageIndex: 0, pageSize: 20 })
+const stableLoading = useStableLoading(toRef(() => props.loading))
+const pageSize = 20
+const pagination = ref({ pageIndex: 0, pageSize })
 const expanded = ref<Record<string, boolean>>({})
 const sorting = ref<SortingState>([{ id: 'issues', desc: true }])
 const columnVisibility = ref<Record<string, boolean>>({})
@@ -55,6 +63,11 @@ const COLUMN_LABELS: Record<string, string> = {
   aaa: 'AAA',
   issues: 'Issues',
   actions: 'Actions'
+}
+
+const PAGES_TABLE_UI = {
+  ...DATA_TABLE_UI,
+  tr: 'data-[expanded=true]:bg-elevated/50'
 }
 
 function uniqueIssuesForPage(issues: AccessibilityIssue[]): AccessibilityIssue[] {
@@ -91,20 +104,6 @@ function total(row: PageRow): number {
   return row.a + row.aa + row.aaa
 }
 
-function sortableHeader(column: Column<PageRow, unknown>, label: string) {
-  const isSorted = column.getIsSorted()
-  return h(UButton, {
-    color: 'neutral',
-    variant: 'ghost',
-    label,
-    icon: isSorted
-      ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow')
-      : 'i-lucide-arrow-up-down',
-    class: '-mx-2.5',
-    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
-  })
-}
-
 function rowActions(row: Row<PageRow>) {
   const pageUrl = row.original.url
   const firstIssue = uniqueIssuesForPage(row.original.issues)[0]
@@ -123,6 +122,7 @@ const columns: TableColumn<PageRow>[] = [
     id: 'expand',
     enableSorting: false,
     enableHiding: false,
+    meta: { class: { th: 'w-11 max-w-[2.75rem] p-0 px-1', td: 'w-11 max-w-[2.75rem] p-0 px-1' } },
     cell: ({ row }) => {
       if (total(row.original) === 0) return null
       return h(UButton, {
@@ -141,7 +141,7 @@ const columns: TableColumn<PageRow>[] = [
   {
     accessorKey: 'title',
     enableHiding: false,
-    header: ({ column }) => sortableHeader(column, 'Title'),
+    header: ({ column }) => dataTableSortableHeader(column, 'Title'),
     cell: ({ row }) => h('span', {
       class: 'text-sm text-default block truncate max-w-xs',
       title: row.original.title
@@ -149,7 +149,7 @@ const columns: TableColumn<PageRow>[] = [
   },
   {
     accessorKey: 'url',
-    header: ({ column }) => sortableHeader(column, 'Page URL'),
+    header: ({ column }) => dataTableSortableHeader(column, 'Page URL'),
     cell: ({ row }) => {
       const parsed = parsePageUrl(row.original.url)
       return h('div', { class: 'min-w-0 max-w-md' }, [
@@ -168,28 +168,28 @@ const columns: TableColumn<PageRow>[] = [
   {
     id: 'a',
     accessorKey: 'a',
-    header: ({ column }) => sortableHeader(column, 'A'),
+    header: ({ column }) => dataTableSortableHeader(column, 'A', 'center'),
     meta: { class: { th: 'text-center', td: 'text-center tabular-nums' } },
     cell: ({ row }) => row.original.a
   },
   {
     id: 'aa',
     accessorKey: 'aa',
-    header: ({ column }) => sortableHeader(column, 'AA'),
+    header: ({ column }) => dataTableSortableHeader(column, 'AA', 'center'),
     meta: { class: { th: 'text-center', td: 'text-center tabular-nums' } },
     cell: ({ row }) => row.original.aa
   },
   {
     id: 'aaa',
     accessorKey: 'aaa',
-    header: ({ column }) => sortableHeader(column, 'AAA'),
+    header: ({ column }) => dataTableSortableHeader(column, 'AAA', 'center'),
     meta: { class: { th: 'text-center', td: 'text-center tabular-nums' } },
     cell: ({ row }) => row.original.aaa
   },
   {
     id: 'issues',
     accessorFn: row => total(row),
-    header: ({ column }) => sortableHeader(column, 'Issues'),
+    header: ({ column }) => dataTableSortableHeader(column, 'Issues', 'center'),
     meta: { class: { th: 'text-center', td: 'text-center tabular-nums' } },
     cell: ({ row }) => total(row.original)
   },
@@ -255,84 +255,114 @@ const showPagination = computed(
 const showTableFooter = computed(
   () => !!props.footerSummary || showPagination.value
 )
+
+const showInitialSkeleton = computed(
+  () => stableLoading.value && !rows.value.length
+)
+
+function onPaginationChange(page: number) {
+  table.value?.tableApi?.setPageIndex(page - 1)
+  scrollDataTableIntoView(tablePanelRef.value)
+}
 </script>
 
 <template>
   <div class="pages-table-panel space-y-4">
-    <div class="table-surface">
-      <UTable
-        ref="table"
-        v-model:global-filter="globalFilter"
-        v-model:pagination="pagination"
-        v-model:expanded="expanded"
-        v-model:sorting="sorting"
-        v-model:column-visibility="columnVisibility"
-        :data="rows"
-        :columns="columns"
-        :pagination-options="{ getPaginationRowModel: getPaginationRowModel() }"
-        :expanded-options="{ getExpandedRowModel: getExpandedRowModel() }"
-        :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
-        :ui="{ root: 'relative w-full', tr: 'data-[expanded=true]:bg-elevated/50' }"
-      >
-        <template #expanded="{ row }">
-          <div class="px-4 py-3 space-y-2">
-            <p class="text-xs text-muted">
-              {{ total(row.original) }} {{ total(row.original) === 1 ? 'issue' : 'issues' }} on this page
-            </p>
-            <ul class="space-y-1">
-              <li
-                v-for="issue in uniqueIssuesForPage(row.original.issues)"
-                :key="issue.rule_id"
-              >
-                <button
-                  type="button"
-                  class="w-full text-left flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-elevated text-sm"
-                  @click="emit('openIssue', issue)"
-                >
-                  <span class="wcag-chip">{{ issue.wcag_level }}</span>
-                  <span class="flex-1 truncate">{{ issue.description }}</span>
-                  <span class="text-xs text-muted shrink-0">{{ formatIssueSeverity(issue.impact) }}</span>
-                </button>
-              </li>
-            </ul>
-            <UButton
-              v-if="uniqueIssuesForPage(row.original.issues)[0]"
-              size="xs"
-              variant="outline"
-              label="View full details"
-              @click="emit('openIssue', uniqueIssuesForPage(row.original.issues)[0]!)"
-            />
-          </div>
-        </template>
-      </UTable>
+    <div
+      ref="tablePanelRef"
+      class="table-surface"
+    >
+      <DataTableSkeleton
+        v-if="showInitialSkeleton"
+        :rows="pageSize"
+        :layout="PAGES_BREAKDOWN_TABLE_SKELETON_COLUMNS"
+      />
 
-      <div
-        v-if="showTableFooter"
-        class="flex flex-wrap items-center justify-between gap-2 border-t border-default px-4 py-2"
-      >
-        <p
-          v-if="footerSummary"
-          class="text-xs text-muted"
+      <template v-else>
+        <UTable
+          ref="table"
+          v-model:global-filter="globalFilter"
+          v-model:pagination="pagination"
+          v-model:expanded="expanded"
+          v-model:sorting="sorting"
+          v-model:column-visibility="columnVisibility"
+          :data="rows"
+          :columns="columns"
+          :loading="stableLoading && !!rows.length"
+          :pagination-options="{ getPaginationRowModel: getPaginationRowModel() }"
+          :expanded-options="{ getExpandedRowModel: getExpandedRowModel() }"
+          :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
+          :ui="PAGES_TABLE_UI"
         >
-          {{ footerSummary }}
-        </p>
-        <div
-          v-else
-          class="flex-1"
-        />
-        <UPagination
-          v-if="showPagination"
-          :page="(table?.tableApi?.getState().pagination.pageIndex ?? 0) + 1"
-          :items-per-page="pagination.pageSize"
-          :total="filteredRowCount"
-          @update:page="(p: number) => table?.tableApi?.setPageIndex(p - 1)"
-        />
-      </div>
-    </div>
+          <template #loading>
+            <DataTableSkeleton
+              :rows="Math.min(pageSize, 5)"
+              :layout="PAGES_BREAKDOWN_TABLE_SKELETON_COLUMNS"
+              :show-header="false"
+            />
+          </template>
+          <template #empty>
+            <div class="py-10 text-center text-sm text-muted">
+              No page data yet. Run a scan to populate this view.
+            </div>
+          </template>
+          <template #expanded="{ row }">
+            <div class="px-4 py-3 space-y-2">
+              <p class="text-xs text-muted">
+                {{ total(row.original) }} {{ total(row.original) === 1 ? 'issue' : 'issues' }} on this page
+              </p>
+              <ul class="space-y-1">
+                <li
+                  v-for="issue in uniqueIssuesForPage(row.original.issues)"
+                  :key="issue.rule_id"
+                >
+                  <button
+                    type="button"
+                    class="w-full text-left flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-elevated text-sm"
+                    @click="emit('openIssue', issue)"
+                  >
+                    <span class="wcag-chip">{{ issue.wcag_level }}</span>
+                    <span class="flex-1 truncate">{{ issue.description }}</span>
+                    <span class="text-xs text-muted shrink-0">{{ formatIssueSeverity(issue.impact) }}</span>
+                  </button>
+                </li>
+              </ul>
+              <UButton
+                v-if="uniqueIssuesForPage(row.original.issues)[0]"
+                size="xs"
+                variant="outline"
+                label="View full details"
+                @click="emit('openIssue', uniqueIssuesForPage(row.original.issues)[0]!)"
+              />
+            </div>
+          </template>
+        </UTable>
 
-    <p v-if="!rows.length" class="text-sm text-muted py-8 text-center">
-      No page data yet. Run a scan to populate this view.
-    </p>
+        <div
+          v-if="showTableFooter"
+          class="flex flex-wrap items-center justify-between gap-2 border-t border-default px-4 py-2"
+        >
+          <p
+            v-if="footerSummary"
+            class="text-xs text-muted"
+          >
+            {{ footerSummary }}
+          </p>
+          <div
+            v-else
+            class="flex-1"
+          />
+          <UPagination
+            v-if="showPagination"
+            :page="(table?.tableApi?.getState().pagination.pageIndex ?? 0) + 1"
+            :items-per-page="pagination.pageSize"
+            :total="filteredRowCount"
+            class="ms-auto"
+            @update:page="onPaginationChange"
+          />
+        </div>
+      </template>
+    </div>
   </div>
 </template>
 

@@ -270,16 +270,16 @@ defineExpose({ goToPage, retry })
       class="absolute top-14 left-1/2 z-10 max-w-[min(90%,28rem)] -translate-x-1/2 rounded-lg border border-warning/40 bg-elevated/95 px-3 py-1.5 text-center shadow-sm backdrop-blur-sm transition-opacity duration-200"
       role="status"
     >
-      <p class="text-[11px] font-medium text-highlighted">
+      <p class="text-sm font-medium text-highlighted">
         Issue on this page
       </p>
-      <p class="truncate text-[11px] text-muted">
+      <p class="truncate text-sm text-muted">
         {{ highlightLabel }}
       </p>
     </div>
     <div class="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-lg border border-default bg-elevated px-2 py-1 shadow-sm">
       <UButton
-        size="xs"
+        size="sm"
         color="neutral"
         variant="ghost"
         icon="i-lucide-minus"
@@ -288,14 +288,14 @@ defineExpose({ goToPage, retry })
       />
       <button
         type="button"
-        class="min-w-12 text-center text-xs text-muted transition-colors hover:text-highlighted"
+        class="min-w-12 text-center text-sm text-muted transition-colors hover:text-highlighted"
         title="Reset zoom to fit"
         @click="resetZoom"
       >
         {{ Math.round(scale * 100) }}%
       </button>
       <UButton
-        size="xs"
+        size="sm"
         color="neutral"
         variant="ghost"
         icon="i-lucide-plus"
@@ -304,18 +304,18 @@ defineExpose({ goToPage, retry })
       />
       <span class="mx-1 h-4 w-px bg-default" />
       <UButton
-        size="xs"
+        size="sm"
         color="neutral"
         variant="ghost"
         icon="i-lucide-chevron-up"
         aria-label="Previous page"
         @click="prevPage"
       />
-      <span class="text-xs text-muted whitespace-nowrap">
+      <span class="text-sm text-muted whitespace-nowrap">
         Page {{ pageNumber }} / {{ pdfDoc?.numPages ?? '—' }}
       </span>
       <UButton
-        size="xs"
+        size="sm"
         color="neutral"
         variant="ghost"
         icon="i-lucide-chevron-down"

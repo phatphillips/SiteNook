@@ -5,69 +5,39 @@ import { buildBrokenLinksCsv } from '~/utils/export/brokenLinksExport'
 
 definePageMeta({ middleware: 'auth' })
 
-
-
+const { pb } = usePocketBase()
 const { resolvedSiteId, isAllSites } = useWorkspaceSiteFilter()
 
 const hrefSearch = ref('')
 
 const { brokenLinks, loading, total, page, perPage, fetchBrokenLinks } = useOrgQA(resolvedSiteId)
 
-
-
 let hrefSearchTimer: ReturnType<typeof setTimeout> | null = null
 
-
-
 function load() {
-
   void fetchBrokenLinks({ hrefQuery: hrefSearch.value.trim() || undefined })
-
 }
 
-
-
 onMounted(() => {
-
   load()
-
 })
-
-
 
 watch(resolvedSiteId, () => {
-
   page.value = 1
-
   load()
-
 })
-
-
 
 watch(page, () => {
-
   load()
-
 })
 
-
-
-watch(hrefSearch, (value) => {
-
+watch(hrefSearch, () => {
   if (hrefSearchTimer) clearTimeout(hrefSearchTimer)
-
   hrefSearchTimer = setTimeout(() => {
-
     page.value = 1
-
-    void fetchBrokenLinks({ hrefQuery: value.trim() || undefined })
-
+    void fetchBrokenLinks({ hrefQuery: hrefSearch.value.trim() || undefined })
   }, 300)
-
 })
-
-
 
 const urlSearchActive = computed(() => hrefSearch.value.trim().length > 0)
 
@@ -103,16 +73,29 @@ const {
   buildCsv: rows => buildBrokenLinksCsv(rows, 'links', { showSiteColumn: isAllSites.value })
 })
 
+async function onAction(payload: {
+  issueIds: string[]
+  action: 'dismiss' | 'reopen' | 'fixed'
+}) {
+  const siteId = resolvedSiteId.value
+    || brokenLinks.value.find(link => payload.issueIds.includes(link.id))?.siteId
+  if (!siteId || !pb?.authStore.token) return
+  await $fetch(`/api/sites/${siteId}/qa/issues/bulk-status`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${pb.authStore.token}` },
+    body: {
+      issueIds: payload.issueIds,
+      issueType: 'broken_links',
+      action: payload.action
+    }
+  })
+  load()
+}
 </script>
 
-
-
 <template>
-
   <OrgFeaturePageShell title="Broken Links">
-
     <div class="space-y-4">
-
       <DataTableToolbar>
         <template #leading>
           <TableSearchInput
@@ -140,35 +123,19 @@ const {
         @export="runExport"
       />
 
-
-
       <QaBrokenLinkTable
-
         view="links"
-
         server-paginated
-
         :links="brokenLinks"
-
         :url-search-active="urlSearchActive"
-
         :loading="loading"
-
         :page="page"
-
         :page-size="perPage"
-
         :total="total"
-
-        show-site-column
-
+        :show-site-column="isAllSites"
         @update:page="(p) => { page = p }"
-
+        @action="onAction"
       />
-
     </div>
-
   </OrgFeaturePageShell>
-
 </template>
-

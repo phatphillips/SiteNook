@@ -6,10 +6,15 @@ import { accessibilityScoreDetailRows } from '~/utils/siteSettings'
 import type { ElementTotals, TargetCategoryScores } from '~/utils/siteimproveScore'
 import type { A11yCheckStats } from '~/utils/a11yCheckStats'
 import {
+  categoryQuickStats,
   categoryScoreImpact,
-  potentialOverallScoreForCategory
+  formatScoreImpact,
+  issuesLinkForCategory,
+  overallScoreImpact
 } from '~/utils/scoreCategoryDetails'
-import { CHART_PURPLE_COLOR } from '~/utils/chartTheme'
+import { DONUT_SEGMENT_TOKENS } from '~/utils/donutChart'
+import type { ScoreBreakdownModel } from '~/utils/scoreBreakdown'
+import { progressScoreSlices } from '~/utils/scoreBreakdown'
 
 const props = defineProps<{
   settings: SiteSettings
@@ -29,10 +34,9 @@ const props = defineProps<{
 }>()
 
 const selectedCategory = ref<AccessibilityScoreCategoryId | null>(null)
-const hoveredCategory = ref<AccessibilityScoreCategoryId | null>(null)
 const impactModalOpen = ref(false)
-
-const scoreRowsRef = ref<HTMLElement | null>(null)
+const breakdownOpen = ref(false)
+const { chartStyle } = useDonutChartStyle()
 
 const CONFORMANCE_LEVELS_TOOLTIP =
   'Per-category progress toward 100% for each level and practice included in your site target.'
@@ -50,21 +54,6 @@ const selectedScore = computed(() => {
   return scoreForRow(row)
 })
 
-const hoveredPotentialScore = computed(() => {
-  if (impactModalOpen.value) return null
-  const categoryId = hoveredCategory.value
-  if (!categoryId) return null
-  const impact = categoryScoreImpact(categoryId, props.scoringIssues, props.scoreElementTotals, props.checkStats)
-  if (impact <= 0) return null
-  return potentialOverallScoreForCategory(
-    categoryId,
-    props.overallScore,
-    props.scoringIssues,
-    props.scoreElementTotals,
-    props.checkStats
-  )
-})
-
 function scoreForRow(row: AccessibilityScoreDetailRow): number {
   switch (row.id) {
     case 'A': return props.categoryScores.levelA
@@ -76,10 +65,6 @@ function scoreForRow(row: AccessibilityScoreDetailRow): number {
   }
 }
 
-function isRowHovered(categoryId: AccessibilityScoreCategoryId): boolean {
-  return hoveredCategory.value === categoryId
-}
-
 function isRowSelected(categoryId: AccessibilityScoreCategoryId): boolean {
   return impactModalOpen.value && selectedCategory.value === categoryId
 }
@@ -89,33 +74,66 @@ function openRowModal(categoryId: AccessibilityScoreCategoryId) {
   impactModalOpen.value = true
 }
 
-function openOverallModal() {
-  selectedCategory.value = null
-  impactModalOpen.value = true
+function openBreakdownModal() {
+  breakdownOpen.value = true
 }
 
-function onCategoryEnter(categoryId: AccessibilityScoreCategoryId) {
-  hoveredCategory.value = categoryId
-}
+const pointsDragging = computed(() =>
+  overallScoreImpact(props.scoringIssues, props.scoreElementTotals, props.checkStats)
+)
 
-function isWithinScoreRows(target: EventTarget | null): boolean {
-  if (!(target instanceof Node)) return false
-  return Boolean(scoreRowsRef.value?.contains(target))
-}
+const breakdownModel = computed((): ScoreBreakdownModel => {
+  const rows = detailRows.value.map((row, index) => {
+    const score = scoreForRow(row)
+    const impact = categoryScoreImpact(
+      row.id,
+      props.scoringIssues,
+      props.scoreElementTotals,
+      props.checkStats
+    )
+    const stats = categoryQuickStats(props.latestScanIssues, row.id)
+    return {
+      id: row.id,
+      label: row.label,
+      value: Math.max(score, 0.01),
+      color: DONUT_SEGMENT_TOKENS[index % DONUT_SEGMENT_TOKENS.length]!,
+      score,
+      detail: stats.occurrences
+        ? `${stats.occurrences} open occurrence${stats.occurrences === 1 ? '' : 's'} · ${stats.failingRules} rule${stats.failingRules === 1 ? '' : 's'}`
+        : 'No open issues in this category',
+      impact: impact > 0 ? `${formatScoreImpact(impact)} pts to gain` : null,
+      href: issuesLinkForCategory(props.siteId, row.id)
+    }
+  })
 
-function onCategoryLeave(categoryId: AccessibilityScoreCategoryId, event: MouseEvent) {
-  if (isWithinScoreRows(event.relatedTarget)) return
-  if (hoveredCategory.value === categoryId) {
-    hoveredCategory.value = null
+  return {
+    title: 'Accessibility score breakdown',
+    description: 'See how each conformance level contributes, and where fixing issues would lift the overall score.',
+    score: props.overallScore,
+    caption: 'Site score',
+    scoreExplainer:
+      'Overall accessibility score uses the Siteimprove model: 90 points for WCAG checks (weighted by level A / AA / AAA) and 10 for best practices, with progress based on failed vs total occurrences per check and a logarithmic curve near 100%.',
+    slices: progressScoreSlices(props.overallScore, {
+      scoreLabel: 'Current score',
+      remainderLabel: 'Remaining to 100'
+    }),
+    rows,
+    stats: [
+      {
+        label: 'Points to gain',
+        value: formatScoreImpact(pointsDragging.value),
+        hint: 'If open scoring issues were fixed'
+      },
+      {
+        label: 'Open issues',
+        value: String(props.latestScanIssues.filter(i => i.status === 'open').length)
+      }
+    ],
+    footnote: 'WCAG checks make up most of the score (weighted A > AA > AAA). Best practices add the remaining share.',
+    ctaLabel: 'View all accessibility issues',
+    ctaTo: `/sites/${props.siteId}/accessibility/issues`
   }
-}
-
-function onCategoryBlur(categoryId: AccessibilityScoreCategoryId, event: FocusEvent) {
-  if (isWithinScoreRows(event.relatedTarget)) return
-  if (hoveredCategory.value === categoryId) {
-    hoveredCategory.value = null
-  }
-}
+})
 
 watch(impactModalOpen, (open) => {
   if (!open) {
@@ -132,31 +150,37 @@ const emit = defineEmits<{
   <div class="flex flex-col gap-4">
     <!-- Row 1: site target score + conformance levels -->
     <div class="grid gap-4 lg:grid-cols-2 lg:items-stretch">
-      <div class="flex h-full flex-col rounded-lg border border-default bg-elevated/25 p-4 shadow-none ring-0 sm:p-5">
-        <div class="mb-4 flex min-h-[18px] flex-col items-start gap-1">
-          <h3 class="text-lg font-semibold text-highlighted">
-            Accessibility score
-          </h3>
-          <p class="text-sm text-muted">
-            Score and trends for this site over the selected period.
-          </p>
+      <div class="relative flex h-full flex-col rounded-lg border border-default bg-elevated p-4 shadow-none ring-0 sm:p-5">
+        <div class="mb-4 flex min-h-[18px] items-start justify-between gap-3">
+          <div class="flex min-w-0 flex-col items-start gap-1">
+            <h3 class="text-lg font-semibold text-highlighted">
+              Accessibility score
+            </h3>
+            <p class="text-sm text-muted">
+              Score and trends for this site over the selected period.
+            </p>
+          </div>
+          <ScoreDonutMenu @breakdown="openBreakdownModal" />
         </div>
         <div class="flex flex-1 flex-col items-center justify-center">
-          <div class="relative inline-flex" :class="scoreUpdating ? 'opacity-70' : ''">
+          <ScoreDonutButton
+            label="Open accessibility score breakdown"
+            :class="scoreUpdating ? 'opacity-70' : ''"
+            @click="openBreakdownModal"
+          >
             <AccessibilityScoreDonut
               variant="site-target"
               :score="overallScore"
-              :ring-color="CHART_PURPLE_COLOR"
-              hover-zoom
-              :potential-score="hoveredPotentialScore"
+              ring-color="var(--ui-primary)"
               :score-updating="scoreUpdating"
+              :chart-style="chartStyle"
             />
-          </div>
+          </ScoreDonutButton>
         </div>
       </div>
 
       <div
-        class="score-conformance-card flex h-full min-h-0 flex-col gap-3 rounded-lg border border-default bg-elevated/25 p-4 shadow-none ring-0 sm:p-5"
+        class="score-conformance-card flex h-full min-h-0 flex-col gap-3 rounded-lg border border-default bg-elevated p-4 shadow-none ring-0 sm:p-5"
       >
         <div class="flex min-h-[18px] items-center gap-1.5">
           <p class="text-base font-semibold text-highlighted">
@@ -173,7 +197,7 @@ const emit = defineEmits<{
           </UTooltip>
         </div>
 
-        <div ref="scoreRowsRef" class="flex flex-1 flex-col justify-center gap-2">
+        <div class="flex flex-1 flex-col justify-center gap-2">
           <AccessibilityScoreDetailRow
             v-for="row in detailRows"
             :key="row.id"
@@ -181,13 +205,8 @@ const emit = defineEmits<{
             :badge-class="row.badgeClass"
             :label="row.label"
             :score="scoreForRow(row)"
-            :active="isRowHovered(row.id)"
             :selected="isRowSelected(row.id)"
             @click="openRowModal(row.id)"
-            @mouseenter="onCategoryEnter(row.id)"
-            @mouseleave="onCategoryLeave(row.id, $event)"
-            @focus="onCategoryEnter(row.id)"
-            @blur="onCategoryBlur(row.id, $event)"
           />
         </div>
       </div>
@@ -235,5 +254,10 @@ const emit = defineEmits<{
     :scoring-issues="scoringIssues"
     :score-element-totals="scoreElementTotals"
     :check-stats="checkStats"
+  />
+
+  <ScoreBreakdownModal
+    v-model:open="breakdownOpen"
+    :model="breakdownModel"
   />
 </template>

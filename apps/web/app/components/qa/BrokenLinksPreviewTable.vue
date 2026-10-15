@@ -4,6 +4,7 @@ import type { TableColumn } from '@nuxt/ui'
 import type { BrokenLink } from '~/types/sitenook'
 import { QA_BROKEN_LINKS_PREVIEW_SKELETON_COLUMNS } from '~/utils/dataTableSkeletonColumns'
 import { DATA_TABLE_UI } from '~/utils/dataTableUi'
+import { parsePageUrl } from '~/utils/issueExplanation'
 
 const props = withDefaults(defineProps<{
   links: BrokenLink[]
@@ -36,35 +37,51 @@ const rows = computed<PreviewRow[]>(() =>
 function statusColor(code: number) {
   if (code === 404) return 'error'
   if (code >= 500) return 'warning'
+  if (code >= 400) return 'error'
   if (code >= 300) return 'info'
   return 'neutral'
 }
 
-function urlCell(url: string) {
+function brokenUrlCell(url: string) {
   if (!url) return '—'
   return h('a', {
     href: url,
     target: '_blank',
-    rel: 'noopener',
-    class: 'text-sm text-primary hover:underline break-all',
+    rel: 'noopener noreferrer',
+    class: 'text-sm font-medium text-primary hover:underline break-all',
     title: url
   }, url)
+}
+
+function pageUrlCell(url: string) {
+  if (!url) return '—'
+  const parsed = parsePageUrl(url)
+  return h('div', { class: 'min-w-0 max-w-md' }, [
+    h('a', {
+      href: url,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      class: 'text-sm text-primary hover:underline block truncate',
+      title: url
+    }, parsed.path || '/'),
+    h('span', { class: 'text-xs text-muted block truncate' }, parsed.domain)
+  ])
 }
 
 const columns = computed((): TableColumn<PreviewRow>[] => [
   {
     accessorKey: 'href',
-    header: 'URL',
-    cell: ({ row }) => urlCell(row.original.href)
+    header: 'Broken URL',
+    cell: ({ row }) => brokenUrlCell(row.original.href)
   },
   {
     accessorKey: 'pageUrl',
-    header: 'Page',
-    cell: ({ row }) => urlCell(row.original.pageUrl)
+    header: 'Found on',
+    cell: ({ row }) => pageUrlCell(row.original.pageUrl)
   },
   {
     accessorKey: 'status_code',
-    header: 'HTTP status',
+    header: 'HTTP',
     meta: { class: { th: 'text-right tabular-nums', td: 'text-right tabular-nums' } },
     cell: ({ row }) => h(UBadge, {
       color: statusColor(row.original.status_code),
@@ -75,7 +92,11 @@ const columns = computed((): TableColumn<PreviewRow>[] => [
   {
     accessorKey: 'link_type',
     header: 'Type',
-    cell: ({ row }) => h('span', { class: 'text-sm capitalize' }, row.original.link_type)
+    cell: ({ row }) => h(UBadge, {
+      color: 'neutral',
+      variant: 'subtle',
+      class: 'capitalize'
+    }, () => row.original.link_type)
   }
 ])
 </script>
@@ -124,7 +145,10 @@ const columns = computed((): TableColumn<PreviewRow>[] => [
       </div>
     </template>
 
-    <p v-else class="px-4 py-6 text-sm text-muted text-center">
+    <p
+      v-else
+      class="px-4 py-6 text-center text-sm text-muted"
+    >
       No broken links on the latest scan.
     </p>
   </div>

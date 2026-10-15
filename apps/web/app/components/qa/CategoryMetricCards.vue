@@ -19,7 +19,7 @@ const props = defineProps<{
 }>()
 
 const cardClass =
-  'rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary'
+  'rounded-lg border border-default bg-elevated p-4 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary'
 
 function brokenLinksSubtitle(): string {
   const parts: string[] = []

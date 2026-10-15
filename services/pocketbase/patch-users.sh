@@ -371,11 +371,33 @@ curl -sf -X PATCH "$PB_URL/api/collections/users" \
     \"listRule\": \"organization = @request.auth.organization\",
     \"viewRule\": \"organization = @request.auth.organization\",
     \"updateRule\": \"id = @request.auth.id || (${ORG_MANAGER} && organization = @request.auth.organization)\",
-    \"deleteRule\": \"${ORG_MANAGER} && organization = @request.auth.organization && id != @request.auth.id\",
-    \"authAlert\": { \"enabled\": false }
+    \"deleteRule\": \"${ORG_MANAGER} && organization = @request.auth.organization && id != @request.auth.id\"
   }" > /dev/null || echo "  note: users rules patch may partially apply"
 
-echo "Patch: disabled login alert and ensured role/billing fields."
+# Keep new-device login alerts on. Branding comes from settings.meta.appName (SiteNook).
+# Separate PATCH so a rules failure cannot leave authAlert stuck in a bad state.
+ensure_auth_alert() {
+  if curl -sf -X PATCH "$PB_URL/api/collections/users" \
+    -H "Content-Type: application/json" \
+    -H "$AUTH" \
+    -d '{
+      "authAlert": {
+        "enabled": true,
+        "emailTemplate": {
+          "subject": "Login from a new device",
+          "body": "<p>Hello,</p>\n<p>We noticed a login to your {APP_NAME} account from a new device or location.</p>\n<p>If this was you, you may disregard this email.</p>\n<p><strong>If this was not you, change your {APP_NAME} account password immediately to revoke access from other sessions.</strong></p>\n<p>Thanks,<br/>{APP_NAME} team</p>"
+        }
+      }
+    }' > /dev/null; then
+    echo "  authAlert enabled (new-device login emails)"
+  else
+    echo "  note: could not update users.authAlert"
+  fi
+}
+
+ensure_auth_alert
+
+echo "Patch: ensured role/billing fields and auth alert."
 
 if [ -n "$APP_USER_EMAIL" ] && [ -n "$APP_USER_PASSWORD" ]; then
   EXISTING=$(curl -sf "$PB_URL/api/collections/users/records?filter=(email='$APP_USER_EMAIL')" \
@@ -394,17 +416,50 @@ if [ -n "$APP_USER_EMAIL" ] && [ -n "$APP_USER_PASSWORD" ]; then
       fi
     fi
 
-    curl -sf -X PATCH "$PB_URL/api/collections/users/records/$USER_ID" \
-      -H "Content-Type: application/json" \
-      -H "$AUTH" \
-      -d "{
-        \"verified\": true,
-        \"role\": \"$TARGET_ROLE\",
-        \"is_billing_contact\": $BILLING_JSON,
-        \"password\": \"$APP_USER_PASSWORD\",
-        \"passwordConfirm\": \"$APP_USER_PASSWORD\"
-      }" > /dev/null || true
-    echo "Patch: synced app user password, role=$TARGET_ROLE, is_billing_contact=$BILLING_JSON, verified=true for $APP_USER_EMAIL"
+    # Only rewrite the password when APP_USER_PASSWORD in env changes.
+    # Re-hashing on every boot clears _authOrigins (known devices) and causes
+    # "login from a new device" spam. Do not probe via auth-with-password here;
+    # that would itself create a localhost fingerprint / alert.
+    PASS_MARKER="/pb/pb_data/.app_user_password_sha"
+    NEW_PASS_HASH=$(printf '%s' "$APP_USER_PASSWORD" | sha256sum | awk '{print $1}')
+    OLD_PASS_HASH=""
+    if [ -f "$PASS_MARKER" ]; then
+      OLD_PASS_HASH=$(cat "$PASS_MARKER" 2>/dev/null || true)
+    fi
+
+    NEED_PASSWORD=0
+    if [ -z "$OLD_PASS_HASH" ]; then
+      # First run of this marker logic: assume password already matches env
+      # (previous boots re-hashed every time). Persist marker without resetting.
+      printf '%s\n' "$NEW_PASS_HASH" > "$PASS_MARKER"
+    elif [ "$NEW_PASS_HASH" != "$OLD_PASS_HASH" ]; then
+      NEED_PASSWORD=1
+    fi
+
+    if [ "$NEED_PASSWORD" = "1" ]; then
+      curl -sf -X PATCH "$PB_URL/api/collections/users/records/$USER_ID" \
+        -H "Content-Type: application/json" \
+        -H "$AUTH" \
+        -d "{
+          \"verified\": true,
+          \"role\": \"$TARGET_ROLE\",
+          \"is_billing_contact\": $BILLING_JSON,
+          \"password\": \"$APP_USER_PASSWORD\",
+          \"passwordConfirm\": \"$APP_USER_PASSWORD\"
+        }" > /dev/null || true
+      printf '%s\n' "$NEW_PASS_HASH" > "$PASS_MARKER"
+      echo "Patch: reset app user password (APP_USER_PASSWORD changed), role=$TARGET_ROLE, is_billing_contact=$BILLING_JSON for $APP_USER_EMAIL"
+    else
+      curl -sf -X PATCH "$PB_URL/api/collections/users/records/$USER_ID" \
+        -H "Content-Type: application/json" \
+        -H "$AUTH" \
+        -d "{
+          \"verified\": true,
+          \"role\": \"$TARGET_ROLE\",
+          \"is_billing_contact\": $BILLING_JSON
+        }" > /dev/null || true
+      echo "Patch: synced app user role=$TARGET_ROLE, is_billing_contact=$BILLING_JSON, verified=true for $APP_USER_EMAIL (password unchanged)"
+    fi
   fi
 fi
 

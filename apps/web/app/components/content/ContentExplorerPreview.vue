@@ -276,7 +276,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col overflow-hidden bg-default">
+  <div class="flex h-full min-h-0 flex-col overflow-hidden bg-elevated">
     <div
       v-if="!entry"
       class="flex flex-1 items-center justify-center p-8 text-sm text-muted"

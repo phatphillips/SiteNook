@@ -132,6 +132,11 @@ defineExpose({
 <template>
   <div class="sites-table-panel space-y-4">
     <DataTableToolbar>
+      <template #leading>
+        <h1 class="dashboard-page-heading">
+          Sites
+        </h1>
+      </template>
       <template #actions>
         <TableSearchInput
           v-model="tableSearch"
@@ -144,7 +149,7 @@ defineExpose({
       </template>
     </DataTableToolbar>
 
-    <div class="rounded-lg border border-default overflow-hidden">
+    <div class="table-surface overflow-hidden">
       <UTable
         ref="table"
         v-model:row-selection="rowSelection"

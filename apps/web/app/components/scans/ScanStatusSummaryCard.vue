@@ -55,7 +55,7 @@ const freshnessColor = computed<'success' | 'warning' | 'error'>(() =>
 </script>
 
 <template>
-  <UCard v-if="!embedded" :ui="{ root: 'overflow-visible bg-elevated/25 border border-default' }">
+  <UCard v-if="!embedded" :ui="{ root: 'overflow-visible bg-elevated border border-default' }">
     <div class="flex items-center justify-between gap-3">
       <div>
         <p class="text-xs uppercase tracking-wide text-muted">{{ title ?? 'Latest Scan' }}</p>

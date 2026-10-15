@@ -84,30 +84,3 @@ const rows = computed(() =>
   </div>
 </template>
 
-<style scoped>
-.site-target-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  color: #fff;
-}
-
-.site-target-badge--a {
-  background: #c2185b;
-}
-
-.site-target-badge--aa {
-  background: #7b1fa2;
-}
-
-.site-target-badge--aaa {
-  background: linear-gradient(135deg, #3949ab, #7b1fa2);
-}
-</style>

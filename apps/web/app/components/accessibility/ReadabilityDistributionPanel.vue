@@ -39,7 +39,7 @@ function toggleBucket(bucketId: string) {
     v-model="open"
     type="multiple"
     :items="[{ label: 'Page breakdown', value: 'breakdown', slot: 'breakdown' }]"
-    :ui="{ item: 'border border-default rounded-lg bg-elevated/25 px-4' }"
+    :ui="{ item: 'border border-default rounded-lg bg-elevated px-4' }"
   >
     <template #breakdown-body>
       <div class="pb-2">

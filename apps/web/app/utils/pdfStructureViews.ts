@@ -9,7 +9,7 @@ export type PdfInspectorPaneView =
 /** Formats allowed in the Convert Content pane (middle preview is always PDF). */
 export type PdfContentPaneView = Exclude<PdfInspectorPaneView, 'pdf'>
 
-export type PdfStudioMode = 'audit' | 'convert' | 'compare'
+export type PdfStudioMode = 'audit' | 'convert'
 
 const PANE_VIEWS: PdfInspectorPaneView[] = [
   'pdf',
@@ -26,7 +26,7 @@ const CONTENT_VIEWS: PdfContentPaneView[] = [
   'gutenberg',
   'image'
 ]
-const STUDIO_MODES: PdfStudioMode[] = ['audit', 'convert', 'compare']
+const STUDIO_MODES: PdfStudioMode[] = ['audit', 'convert']
 
 export function isPdfInspectorPaneView(value: unknown): value is PdfInspectorPaneView {
   return typeof value === 'string' && (PANE_VIEWS as string[]).includes(value)
@@ -40,9 +40,10 @@ export function isPdfStudioMode(value: unknown): value is PdfStudioMode {
   return typeof value === 'string' && (STUDIO_MODES as string[]).includes(value)
 }
 
-/** Normalize legacy `structure` query value to `convert`. */
+/** Normalize legacy query values (`structure`, `compare`) to current modes. */
 export function normalizePdfStudioMode(value: unknown): PdfStudioMode {
   if (value === 'structure') return 'convert'
+  if (value === 'compare') return 'audit'
   return isPdfStudioMode(value) ? value : 'audit'
 }
 

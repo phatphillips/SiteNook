@@ -18,6 +18,8 @@ export interface SimulatorCheckMeta {
   label: string
   shortLabel: string
   description: string
+  /** External article for “Learn more” (Wikipedia or similar). */
+  learnMoreUrl?: string
   /** CSS filter applied to the preview wrapper (empty for none / overlay-only). */
   cssFilter: string
   /** Extra overlay class on the preview (e.g. vignette). */
@@ -27,9 +29,9 @@ export interface SimulatorCheckMeta {
 }
 
 /**
- * CVD matrices approximate Brettel / Vischeck-style simulations via CSS
- * `filter: url()` is unavailable without SVG defs, so we use composed
- * grayscale / hue / contrast filters that convey the impairment clearly.
+ * Pure CSS filters only (no SVG `url(#…)`).
+ * SVG filter refs often invalidate the whole `filter` chain, and parent-wrapper
+ * filters frequently do not paint onto iframe snapshot content.
  */
 export const SIMULATOR_CHECKS: SimulatorCheckMeta[] = [
   {
@@ -45,7 +47,8 @@ export const SIMULATOR_CHECKS: SimulatorCheckMeta[] = [
     shortLabel: 'Protanopia',
     description:
       'Red-blind colour vision. Reds look darker and are hard to tell apart from greens and browns. Contrast that relies on red alone often fails.',
-    cssFilter: 'url(#sim-protanopia) grayscale(0.15) contrast(0.95)'
+    learnMoreUrl: 'https://en.wikipedia.org/wiki/Dichromacy#Protanopia',
+    cssFilter: 'grayscale(0.35) sepia(0.55) hue-rotate(-25deg) saturate(1.35) contrast(0.95)'
   },
   {
     id: 'deuteranopia',
@@ -53,7 +56,8 @@ export const SIMULATOR_CHECKS: SimulatorCheckMeta[] = [
     shortLabel: 'Deuteranopia',
     description:
       'Green-blind colour vision (the most common CVD). Greens and reds conflate; status colours and charts that encode meaning only in hue become ambiguous.',
-    cssFilter: 'url(#sim-deuteranopia) grayscale(0.1) contrast(0.95)'
+    learnMoreUrl: 'https://en.wikipedia.org/wiki/Dichromacy#Deuteranopia',
+    cssFilter: 'grayscale(0.3) sepia(0.45) hue-rotate(20deg) saturate(1.25) contrast(0.95)'
   },
   {
     id: 'tritanopia',
@@ -61,7 +65,8 @@ export const SIMULATOR_CHECKS: SimulatorCheckMeta[] = [
     shortLabel: 'Tritanopia',
     description:
       'Blue-yellow colour blindness. Blues and yellows are hard to distinguish; cool UI accents and warning yellows can blend into surrounding greys.',
-    cssFilter: 'url(#sim-tritanopia) saturate(0.7) hue-rotate(-20deg)'
+    learnMoreUrl: 'https://en.wikipedia.org/wiki/Dichromacy#Tritanopia',
+    cssFilter: 'hue-rotate(195deg) saturate(0.65) contrast(1.05) brightness(1.05)'
   },
   {
     id: 'achromatopsia',
@@ -69,6 +74,7 @@ export const SIMULATOR_CHECKS: SimulatorCheckMeta[] = [
     shortLabel: 'Grayscale',
     description:
       'Complete colour blindness. The page is seen only in shades of grey. Any information conveyed by colour alone is lost.',
+    learnMoreUrl: 'https://en.wikipedia.org/wiki/Achromatopsia',
     cssFilter: 'grayscale(1) contrast(1.05)'
   },
   {
@@ -77,6 +83,7 @@ export const SIMULATOR_CHECKS: SimulatorCheckMeta[] = [
     shortLabel: 'Low vision',
     description:
       'Reduced acuity and soft focus. Small text, thin icons, and low-contrast UI become difficult without magnification or stronger contrast.',
+    learnMoreUrl: 'https://en.wikipedia.org/wiki/Low_vision',
     cssFilter: 'blur(2.5px) contrast(0.85) brightness(1.05)'
   },
   {
@@ -85,6 +92,7 @@ export const SIMULATOR_CHECKS: SimulatorCheckMeta[] = [
     shortLabel: 'Cataracts',
     description:
       'Cloudy, washed-out vision with glare. Fine detail disappears and light backgrounds can overwhelm content.',
+    learnMoreUrl: 'https://en.wikipedia.org/wiki/Cataract',
     cssFilter: 'blur(4px) brightness(1.25) contrast(0.7) saturate(0.6)'
   },
   {
@@ -93,6 +101,7 @@ export const SIMULATOR_CHECKS: SimulatorCheckMeta[] = [
     shortLabel: 'Tunnel vision',
     description:
       'Severely reduced peripheral vision. Only the centre of the viewport is clear. Layout that places key actions at the edges is easy to miss.',
+    learnMoreUrl: 'https://en.wikipedia.org/wiki/Tunnel_vision',
     cssFilter: '',
     overlayClass: 'simulator-overlay--tunnel'
   },
@@ -102,6 +111,7 @@ export const SIMULATOR_CHECKS: SimulatorCheckMeta[] = [
     shortLabel: 'Tab order',
     description:
       'Shows the keyboard tab sequence as numbered badges on focusable controls. Gaps, traps, and illogical order become visible at a glance.',
+    learnMoreUrl: 'https://en.wikipedia.org/wiki/Focus_(computing)#Keyboard_focus',
     cssFilter: '',
     independent: true
   }

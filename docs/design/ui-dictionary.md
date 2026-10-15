@@ -76,6 +76,10 @@ Main score and trend dashboard for one site.
 | **Accessibility data source card** | Scan status summary showing which completed scan powers the overview metrics. `ScanStatusSummaryCard` (title: "Accessibility Data Source") |
 | **Overview score section** | Main 1/3 + 2/3 grid: donut, trends, conformance, score details. `OverviewScoreSection` |
 
+#### Overview score donut
+
+Thick annular-sector ring (`ScoreDonut` + `utils/donutChart.ts`): cutout ~75% of radius, soft corner fillets, even gaps. Overview display size **200px** (Nuxt Charts `DonutChart` `:height="200"`). Palette tokens `--donut-segment-1`…`5`. Centre label: value + unit baseline, caption below. Wrapped in `ScoreDonutButton` (hover/focus border). Click opens `ScoreBreakdownModal`: donut + slice legend on the left, category/impact detail on the right. Card header **Score donut menu** (`ScoreDonutMenu`, top-right ellipsis): checked **Full donut** / **Semi donut** (persisted via `useDonutChartStyle`) plus **Score breakdown**.
+
 #### Overview score section — left column (1/3)
 
 | Name | Description |
@@ -162,7 +166,7 @@ Main score and trend dashboard for one site.
 
 | Name | Description |
 |------|-------------|
-| **PDF Inspector** | Document studio (Audit / Convert / Compare). Breadcrumb uses literal `/`: `PDFs / PDF Inspector`. `sites/.../pdfs/[documentId].vue` |
+| **PDF Inspector** | Document studio (Audit / Convert). Breadcrumb uses literal `/`: `PDFs / PDF Inspector`. Mode tabs sit on the filename row. `sites/.../pdfs/[documentId].vue` |
 | **Pages rail** | Left column of page thumbnails. `PdfPageThumbnails` |
 | **Preview pane** | Middle column — PDF preview only. `PdfPreviewViewer` |
 | **Issues context** | Audit right pane — issue list + guidance. `PdfAuditContext` |

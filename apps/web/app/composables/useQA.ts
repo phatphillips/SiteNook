@@ -350,6 +350,48 @@ export function useQA(
     await fetchQAData({ silent: true })
   }
 
+  async function recheckBrokenLink(input: {
+    issueIds: string[]
+    href: string
+  }): Promise<{
+    href: string
+    status: 'broken' | 'redirected' | 'ok'
+    status_code: number
+    updated: number
+  } | null> {
+    if (!id.value || !pb) return null
+    if (!input.issueIds.length && !input.href) return null
+    const token = pb.authStore.token
+    if (!token) return null
+    const result = await $fetch<{
+      href: string
+      status: 'broken' | 'redirected' | 'ok'
+      status_code: number
+      updated: number
+    }>(`/api/sites/${id.value}/qa/broken-links/recheck`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: {
+        issueIds: input.issueIds,
+        href: input.href
+      }
+    })
+    // Optimistic local patch so the row updates before the full reload finishes.
+    const ids = new Set(input.issueIds)
+    const storedStatus = result.status === 'broken' ? 'broken' : 'redirected'
+    brokenLinks.value = brokenLinks.value.map((link) => {
+      const match = ids.has(link.id) || link.href === result.href
+      if (!match) return link
+      return {
+        ...link,
+        status: storedStatus,
+        status_code: result.status_code
+      }
+    })
+    await fetchBrokenLinks().catch(() => {})
+    return result
+  }
+
   let unsubscribeScans: (() => void) | null = null
   let unsubscribePages: (() => void) | null = null
   let unsubscribeBrokenLinks: (() => void) | null = null
@@ -470,6 +512,7 @@ export function useQA(
     internalBrokenLinkCount,
     externalBrokenLinkCount,
     updateQaIssueStatuses,
+    recheckBrokenLink,
     fetchQAData,
     fetchBrokenLinks
   }

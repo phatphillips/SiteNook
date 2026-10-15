@@ -2,12 +2,17 @@
 import type { ContentExplorerEntry, ContentExplorerTreeNode } from '~/types/sitenook'
 import { buildContentExplorerTree, filterContentExplorerTree } from '~/utils/contentExplorerTree'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   entries: ContentExplorerEntry[]
   loading?: boolean
-  selectedIds: Set<string>
+  selectedIds?: Set<string>
   activeEntryId?: string | null
-}>()
+  /** When false, hide multi-select checkboxes (select-a-page only). */
+  showMultiSelect?: boolean
+}>(), {
+  selectedIds: () => new Set<string>(),
+  showMultiSelect: true
+})
 
 const emit = defineEmits<{
   select: [entry: ContentExplorerEntry]
@@ -50,7 +55,6 @@ function orderExplorerNodes(nodes: ContentExplorerTreeNode[]): ContentExplorerTr
 
 const tree = computed(() => orderExplorerNodes(buildContentExplorerTree(props.entries)))
 const filteredTree = computed(() => filterContentExplorerTree(tree.value, search.value))
-
 
 const flatPages = computed(() => props.entries.filter(e => e.hasContent || !e.failed))
 
@@ -111,16 +115,25 @@ function onToggleAllModelValue(value: boolean | 'indeterminate') {
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col bg-default">
-    <div class="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-default px-3 text-xs text-muted">
-        <label class="inline-flex items-center gap-2">
-          <UCheckbox
-            :model-value="allSelected()"
-            aria-label="Select all pages"
-            @update:model-value="onToggleAllModelValue"
-          />
-          <span>{{ selectedIds.size }} selected</span>
-        </label>
+  <div class="flex h-full min-h-0 flex-col bg-elevated">
+    <div class="flex h-12 min-h-12 shrink-0 items-center gap-2 border-b border-default px-3">
+      <TableSearchInput
+        v-model="search"
+        placeholder="Filter pages…"
+        aria-label="Filter pages"
+        class="min-w-0 flex-1"
+      />
+      <label
+        v-if="showMultiSelect"
+        class="inline-flex shrink-0 items-center gap-2 text-sm text-muted"
+      >
+        <UCheckbox
+          :model-value="allSelected()"
+          aria-label="Select all pages"
+          @update:model-value="onToggleAllModelValue"
+        />
+        <span class="whitespace-nowrap">{{ selectedIds.size }} selected</span>
+      </label>
     </div>
 
     <div
@@ -144,6 +157,7 @@ function onToggleAllModelValue(value: boolean | 'indeterminate') {
         :selected-ids="selectedIds"
         :expanded="expanded"
         :active-entry-id="activeEntryId"
+        :show-multi-select="showMultiSelect"
         @select="emit('select', $event)"
         @toggle="onToggle"
         @toggle-folder="toggleFolder"

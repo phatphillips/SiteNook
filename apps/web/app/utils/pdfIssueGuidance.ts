@@ -73,10 +73,10 @@ const GUIDANCE: Record<string, PdfIssueGuidance> = {
 
 const DEFAULT_GUIDANCE: PdfIssueGuidance = {
   summary:
-    'This PDF/UA validation rule failed. Review the technical description and update the document structure or metadata. Prefer SiteNook’s assisted fix, then re-validate. Assisted tagging is not certified PDF/UA.',
+    'This PDF/UA validation rule failed. Review the technical description and update the document structure or metadata. Re-validate after changes. Assisted tagging is not certified PDF/UA.',
   fixSteps: [
-    'Use PDF Inspector → Generate assisted fix, then review before/after on Compare.',
-    'Finish remaining issues in Acrobat/PAC if the assisted fix still fails critical rules.',
+    'Review the rule description and evidence in PDF Inspector → Audit.',
+    'Fix tags, alt text, or metadata in Acrobat, PAC, or your authoring tool.',
     'Re-validate the PDF after saving.'
   ],
   learnMoreUrl: 'https://www.pdfa.org/resource/pdf-ua-1-in-a-nutshell/'

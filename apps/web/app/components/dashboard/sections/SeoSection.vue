@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { OrgDashboardAggregates } from '~/utils/dashboardAggregates'
+import type { OverviewDateRange } from '~/utils/overviewDateRange'
 import { siteIssueBarPoints } from '~/utils/orgSiteMetrics'
 import { planHasFeature } from '~/utils/planLimits'
 import { trendDelta } from '~/utils/scanTrendSeries'
-import { trafficLightFromCount } from '~/utils/trafficLightStatus'
 import SharedMetricTrendExpandModal from '~/components/shared/MetricTrendExpandModal.vue'
 
 const props = defineProps<{
@@ -12,22 +12,17 @@ const props = defineProps<{
   orgLoading?: boolean
 }>()
 
+/** Shared date range from the site Overview navbar (site mode only). */
+const dateRange = defineModel<OverviewDateRange>('dateRange', {
+  default: () => ({ preset: 30 as const })
+})
+
 const isOrgMode = computed(() => !props.siteId && !!props.orgAggregates)
-const siteIdRef = computed(() => props.siteId ?? '')
 const { organization } = useTenantOrg()
 
 const seoEnabled = computed(() =>
   planHasFeature(organization.value?.plan, 'seoModule')
 )
-
-const {
-  latestScan,
-  seoScore,
-  technicalScore,
-  contentScore,
-  categoryCounts,
-  loading
-} = useSEO(siteIdRef)
 
 const orgSiteIds = computed(() =>
   (props.orgAggregates?.siteSnapshots ?? []).map(snapshot => snapshot.siteId)
@@ -47,12 +42,6 @@ const {
   scans: orgOpenIssuesTrendScans,
   loading: openIssuesTrendLoading
 } = useOrgSeoOpenIssuesTrend(orgSiteIds)
-
-const issueSummary = computed(() => {
-  if (!props.orgAggregates) return null
-  const total = props.orgAggregates.totalOpenSeoIssues
-  return `${total} open SEO issue${total === 1 ? '' : 's'} across all sites`
-})
 
 const issuesBySiteBars = computed(() => {
   if (!props.orgAggregates) return []
@@ -117,10 +106,6 @@ const openIssuesTrendDirection = computed((): 'up' | 'down' | null => {
       </UButton>
     </div>
 
-    <div v-else-if="isOrgMode ? orgLoading && !orgAggregates : loading" class="flex justify-center py-10">
-      <UIcon name="i-lucide-loader-circle" class="size-7 animate-spin text-muted" />
-    </div>
-
     <template v-else-if="isOrgMode">
       <div v-if="orgLoading && !orgAggregates" class="flex justify-center py-10">
         <UIcon name="i-lucide-loader-circle" class="size-7 animate-spin text-muted" />
@@ -131,7 +116,7 @@ const openIssuesTrendDirection = computed((): 'up' | 'down' | null => {
       >
         <section class="scroll-mt-6">
           <div class="mb-4 flex items-end justify-between gap-3">
-            <div>
+            <div class="min-w-0">
               <h2 class="text-lg font-semibold text-highlighted">
                 SEO score
               </h2>
@@ -139,6 +124,10 @@ const openIssuesTrendDirection = computed((): 'up' | 'down' | null => {
                 Average SEO score across your workspace.
               </p>
             </div>
+            <DashboardSectionViewLink
+              to="/seo"
+              label="View SEO"
+            />
           </div>
 
           <div class="grid gap-4 lg:grid-cols-3 lg:items-stretch">
@@ -146,7 +135,8 @@ const openIssuesTrendDirection = computed((): 'up' | 'down' | null => {
               title="Average SEO score"
               :score="orgAggregates.avgSeoScore"
               empty-label="Average SEO score appears after sites complete scans."
-              :issue-summary="issueSummary"
+              cta-to="/seo"
+              cta-label="View SEO"
             />
 
             <AccessibilityMetricTrendCard
@@ -220,17 +210,18 @@ const openIssuesTrendDirection = computed((): 'up' | 'down' | null => {
 
         <section class="scroll-mt-6">
           <div class="mb-4 flex items-end justify-between gap-3">
-            <div>
+            <div class="min-w-0">
               <h2 class="text-lg font-semibold text-highlighted">
                 Open issues by site
               </h2>
               <p class="text-sm text-muted">
-                {{ issueSummary }}
+                Compare open SEO issues across your sites.
               </p>
             </div>
-            <UButton to="/seo/technical" size="sm" variant="outline">
-              View issues
-            </UButton>
+            <DashboardSectionViewLink
+              to="/seo/technical"
+              label="View SEO issues"
+            />
           </div>
 
           <AccessibilitySiteIssuesBarCard
@@ -248,52 +239,12 @@ const openIssuesTrendDirection = computed((): 'up' | 'down' | null => {
       </p>
     </template>
 
-    <template v-else-if="siteId">
-      <div class="grid items-center gap-6 lg:grid-cols-[minmax(0,12rem)_1fr] lg:gap-8">
-        <div class="flex flex-col items-center justify-center gap-2">
-          <AccessibilityScoreDonut
-            v-if="seoScore != null"
-            :score="seoScore"
-            label="SEO score"
-          />
-          <p v-else class="max-w-xs text-center text-sm text-muted">
-            SEO score appears after a completed scan with SEO checks enabled.
-          </p>
-        </div>
-
-        <div class="grid gap-3 sm:grid-cols-2">
-          <NuxtLink
-            :to="`/sites/${siteId}/seo/technical`"
-            class="rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/40"
-          >
-            <div class="mb-1 flex items-center gap-2">
-              <TrafficLightDot :status="trafficLightFromCount(categoryCounts.technical)" />
-              <p class="text-sm text-muted">Technical issues</p>
-            </div>
-            <p class="text-2xl font-bold">{{ categoryCounts.technical }}</p>
-            <p v-if="technicalScore != null" class="mt-1 text-xs text-muted">
-              Score {{ technicalScore }}
-            </p>
-          </NuxtLink>
-          <NuxtLink
-            :to="`/sites/${siteId}/seo/content`"
-            class="rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/40"
-          >
-            <div class="mb-1 flex items-center gap-2">
-              <TrafficLightDot :status="trafficLightFromCount(categoryCounts.content)" />
-              <p class="text-sm text-muted">Content issues</p>
-            </div>
-            <p class="text-2xl font-bold">{{ categoryCounts.content }}</p>
-            <p v-if="contentScore != null" class="mt-1 text-xs text-muted">
-              Score {{ contentScore }}
-            </p>
-          </NuxtLink>
-        </div>
-      </div>
-
-      <p v-if="latestScan" class="mt-4 text-xs text-muted">
-        Based on the latest completed scan with SEO checks.
-      </p>
-    </template>
+    <SeoSiteOverviewPanel
+      v-else-if="siteId"
+      :site-id="siteId"
+      :sync-active-site="false"
+      :show-toolbar="false"
+      v-model:date-range="dateRange"
+    />
   </div>
 </template>

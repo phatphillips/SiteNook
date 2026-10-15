@@ -16,6 +16,20 @@ export const DASHBOARD_SECTION_LABELS: Record<DashboardSectionId, string> = {
   seo: 'SEO'
 }
 
+/** H2 titles on the site Overview dashboard (longer SEO label). */
+export const DASHBOARD_SECTION_HEADINGS: Record<DashboardSectionId, string> = {
+  accessibility: 'Accessibility',
+  qa: 'Quality Assurance',
+  seo: 'Search Engine Optimisation'
+}
+
+/** Contextual “view full” link labels on Overview section headers. */
+export const DASHBOARD_SECTION_VIEW_LABELS: Record<DashboardSectionId, string> = {
+  accessibility: 'View accessibility',
+  qa: 'View quality assurance',
+  seo: 'View SEO'
+}
+
 export const DASHBOARD_SECTION_STORAGE_KEY = 'sitenook:dashboard-section-order'
 
 export function normalizeDashboardSectionOrder(stored: unknown): DashboardSectionId[] {

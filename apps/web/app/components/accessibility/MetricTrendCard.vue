@@ -23,7 +23,8 @@ import {
   chartSeriesColor,
   chartSeriesRgb,
   chartTooltipPalette,
-  CHART_PURPLE_COLOR,
+  chartPrimaryColor,
+  chartPrimaryRgb,
   resolveChartThemeVariant
 } from '~/utils/chartTheme'
 
@@ -152,25 +153,21 @@ ChartJS.register(dayAxisTicksPlugin)
 
 function guideLineColor(variant: ReturnType<typeof resolveChartThemeVariant>): string {
   if (variant === 'dark') return 'rgba(255, 255, 255, 0.12)'
-  if (variant === 'solarized-light') return 'rgba(7, 54, 66, 0.12)'
   return 'rgba(17, 24, 39, 0.1)'
 }
 
 function placeholderLineColor(variant: ReturnType<typeof resolveChartThemeVariant>): string {
   if (variant === 'dark') return 'rgba(148, 163, 184, 0.5)'
-  if (variant === 'solarized-light') return 'rgba(88, 110, 117, 0.55)'
   return 'rgba(107, 114, 128, 0.5)'
 }
 
 function placeholderLineRgb(variant: ReturnType<typeof resolveChartThemeVariant>): string {
   if (variant === 'dark') return '148, 163, 184'
-  if (variant === 'solarized-light') return '88, 110, 117'
   return '107, 114, 128'
 }
 
 function tickLabelColor(variant: ReturnType<typeof resolveChartThemeVariant>): string {
   if (variant === 'dark') return 'rgba(255, 255, 255, 0.5)'
-  if (variant === 'solarized-light') return 'rgba(88, 110, 117, 0.9)'
   return 'rgba(75, 85, 99, 0.9)'
 }
 
@@ -226,6 +223,7 @@ const props = withDefaults(defineProps<{
 const mounted = ref(false)
 const chartKey = ref(0)
 const colorMode = useColorMode()
+const { primary } = usePrimaryColor()
 const chartVariant = computed(() => resolveChartThemeVariant(colorMode.value))
 
 const hoverTooltip = ref<{
@@ -241,19 +239,23 @@ const hoverTooltip = ref<{
   top: 0,
   title: '',
   body: '',
-  swatch: CHART_PURPLE_COLOR
+  swatch: chartPrimaryColor()
 })
 
 onMounted(async () => {
+  const { syncChartPrimaryCssVars } = await import('~/utils/primaryColor')
+  syncChartPrimaryCssVars(primary.value)
   await nextTick()
   mounted.value = true
   chartKey.value++
 })
 
 watch(
-  () => colorMode.value,
-  async () => {
+  () => [colorMode.value, primary.value] as const,
+  async ([, nextPrimary]) => {
     if (!mounted.value) return
+    const { syncChartPrimaryCssVars } = await import('~/utils/primaryColor')
+    syncChartPrimaryCssVars(nextPrimary)
     await nextTick()
     chartKey.value++
   }
@@ -325,10 +327,17 @@ const tooltipPalette = computed(() => chartTooltipPalette(chartVariant.value))
 
 const chartData = computed(() => {
   const variant = chartVariant.value
-  const lineColor = chartSeriesColor(variant, props.tone)
-  const lineRgb = chartSeriesRgb(variant, props.tone)
-  const placeholderColor = placeholderLineColor(variant)
-  const placeholderRgb = placeholderLineRgb(variant)
+  const usesPrimarySeries = props.tone === 'purple' || props.tone === 'accent'
+  const lineColor = usesPrimarySeries
+    ? chartPrimaryColor(primary.value)
+    : chartSeriesColor(variant, props.tone)
+  const lineRgb = usesPrimarySeries
+    ? chartPrimaryRgb(primary.value)
+    : chartSeriesRgb(variant, props.tone)
+  const placeholderColor = usesPrimarySeries
+    ? `rgba(${lineRgb}, 0.45)`
+    : placeholderLineColor(variant)
+  const placeholderRgb = usesPrimarySeries ? lineRgb : placeholderLineRgb(variant)
   const rawValues = props.points.map(p => (hasData.value ? p.value : null))
   const pad = leadingPlaceholder.value
 
@@ -359,9 +368,8 @@ const chartData = computed(() => {
       data: rawValues.map((_, i) => (i <= pad.firstIndex ? pad.firstValue : null)),
       borderColor: placeholderColor,
       borderWidth: 3,
-      backgroundColor: (context: { chart: { ctx: CanvasRenderingContext2D, chartArea?: { top: number, bottom: number } } }) =>
-        hasData.value ? fillUnderLine(placeholderRgb, 0.35, context) : 'transparent',
-      fill: hasData.value,
+      backgroundColor: 'transparent',
+      fill: false,
       tension: 0,
       spanGaps: false,
       pointRadius: 0,
@@ -381,7 +389,7 @@ const chartData = computed(() => {
     borderWidth: 3,
     backgroundColor: (context: { chart: { ctx: CanvasRenderingContext2D, chartArea?: { top: number, bottom: number } } }) => {
       if (!hasData.value) return 'transparent'
-      return fillUnderLine(lineRgb, 0.42, context)
+      return fillUnderLine(lineRgb, usesPrimarySeries ? 0.32 : 0.42, context)
     },
     fill: hasData.value,
     tension: 0.35,
@@ -429,7 +437,9 @@ function externalTooltipHandler(context: {
 
   const title = String(point.label ?? '')
   const body = `${point.dataset.label ?? props.seriesLabel}  ${formatValue(y)}`
-  const swatch = chartSeriesColor(chartVariant.value, props.tone)
+  const swatch = props.tone === 'purple' || props.tone === 'accent'
+    ? chartPrimaryColor(primary.value)
+    : chartSeriesColor(chartVariant.value, props.tone)
 
   // Chart-local coords (tooltip lives in the chart shell, overflow visible).
   const gap = 14
@@ -480,7 +490,9 @@ const chartOptions = computed(() => {
     seriesLabel: props.seriesLabel,
     formatValue: (y) => formatValue(y),
     enabled: hasData.value,
-    seriesColor: chartSeriesColor(variant, props.tone)
+    seriesColor: props.tone === 'purple' || props.tone === 'accent'
+      ? chartPrimaryColor(primary.value)
+      : chartSeriesColor(variant, props.tone)
   })
 
   return {
@@ -511,10 +523,10 @@ const chartOptions = computed(() => {
       metricTrendVerticalCrosshair: {
         color: variant === 'dark'
           ? 'rgba(255, 255, 255, 0.75)'
-          : variant === 'solarized-light'
-            ? 'rgba(7, 54, 66, 0.45)'
-            : 'rgba(17, 24, 39, 0.35)',
-        pointColor: chartSeriesColor(variant, props.tone),
+          : 'rgba(17, 24, 39, 0.35)',
+        pointColor: props.tone === 'purple' || props.tone === 'accent'
+          ? chartPrimaryColor(primary.value)
+          : chartSeriesColor(variant, props.tone),
         pointBorderColor: chartPointBorderColor(variant)
       },
       tooltip: {
@@ -606,10 +618,12 @@ const deltaTone = computed((): 'good' | 'bad' | 'neutral' => {
 
 const deltaBadgeStyle = computed(() => {
   if (deltaTone.value === 'good') {
+    const color = chartPrimaryColor(primary.value)
+    const rgb = chartPrimaryRgb(primary.value)
     return {
-      color: CHART_PURPLE_COLOR,
-      backgroundColor: 'rgba(99, 102, 241, 0.12)',
-      borderColor: 'rgba(99, 102, 241, 0.45)'
+      color,
+      backgroundColor: `rgba(${rgb}, 0.12)`,
+      borderColor: `rgba(${rgb}, 0.45)`
     }
   }
   if (deltaTone.value === 'bad') {
@@ -632,7 +646,7 @@ function onChartLeave() {
 </script>
 
 <template>
-  <div class="relative flex h-full min-h-[220px] flex-col gap-3 overflow-visible rounded-lg border border-default bg-elevated/25 p-4 shadow-none ring-0 sm:p-5">
+  <div class="relative flex h-full min-h-[220px] flex-col gap-3 overflow-visible rounded-lg border border-default bg-elevated p-4 shadow-none ring-0 sm:p-5">
     <div
       v-if="title || deltaLabel || $slots['header-actions']"
       class="flex shrink-0 items-start justify-between gap-2"

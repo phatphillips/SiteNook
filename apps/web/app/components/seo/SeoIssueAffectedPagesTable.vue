@@ -5,7 +5,7 @@ import type { TableColumn } from '@nuxt/ui'
 import type { Column, Row, SortingState } from '@tanstack/vue-table'
 import type { SeoAffectedPageRow } from '~/utils/seoIssues'
 import { parsePageUrl } from '~/utils/issueExplanation'
-import { DATA_TABLE_UI_DENSE } from '~/utils/dataTableUi'
+import { DATA_TABLE_UI_DENSE, dataTableSortableHeader } from '~/utils/dataTableUi'
 
 defineProps<{
   pages: SeoAffectedPageRow[]
@@ -23,22 +23,7 @@ function sortableHeader(
   column: Column<SeoAffectedPageRow, unknown>,
   label: string
 ) {
-  const isSorted = column.getIsSorted()
-  return h(UButton, {
-    color: 'neutral',
-    variant: 'ghost',
-    size: 'xs',
-    label,
-    icon: isSorted
-      ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow')
-      : 'i-lucide-arrow-up-down',
-    class: '-ms-2',
-    ui: {
-      base: 'font-medium',
-      leadingIcon: 'size-3.5'
-    },
-    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
-  })
+  return dataTableSortableHeader(column, label)
 }
 
 function onRowSelect(_event: Event, row: Row<SeoAffectedPageRow>) {

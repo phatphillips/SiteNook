@@ -1,22 +1,52 @@
 @import "tailwindcss" theme(static);
 @import "@nuxt/ui";
 @import "./themes/light.css";
-@import "./themes/solarized-light.css";
-
 /* Tailwind v4 + theme(static) can emit overflow-y: unset for .overflow-y-auto; use scroll-region instead. */
 @utility scroll-region {
   min-height: 0;
   overflow-y: auto;
 }
 
-/** Data table chrome — minimal list surface (thin border, no ring). */
+/** Data table chrome — sidebar fill, darker strokes. */
 @utility table-surface {
-  @apply rounded-lg border border-default bg-elevated/25 overflow-hidden;
+  overflow: hidden;
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--table-surface-border);
+  background-color: var(--table-surface-bg);
+  /* Row/header dividers inherit the darker table stroke. */
+  --ui-border: var(--table-surface-border);
 }
 
 /* Slower skeleton pulse avoids flash on fast API responses. */
 .data-table-skeleton [class*="animate-pulse"] {
   animation-duration: 1.35s;
+}
+
+/** Sortable table header buttons — tint only on hover/focus. */
+.data-table-sort-btn {
+  background-color: transparent !important;
+  transition: background-color 0.15s ease;
+}
+
+.data-table-sort-btn:hover {
+  background-color: #f6f6f6 !important;
+}
+
+.data-table-sort-btn:focus-visible,
+.data-table-sort-btn:active {
+  background-color: #ececec !important;
+}
+
+:root.dark .data-table-sort-btn:hover,
+.dark .data-table-sort-btn:hover {
+  background-color: color-mix(in srgb, white 8%, transparent) !important;
+}
+
+:root.dark .data-table-sort-btn:focus-visible,
+:root.dark .data-table-sort-btn:active,
+.dark .data-table-sort-btn:focus-visible,
+.dark .data-table-sort-btn:active {
+  background-color: color-mix(in srgb, white 14%, transparent) !important;
 }
 
 /*
@@ -37,13 +67,51 @@
   --color-text-secondary: #71717a;
   --color-border-secondary: rgba(24, 24, 27, 0.1);
   --color-border-tertiary: rgba(24, 24, 27, 0.06);
-  --color-chart-line: #00c16a;
-  --color-chart-line-rgb: 0, 193, 106;
+  /* Charts / chips follow Nuxt UI primary; JS syncs canvas-safe rgb() on the client. */
+  --color-chart-line: var(--ui-primary);
   --color-action-solid: #3f3f46;
   --color-action-solid-text: #fafafa;
+  --sidebar-bg: #fafafa;
   --sidebar-nav-active-bg: #ebebed;
   --sidebar-nav-hover-bg: rgba(24, 24, 27, 0.05);
   --sidebar-nav-active-shadow: none;
+  --sidebar-nav-fg: #3f3f46;
+  --sidebar-nav-icon: #52525b;
+  --table-surface-bg: #ffffff;
+  --table-surface-border: #c0c0c0;
+  --control-surface-bg: #d9d9dc;
+  --control-surface-hover-bg: #cbcbcf;
+  --control-surface-fg: #18181b;
+  --input-surface-bg: #ffffff;
+  --input-surface-hover-bg: #ffffff;
+  --input-surface-border: #c0c0c0;
+  --input-surface-border-hover: #8f8f8f;
+  --input-surface-fg: #18181b;
+  --focus-ring-color: #2563eb;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --score-donut-track: rgba(24, 24, 27, 0.12);
+  --score-bar-track: rgba(24, 24, 27, 0.1);
+
+  /*
+   * Overview donut palette (flat, opaque). Segment 1 follows primary;
+   * others avoid the primary hue. Tuned for ≥3:1 on light surfaces.
+   */
+  --donut-segment-1: var(--ui-primary);
+  --donut-segment-2: #0891b2;
+  --donut-segment-3: #7c3aed;
+  --donut-segment-4: #ea580c;
+  --donut-segment-5: #64748b;
+  --donut-label: #18181b;
+  --donut-label-muted: #52525b;
+
+  /* Org score chips / site issue bars (light). */
+  --score-chip-track: #e4e4e7;
+  --score-chip-fill: #3f3f46;
+  --score-chip-fill-hover: var(--ui-primary);
+  --score-chip-text: #18181b;
+  --score-chip-text-on-fill: #ffffff;
+  --score-chip-text-on-hover: #000000;
 }
 
 :root.dark,
@@ -66,9 +134,45 @@
   --ui-bg-elevated: rgb(30, 31, 37);
   --ui-bg-accented: rgb(36, 37, 44);
 
+  --score-donut-track: rgba(255, 255, 255, 0.14);
+  --score-bar-track: rgba(255, 255, 255, 0.12);
+
+  /* Overview donut palette on near-black surfaces (≥3:1 segment contrast). */
+  --donut-segment-1: var(--ui-primary);
+  --donut-segment-2: #22d3ee;
+  --donut-segment-3: #c084fc;
+  --donut-segment-4: #fb923c;
+  --donut-segment-5: #94a3b8;
+  --donut-label: #ffffff;
+  --donut-label-muted: #a1a1aa;
+
+  /* Org score chips / site issue bars (dark). */
+  --score-chip-track: rgba(255, 255, 255, 0.12);
+  --score-chip-fill: #d4d4d8;
+  --score-chip-fill-hover: var(--ui-primary);
+  --score-chip-text: #fafafa;
+  --score-chip-text-on-fill: #18181b;
+  --score-chip-text-on-hover: #000000;
+
+  --sidebar-bg: rgb(30, 31, 37);
   --sidebar-nav-active-bg: #272934;
   --sidebar-nav-active-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
   --sidebar-nav-hover-bg: #303240;
+  --sidebar-nav-fg: rgba(255, 255, 255, 0.72);
+  --sidebar-nav-icon: rgba(255, 255, 255, 0.58);
+  --table-surface-bg: var(--sidebar-bg);
+  --table-surface-border: rgba(255, 255, 255, 0.18);
+  --control-surface-bg: var(--sidebar-nav-active-bg);
+  --control-surface-hover-bg: #303240;
+  --control-surface-fg: rgba(255, 255, 255, 0.92);
+  --input-surface-bg: rgb(30, 31, 37);
+  --input-surface-hover-bg: rgb(36, 37, 44);
+  --input-surface-border: rgba(255, 255, 255, 0.22);
+  --input-surface-border-hover: rgba(255, 255, 255, 0.42);
+  --input-surface-fg: rgba(255, 255, 255, 0.92);
+  --focus-ring-color: #93c5fd;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
 }
 
 @theme static {
@@ -99,27 +203,33 @@
   font-size: 10px;
   font-weight: 700;
   line-height: 1;
-  color: #fff;
+  /*
+   * Primary-aligned fills + contrast-safe foreground from
+   * primaryColor.syncChartPrimaryCssVars (--site-badge-*).
+   * Fallbacks match donut / score-bar primary paint.
+   */
+  color: var(--site-badge-fg, var(--score-chip-text-on-hover, #fff));
+  --site-badge-primary: var(--score-chip-fill-hover, var(--ui-primary));
 }
 
 .site-target-badge--a {
-  background: #c2185b;
+  background: var(--site-badge-bg-a, var(--site-badge-primary));
 }
 
 .site-target-badge--aa {
-  background: #7b1fa2;
+  background: var(--site-badge-bg-aa, var(--site-badge-primary));
 }
 
 .site-target-badge--aaa {
-  background: linear-gradient(135deg, #3949ab, #7b1fa2);
+  background: var(--site-badge-bg-aaa, var(--site-badge-primary));
 }
 
 .site-target-badge--aria {
-  background: #1565c0;
+  background: var(--site-badge-bg-aria, var(--site-badge-primary));
 }
 
 .site-target-badge--bp {
-  background: #0d47a1;
+  background: var(--site-badge-bg-bp, var(--site-badge-primary));
 }
 
 .readability-badge {
@@ -176,6 +286,131 @@ a[data-slot="base"].action-solid {
 button[data-slot="base"].action-solid:hover:not(:disabled),
 a[data-slot="base"].action-solid:hover {
   filter: brightness(1.08);
+}
+
+/**
+ * Unify control type size with Nuxt UI `size="sm"` (`text-sm`).
+ * Keeps padding from each size variant; only normalizes the font size.
+ */
+:is(button, a)[data-slot="base"],
+input[data-slot="base"]:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+textarea[data-slot="base"] {
+  font-size: var(--text-sm) !important;
+  line-height: var(--text-sm--line-height, 1.25rem) !important;
+}
+
+/**
+ * Outline / toolbar controls match input fields (white + border in light theme).
+ * Soft/subtle stay on control-surface (filled gray, no border).
+ * Nuxt UI Button does not set data-variant on the DOM — match rendered
+ * classes instead (outline: bg-default + ring-accented).
+ * !important beats Nuxt UI utility rings (incl. Tailwind v4 inset ring).
+ */
+:is(button, a)[data-slot="base"].bg-default,
+:is(button, a)[data-slot="base"].ring-accented,
+:is(button, a)[data-slot="base"].table-toolbar-menu-btn {
+  background-color: var(--input-surface-bg) !important;
+  color: var(--input-surface-fg) !important;
+  border: 1px solid var(--input-surface-border) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  --tw-inset-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-color: transparent !important;
+  --tw-inset-ring-color: transparent !important;
+  box-shadow: none !important;
+}
+
+:is(button, a)[data-slot="base"].bg-default:hover:not(:disabled):not([aria-disabled="true"]),
+:is(button, a)[data-slot="base"].ring-accented:hover:not(:disabled):not([aria-disabled="true"]),
+:is(button, a)[data-slot="base"].table-toolbar-menu-btn:hover:not(:disabled):not([aria-disabled="true"]) {
+  background-color: var(--input-surface-hover-bg) !important;
+  border-color: var(--input-surface-border-hover, var(--ui-border-accented)) !important;
+  box-shadow: none !important;
+  filter: none;
+}
+
+:is(button, a)[data-slot="base"].bg-default:focus-visible,
+:is(button, a)[data-slot="base"].ring-accented:focus-visible,
+:is(button, a)[data-slot="base"].table-toolbar-menu-btn:focus-visible {
+  border-color: var(--input-surface-border-hover, var(--ui-border-accented)) !important;
+  box-shadow: none !important;
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, #2563eb);
+  outline-offset: var(--focus-ring-offset, 2px);
+}
+
+/* Soft variant uses bg-elevated without ring-accented. */
+:is(button, a)[data-slot="base"].bg-elevated:not(.bg-default):not([class*="bg-primary"]):not([class*="bg-error"]):not([class*="bg-warning"]):not([class*="bg-success"]):not([class*="bg-info"]):not([class*="bg-inverted"]) {
+  background-color: var(--control-surface-bg) !important;
+  color: var(--control-surface-fg) !important;
+  border-color: transparent !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-inset-ring-shadow: 0 0 #0000 !important;
+  box-shadow: none !important;
+}
+
+:is(button, a)[data-slot="base"].bg-elevated:not(.bg-default):not([class*="bg-primary"]):not([class*="bg-error"]):not([class*="bg-warning"]):not([class*="bg-success"]):not([class*="bg-info"]):not([class*="bg-inverted"]):hover:not(:disabled):not([aria-disabled="true"]) {
+  background-color: var(--control-surface-hover-bg) !important;
+}
+
+input[data-slot="base"]:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+textarea[data-slot="base"] {
+  background-color: var(--input-surface-bg) !important;
+  color: var(--input-surface-fg) !important;
+  border: 1px solid var(--input-surface-border) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  --tw-inset-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-color: transparent !important;
+  --tw-inset-ring-color: transparent !important;
+  box-shadow: none !important;
+}
+
+input[data-slot="base"]:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):hover:not(:disabled):not(:focus),
+textarea[data-slot="base"]:hover:not(:disabled):not(:focus) {
+  background-color: var(--input-surface-hover-bg) !important;
+  border-color: var(--input-surface-border-hover, var(--ui-border-accented)) !important;
+}
+
+input[data-slot="base"]:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+input[data-slot="base"]:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus-visible,
+textarea[data-slot="base"]:focus,
+textarea[data-slot="base"]:focus-visible {
+  background-color: var(--input-surface-bg) !important;
+  border: 1px solid var(--input-surface-border-hover, var(--ui-border-accented)) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-inset-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-color: transparent !important;
+  box-shadow: none !important;
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, #2563eb);
+  outline-offset: var(--focus-ring-offset, 2px);
+}
+
+/* Select / combobox triggers — always elevated white in light (never canvas/dark fill). */
+:is(button, a)[data-slot="base"][role="combobox"],
+:is(button, a)[data-slot="base"][aria-haspopup="listbox"],
+[data-slot="base"][role="combobox"],
+button[role="combobox"] {
+  background-color: var(--input-surface-bg, var(--ui-bg-elevated)) !important;
+  color: var(--input-surface-fg, var(--ui-text-highlighted)) !important;
+  border: 1px solid var(--input-surface-border, var(--ui-border)) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-inset-ring-shadow: 0 0 #0000 !important;
+  box-shadow: none !important;
+}
+
+:is(button, a)[data-slot="base"][role="combobox"]:hover:not(:disabled),
+:is(button, a)[data-slot="base"][aria-haspopup="listbox"]:hover:not(:disabled) {
+  background-color: var(--input-surface-hover-bg) !important;
+  border-color: var(--input-surface-border-hover, var(--ui-border-accented)) !important;
+}
+
+:is(button, a)[data-slot="base"][role="combobox"]:focus-visible,
+:is(button, a)[data-slot="base"][aria-haspopup="listbox"]:focus-visible,
+[data-slot="base"][role="combobox"]:focus-visible,
+button[role="combobox"]:focus-visible {
+  border-color: var(--input-surface-border-hover, var(--ui-border-accented)) !important;
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, #2563eb);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 /**
@@ -298,9 +533,10 @@ a[data-slot="base"].action-solid:hover {
   opacity: 0.6;
 }
 
-.team-member-role-select:focus {
-  outline: 2px solid color-mix(in srgb, var(--ui-primary) 50%, transparent);
-  outline-offset: 1px;
+.team-member-role-select:focus-visible {
+  border-color: var(--input-surface-border-hover, var(--ui-border-accented));
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, #2563eb);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 .search-snippet-mark {
@@ -311,15 +547,118 @@ a[data-slot="base"].action-solid:hover {
 }
 
 /**
- * Sidebar shell — elevated surface against the muted canvas, clear edge.
- * (Resize handle draws the vertical rule; keep component border off.)
+ * Regular inline / content links stay underlined.
+ * Buttons, nav chrome, and icon-only controls are excluded via :not().
  */
-.dashboard-sidebar {
-  background-color: var(--ui-bg-elevated);
+a.text-link,
+a.dashboard-inline-link,
+a.text-primary:not([data-slot]):not([data-slot='base']):not([class*='btn']),
+.prose a:not([class*='btn']):not([data-slot]) {
+  text-decoration-line: underline;
+  text-underline-offset: 0.15em;
 }
 
-.light .dashboard-sidebar {
-  background-color: #fafafa;
+/**
+ * Full-width app chrome above the sidebar + panel row.
+ */
+.dashboard-app-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  height: var(--ui-header-height);
+  min-height: var(--ui-header-height);
+  padding-inline: 1rem;
+  flex-shrink: 0;
+  background-color: var(--sidebar-bg, var(--ui-bg-elevated));
+  border-bottom: 1px solid var(--ui-border);
+  z-index: 40;
+}
+
+.dashboard-app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.dashboard-app-header-logo {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  border-radius: 0.375rem;
+  padding: 0.25rem;
+  color: var(--ui-text-highlighted);
+  transition: background-color 0.15s ease;
+}
+
+.dashboard-app-header-logo:hover {
+  background-color: var(--sidebar-nav-hover-bg, var(--ui-bg-muted));
+}
+
+.dashboard-app-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-inline-start: auto;
+}
+
+.dashboard-app-header-actions-slot {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.dashboard-app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.dashboard-app-body {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  /* 0 basis so this row fills remaining viewport under the app header. */
+  flex: 1 1 0%;
+  overflow: hidden;
+}
+
+.dashboard-page-navbar-host {
+  display: none;
+}
+
+/**
+ * Page H1 inside the scrolling panel body (not sticky / not in app chrome).
+ */
+.dashboard-page-heading {
+  margin: 0;
+  min-width: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ui-text-highlighted);
+}
+
+@media (min-width: 640px) {
+  .dashboard-page-heading {
+    font-size: 1.5rem;
+  }
+}
+
+/**
+ * Sidebar shell — elevated surface against the muted canvas, clear edge.
+ * Top aligns with the bottom of the full-width app header.
+ */
+.dashboard-sidebar {
+  height: 100%;
+  min-height: 0;
+  background-color: var(--sidebar-bg, var(--ui-bg-elevated));
+  border-inline-end: 1px solid var(--ui-border);
 }
 
 /** Sidebar navigation — white active pill on muted rail (Linear / Notion style). */
@@ -342,7 +681,7 @@ a[data-slot="base"].action-solid:hover {
 
 .dashboard-sidebar-nav [data-slot="link"]:not([data-active]),
 .dashboard-sidebar-nav [data-slot="child-link"]:not([data-active]) {
-  color: var(--ui-text-toned, var(--ui-text-muted));
+  color: var(--sidebar-nav-fg, var(--ui-text-toned, var(--ui-text-muted)));
 }
 
 .dashboard-sidebar-nav [data-slot="link"]:not([data-active]):hover,
@@ -377,7 +716,6 @@ a[data-slot="base"].action-solid:hover {
 .dashboard-sidebar-nav [data-slot="link"]:not([data-active])::before,
 .dashboard-sidebar-nav [data-slot="child-link"]:not([data-active])::before {
   background-color: transparent !important;
-  box-shadow: none !important;
   opacity: 1 !important;
 }
 
@@ -385,8 +723,27 @@ a[data-slot="base"].action-solid:hover {
 .dashboard-sidebar-nav [data-slot="child-link"]:not([data-active]):hover::before {
   background-color: var(--sidebar-nav-hover-bg) !important;
   border-radius: var(--sidebar-nav-radius) !important;
-  box-shadow: none !important;
   opacity: 1 !important;
+}
+
+/* Keyboard focus for parent items with expand chevrons (Accessibility / QA / SEO). */
+.dashboard-sidebar-nav [data-slot="link"]:focus-visible::before,
+.dashboard-sidebar-nav [data-slot="child-link"]:focus-visible::before {
+  background-color: var(--sidebar-nav-hover-bg) !important;
+  border-radius: var(--sidebar-nav-radius) !important;
+  box-shadow: inset 0 0 0 2px var(--focus-ring-color, var(--ui-primary)) !important;
+  opacity: 1 !important;
+}
+
+.dashboard-sidebar-nav [data-slot="link"]:focus-visible,
+.dashboard-sidebar-nav [data-slot="child-link"]:focus-visible {
+  outline: none;
+  color: var(--ui-text-highlighted);
+}
+
+.dashboard-sidebar-nav [data-slot="link"]:focus-visible [data-slot="linkTrailingIcon"],
+.dashboard-sidebar-nav [data-slot="link"]:focus-visible [data-slot="linkLeadingIcon"] {
+  color: var(--ui-text-highlighted);
 }
 
 .dashboard-sidebar-nav [data-slot="link"][data-active] [class*="icon"],
@@ -400,7 +757,23 @@ a[data-slot="base"].action-solid:hover {
 .dashboard-sidebar-nav [data-slot="child-link"]:not([data-active]) [class*="icon"],
 .dashboard-sidebar-nav [data-slot="link"]:not([data-active]) svg,
 .dashboard-sidebar-nav [data-slot="child-link"]:not([data-active]) svg {
-  color: var(--ui-text-muted);
+  color: var(--sidebar-nav-icon, var(--ui-text-toned, var(--ui-text-muted)));
+}
+
+/*
+ * Modal / slideover scrim: slight blur so the page sits behind the dialog.
+ * CSS (not only app.config) so per-instance :ui overlay overrides still blur.
+ */
+[data-slot="overlay"] {
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="overlay"] {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 /*
@@ -422,20 +795,226 @@ a[data-slot="base"].action-solid:hover {
   transition-property: background-color, border-color, opacity, box-shadow, transform, filter;
 }
 
-.workspace-switcher-panel {
-  width: 13.5rem;
-  padding: 0.25rem;
-  border: 1px solid var(--ui-border);
+/**
+ * Site switcher — Kumo Combobox.TriggerInput pattern (navbar).
+ * Type-to-filter field + clear + caret; listbox with empty/active/highlight.
+ */
+.workspace-combobox {
+  position: relative;
+  z-index: 40;
+  /* Match Kumo Select demo default: w-[200px]. */
+  flex: 0 0 auto;
+  width: 200px;
+  max-width: 200px;
+}
+
+/* Kumo Select trigger: h-9, gap-1.5, rounded-lg, px-3, ring + shadow-xs.
+   Use button.role specificity so Nuxt UI `button[role=combobox]` border/shadow resets lose. */
+button.workspace-combobox-trigger[role='combobox'] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.375rem;
+  width: 100%;
+  max-width: 200px;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border: 0 !important;
+  border-radius: 0.5rem;
+  background: var(--input-surface-bg, var(--ui-bg-elevated));
+  color: var(--ui-text-highlighted);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.25;
+  cursor: pointer;
+  user-select: none;
+  box-shadow:
+    0 0 0 1px var(--input-surface-border, var(--ui-border)),
+    0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+}
+
+button.workspace-combobox-trigger[role='combobox']:hover {
+  background: var(--sidebar-nav-hover-bg, var(--ui-bg-muted));
+}
+
+.workspace-combobox[data-state='open'] button.workspace-combobox-trigger[role='combobox'] {
+  background: var(--input-surface-bg, var(--ui-bg-elevated));
+}
+
+button.workspace-combobox-trigger[role='combobox']:focus {
+  outline: none;
+}
+
+button.workspace-combobox-trigger[role='combobox']:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px var(--input-surface-border, var(--ui-border)),
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    inset 0 0 0 var(--focus-ring-width, 2px) var(--focus-ring-color, #2563eb) !important;
+}
+
+.workspace-combobox-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-combobox-value[data-placeholder] {
+  color: var(--ui-text-muted);
+}
+
+.workspace-combobox-caret {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  color: var(--ui-text-muted);
+}
+
+.workspace-combobox-content {
+  position: absolute;
+  top: calc(100% + 0.375rem);
+  left: 0;
+  z-index: 50;
+  width: 200px;
+  max-width: 200px;
+  padding: 0.375rem 0;
+  border: 0;
   border-radius: 0.5rem;
   background: var(--ui-bg-elevated);
+  color: var(--ui-text-highlighted);
+  /* Kumo: ring + shadow-lg */
+  box-shadow:
+    0 0 0 1px var(--ui-border),
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+.workspace-combobox-content--portal {
+  position: fixed;
+  top: auto;
+  left: auto;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* max-height set inline from viewport remaining space */
+}
+
+.workspace-combobox-search-wrap {
+  flex-shrink: 0;
+  padding: 0 0.375rem 0.375rem;
+}
+
+.workspace-combobox-search {
+  width: 100%;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: var(--ui-bg-muted, var(--sidebar-nav-hover-bg));
+  color: var(--ui-text-highlighted);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.25;
+  outline: none;
+}
+
+.workspace-combobox-search::placeholder {
+  color: var(--ui-text-muted);
+}
+
+.workspace-combobox-search:focus-visible {
+  box-shadow: inset 0 0 0 var(--focus-ring-width, 2px) var(--focus-ring-color, #2563eb);
+}
+
+.workspace-combobox--sidebar {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.dashboard-sidebar-workspace {
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-sidebar-workspace .workspace-switcher-trigger {
+  /* Match sidebar nav links: rounded-md + px-3 py-2 */
+  border-radius: var(--sidebar-nav-radius, 0.5rem);
+  border: 1px solid var(--ui-primary);
+  background-color: color-mix(in srgb, var(--ui-primary) 14%, transparent);
+  padding: 0.5rem 0.75rem;
+  gap: 0.5rem;
+  color: var(--ui-primary);
+}
+
+.dashboard-sidebar-workspace .workspace-switcher-trigger:hover,
+.dashboard-sidebar-workspace .workspace-switcher-trigger--open {
+  border-color: var(--ui-primary);
+  background-color: color-mix(in srgb, var(--ui-primary) 22%, transparent);
+  box-shadow: none;
+}
+
+.dashboard-sidebar-workspace .workspace-switcher-trigger:focus-visible {
+  box-shadow: 0 0 0 var(--focus-ring-width, 2px) var(--focus-ring-color, var(--ui-primary));
+}
+
+.dashboard-sidebar-workspace .workspace-switcher-label {
+  max-width: none;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dashboard-sidebar-workspace .workspace-switcher-title {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ui-primary);
+}
+
+.dashboard-sidebar-workspace .workspace-switcher-icon,
+.dashboard-sidebar-workspace .workspace-switcher-chevron {
+  color: var(--ui-primary);
+  opacity: 1;
+}
+
+.dashboard-sidebar-workspace .workspace-switcher-chevron {
+  margin-inline-start: auto;
+  flex-shrink: 0;
+}
+
+.dashboard-sidebar-workspace .workspace-switcher-trigger--collapsed {
+  padding: 0.5rem;
+}
+
+.workspace-combobox-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
 }
 
 .workspace-switcher-search {
+  display: block;
+  width: 100%;
+  flex-shrink: 0;
   border-bottom: 1px solid var(--ui-border);
 }
 
+.workspace-switcher-search :where(input) {
+  width: 100%;
+}
+
 .workspace-switcher-list {
-  max-height: 16rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
   padding: 0.125rem 0;
 }
 
@@ -445,71 +1024,94 @@ a[data-slot="base"].action-solid:hover {
   color: var(--color-text-tertiary);
 }
 
+/* Kumo Select option: mx-1.5, gap-2, rounded, px-2 py-1.5, highlighted tint. */
 .workspace-switcher-list-item {
   display: flex;
-  width: 100%;
+  width: calc(100% - 0.75rem);
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  margin-inline: 0.375rem;
   padding: 0.375rem 0.5rem;
-  border-radius: 0.375rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
   font-size: 0.875rem;
+  font-weight: 400;
   line-height: 1.25;
-  color: var(--ui-text);
+  color: var(--ui-text-highlighted);
   text-align: left;
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
 
-.workspace-switcher-list-item:hover {
-  background: var(--sidebar-nav-hover-bg);
+.workspace-switcher-list-item:focus {
+  outline: none;
+}
+
+.workspace-switcher-list-item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 var(--focus-ring-width, 2px) var(--focus-ring-color, #2563eb);
+}
+
+.workspace-switcher-list-item:hover,
+.workspace-switcher-list-item--highlight {
+  background: var(--sidebar-nav-hover-bg, var(--ui-bg-muted));
 }
 
 .workspace-switcher-list-item--active {
-  font-weight: 500;
+  font-weight: 400;
   color: var(--ui-text-highlighted);
-  background: var(--sidebar-nav-active-bg);
+  background: transparent;
+}
+
+.workspace-switcher-list-item--active.workspace-switcher-list-item--highlight,
+.workspace-switcher-list-item--active:hover {
+  background: var(--sidebar-nav-hover-bg, var(--ui-bg-muted));
 }
 
 .workspace-switcher-list-check {
   color: var(--ui-text-highlighted);
 }
 
-/** Site switcher — flat; navbar has no fill until hover/open. */
+/** Sidebar site switcher — primary outline (Nuxt version-switcher style). */
 .workspace-switcher-trigger {
   position: relative;
   display: flex;
   min-width: 0;
-  max-width: 16rem;
+  width: 100%;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.625rem;
-  border: 1px solid transparent;
-  border-radius: var(--sidebar-nav-radius, 0.375rem);
-  background-color: transparent;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ui-primary);
+  border-radius: var(--sidebar-nav-radius, 0.5rem);
+  background-color: color-mix(in srgb, var(--ui-primary) 14%, transparent);
   background-image: none;
   box-shadow: none;
+  color: var(--ui-primary);
   text-align: left;
   cursor: pointer;
   transition:
     background-color 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.workspace-switcher-trigger--navbar {
-  flex: 0 1 auto;
-  width: auto;
-  max-width: 14rem;
-  padding: 0.25rem 0.5rem;
-  gap: 0.25rem;
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .workspace-switcher-trigger:hover,
 .workspace-switcher-trigger--open {
-  background-color: var(--sidebar-nav-active-bg, #272934);
+  background-color: color-mix(in srgb, var(--ui-primary) 22%, transparent);
   background-image: none;
-  border-color: transparent;
+  border-color: var(--ui-primary);
   box-shadow: none;
+}
+
+.workspace-switcher-trigger:focus {
+  outline: none;
+}
+
+.workspace-switcher-trigger:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 var(--focus-ring-width, 2px) var(--focus-ring-color, #2563eb);
 }
 
 .workspace-switcher-trigger--collapsed {
@@ -526,7 +1128,7 @@ a[data-slot="base"].action-solid:hover {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  color: var(--ui-text-highlighted);
+  color: var(--ui-primary);
 }
 
 .workspace-switcher-label {
@@ -590,14 +1192,14 @@ a[data-slot="base"].action-solid:hover {
   font-size: 0.875rem;
   font-weight: 500;
   line-height: 1.25;
-  color: var(--ui-text-highlighted);
+  color: var(--ui-primary);
 }
 
 .workspace-switcher-chevron {
   position: relative;
   z-index: 1;
-  color: var(--color-text-tertiary);
-  opacity: 0.85;
+  color: var(--ui-primary);
+  opacity: 1;
   transition: transform 0.15s ease, color 0.15s ease;
 }
 
@@ -611,117 +1213,219 @@ a[data-slot="base"].action-solid:hover {
   opacity: 1;
 }
 
-.dashboard-page-navbar [data-slot="left"] button :is(svg, [class*="size-"]) {
-  width: 1rem;
-  height: 1rem;
+/**
+ * Floating menus / popovers / select panels — solid elevated (white in light).
+ * Page canvas is --ui-bg gray; never let portals fall back to bg-default.
+ */
+:where([role='menu'], [role='listbox'], [data-slot='content'][data-side]) {
+  background-color: var(--ui-bg-elevated) !important;
 }
 
-.dashboard-page-navbar-title-row {
-  max-width: 100%;
-  font-size: var(--ui-font-size-base, 1rem);
-  font-weight: 600;
-  line-height: 1.5;
+/**
+ * Modals / dialogs / slideovers — solid elevated white (not canvas gray).
+ * Nuxt UI defaults content to bg-default (= --ui-bg).
+ */
+:where([role='dialog']),
+:where([role='dialog'] [data-slot='content']),
+:where([role='dialog'][data-slot='content']) {
+  background-color: var(--ui-bg-elevated) !important;
+}
+
+:where([role='dialog'] [data-slot='header']),
+:where([role='dialog'] [data-slot='body']),
+:where([role='dialog'] [data-slot='footer']) {
+  background-color: transparent;
+}
+
+/**
+ * Interactive chrome: consistent pointer + focus ring for buttons, inputs, switches.
+ */
+:is(button, a, [role='button'], [role='tab'], [role='switch'], [role='checkbox'], [role='radio'], [role='combobox']):not(:disabled):not([aria-disabled='true']) {
+  cursor: pointer;
+}
+
+:is(button, a)[data-slot='base']:disabled,
+:is(button, a)[data-slot='base'][aria-disabled='true'],
+input:disabled,
+textarea:disabled,
+select:disabled {
+  cursor: not-allowed;
+}
+
+input[type='text'],
+input[type='search'],
+input[type='email'],
+input[type='password'],
+input[type='url'],
+input[type='number'],
+input[type='date'],
+input[type='datetime-local'],
+input[type='time'],
+textarea,
+select {
+  cursor: text;
+}
+
+input[type='checkbox'],
+input[type='radio'],
+input[type='file'],
+[role='switch'],
+[role='checkbox'],
+[role='radio'] {
+  cursor: pointer;
+}
+
+/* Shared focus ring: :focus-visible only (keyboard / AT), WCAG 2.2 contrast. */
+:is(button, a)[data-slot='base']:focus-visible,
+:is(button, a)[role='button']:focus-visible,
+a:focus-visible,
+[role='switch']:focus-visible,
+[role='tab']:focus-visible,
+[role='checkbox']:focus-visible,
+[role='radio']:focus-visible,
+[role='menuitem']:focus-visible,
+[role='option']:focus-visible,
+.user-menu-header-trigger:focus-visible {
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, #2563eb);
+  outline-offset: var(--focus-ring-offset, 2px);
+}
+
+/* Bordered chrome only: darker border on hover / keyboard focus. */
+.user-menu-header-trigger:hover,
+select:hover:not(:disabled),
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):hover:not(:disabled):not(:focus),
+textarea:hover:not(:disabled):not(:focus) {
+  border-color: var(--input-surface-border-hover, var(--ui-border-accented));
+}
+
+.user-menu-header-trigger:focus-visible,
+select:focus-visible:not(:disabled) {
+  border-color: var(--input-surface-border-hover, var(--ui-border-accented));
+}
+
+/**
+ * Header account trigger — rounded box matching Scan Now (md = 2.5rem).
+ * Initials are flex-centered (no UAvatar offset quirks).
+ */
+.user-menu-header-trigger {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.5rem;
+  background-color: var(--ui-bg-elevated);
   color: var(--ui-text-highlighted);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.dashboard-page-navbar-title {
-  font-size: inherit;
-  font-weight: inherit;
-  line-height: inherit;
+.user-menu-header-trigger:hover,
+.user-menu-header-trigger[data-state='open'] {
+  background-color: var(--ui-bg-muted);
+  border-color: var(--input-surface-border-hover, var(--ui-border-accented));
 }
 
-.dashboard-page-navbar-divider {
-  font-size: inherit;
-  font-weight: 500;
-  line-height: inherit;
-  opacity: 0.55;
+.user-menu-header-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  user-select: none;
 }
 
-.workspace-switcher-trigger--navbar {
-  font-size: inherit;
-  font-weight: inherit;
-  line-height: inherit;
-}
-
-/** Extend navbar border to meet sidebar divider on desktop — not on the divider itself. */
-@media (min-width: 1024px) {
-  .dashboard-page-navbar {
-    position: relative;
-  }
-
-  .dashboard-page-navbar::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: -0.375rem;
-    width: 0.375rem;
-    height: 1px;
-    background: var(--ui-border);
-    pointer-events: none;
-  }
-}
-
-/** Sidebar resize divider — vertical line only; grip centered on that line. */
+/**
+ * Sidebar resize divider — zero layout width so sidebar + panel meet flush.
+ * Hit target and the 1px rule are absolute (do not open a canvas gap).
+ */
 .sidebar-resize-handle {
   position: relative;
   z-index: 30;
-  flex: 0 0 0.75rem;
-  width: 0.75rem;
-  max-width: 0.75rem;
+  flex: 0 0 0;
+  width: 0;
+  max-width: 0;
   align-self: stretch;
-  margin-inline-start: -0.375rem;
-  min-height: 100dvh;
+  margin: 0;
+  min-height: 100%;
+  overflow: visible;
 }
 
-.sidebar-resize-handle::after {
+/** Wider drag target; no fill (layout width is 0 so no gap to paint). */
+.sidebar-resize-handle::before {
   content: '';
   position: absolute;
   inset-block: 0;
-  left: 50%;
-  width: 1px;
-  transform: translateX(-50%);
-  background: var(--ui-border);
-  transition: background-color 0.15s ease;
-  pointer-events: none;
+  left: -0.375rem;
+  width: 0.75rem;
+  z-index: 10;
 }
 
-.sidebar-resize-handle:hover::after,
-.sidebar-resize-handle:focus-visible::after {
-  background: var(--color-border-secondary);
+/* Divider lives on .dashboard-sidebar border-inline-end (full height).
+ * Keep a hover accent on the handle without drawing a second line. */
+.sidebar-resize-handle::after {
+  content: none;
+}
+
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle:focus-visible {
+  /* Accent the sidebar edge while dragging/hovering the handle. */
+  box-shadow: -1px 0 0 0 var(--ui-border-accented, var(--ui-border));
 }
 
 .sidebar-resize-handle-grip {
   position: absolute;
   top: 50%;
-  left: 50%;
+  /* Sit slightly left of the divider so the grip reads as a control, not on the line. */
+  left: -0.35rem;
   z-index: 1;
   display: block;
   transform: translate(-50%, -50%) scale(1);
-  color: var(--color-text-secondary);
+  color: var(--ui-text-muted);
   opacity: 0;
   pointer-events: none;
-  padding: 0.1875rem;
-  border: 1px solid var(--color-border-secondary);
-  border-radius: 0.25rem;
-  background: var(--ui-bg-elevated);
-  box-shadow: 0 1px 2px color-mix(in srgb, black 20%, transparent);
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  padding: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  background: transparent;
+  box-shadow: none;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease;
 }
 
 .sidebar-resize-handle:hover .sidebar-resize-handle-grip,
 .sidebar-resize-handle:focus-visible .sidebar-resize-handle-grip {
   opacity: 1;
-  transform: translate(-50%, -50%) scale(1.2);
+  color: var(--ui-text-highlighted);
+  border-color: var(--ui-border);
+  background: var(--ui-bg-elevated);
+  box-shadow: 0 1px 2px color-mix(in srgb, black 16%, transparent);
+  transform: translate(-50%, -50%) scale(1.05);
 }
 
 /*
- * Segmented controls (date range, Issues/Pages).
- * Default track: sidebar light gray. Hover: soft purple. Selected: high-contrast white.
+ * Legacy segmented control fallback (prefer UTabs overview-date-range-tabs).
+ * Nuxt UI pill style: elevated track, sliding default indicator, muted inactive.
  */
 .a11y-segmented-control {
-  --a11y-segment-track: var(--ui-bg-muted);
+  --a11y-segment-track: var(--ui-bg-elevated);
   --a11y-segment-hover: color-mix(in srgb, var(--ui-text) 8%, transparent);
-  --a11y-segment-selected-bg: var(--ui-bg-elevated);
+  --a11y-segment-selected-bg: var(--ui-bg);
   --a11y-segment-selected-fg: var(--ui-text-highlighted);
   display: inline-flex;
   height: 2rem;
@@ -756,8 +1460,8 @@ a[data-slot="base"].action-solid:hover {
 }
 
 .a11y-segmented-control__btn:focus-visible {
-  outline: 2px solid #6366f1;
-  outline-offset: 1px;
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, #2563eb);
+  outline-offset: var(--focus-ring-offset, 2px);
 }
 
 .a11y-segmented-control__btn[aria-pressed='true'],
@@ -774,7 +1478,6 @@ a[data-slot="base"].action-solid:hover {
   color: var(--a11y-segment-selected-fg);
 }
 
-/* UTabs indicator sits behind the active trigger — keep it white to match. */
 .a11y-segmented-control [data-slot='indicator'] {
   background-color: var(--a11y-segment-selected-bg) !important;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);

@@ -100,26 +100,28 @@ These are the highest-connectivity flows in the codebase (see `graphify-out/GRAP
 
 ## How to run
 
-**Docker (recommended):**
+**Docker production (default for user testing / handoff):**
 
 ```bash
 cp .env.example .env
 # Set PB_ADMIN_EMAIL, PB_ADMIN_PASSWORD, APP_USER_*, NUXT_PUBLIC_*, SCANNER_*
 
-docker compose up -d --build
+# Explicit -f docker-compose.yml so docker-compose.override.yml is NOT merged.
+docker compose -f docker-compose.yml up -d --build
 ```
 
-- Dashboard: http://localhost
-- PocketBase admin (with dev override): http://localhost:8090/_/
+- Dashboard: http://localhost (nginx → production Nuxt image)
+- PocketBase admin: http://localhost/_/ (proxied)
+- Tenant example: http://default.localhost/login
 
-**Dev with hot reload:**
+**Dev with hot reload (only when explicitly needed):**
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.override.yml up
 ```
 
-- Nuxt: http://localhost:3500 (docker-compose.override.yml)
-- PocketBase: http://localhost:8090
+- Nuxt: http://localhost:3500
+- PocketBase: http://localhost:8090/_/
 
 **Local without Docker:**
 
@@ -175,7 +177,16 @@ Agent test order: unit tests first → integration (scanner) → E2E (UI/auth).
 ## Writing and delivery conventions
 
 - Do not use em dashes (`—`) or other long AI-style dashes in copy. Finish the sentence. Start a new one.
-- Once complete, tested and ensured it is all working: push to GitHub and pull a fresh copy so the user can simply open localhost to test.
+- **Always hand off ready to test on the production Docker build (not Nuxt dev).** When finishing work the user will verify in the browser (UI, theme, dashboard, auth, scans), do not stop at code-only. Bring up this repo’s stack in **production mode**, then reply with a short test handoff (URLs + what to check).
+  1. Stop any stale stack holding ports 80 / 3500 / 8090 (including other clones such as `SiteNook-fresh`).
+  2. Start **production** compose only (do **not** load `docker-compose.override.yml`; plain `docker compose up` auto-merges that file and switches web to Nuxt dev):
+     ```bash
+     docker compose -f docker-compose.yml down
+     docker compose -f docker-compose.yml up -d --build
+     ```
+  3. Wait until nginx responds on http://localhost (and tenant URL if relevant, e.g. http://default.localhost) before saying it is ready.
+  4. Use the override / hot-reload stack only when the user explicitly asks for **dev** mode.
+- Once complete, tested and ensured it is all working: push to GitHub and pull a fresh copy when a clean clone is needed; otherwise restarting this repo’s **production** stack is enough for the user to open localhost and test.
 
 ## Reference files (read before large changes)
 
@@ -194,7 +205,7 @@ Agent test order: unit tests first → integration (scanner) → E2E (UI/auth).
 3. Keep diffs minimal; no drive-by refactors.
 4. Run relevant tests before finishing.
 5. Schema changes → new PocketBase migration, not manual DB edits.
-6. When the user asks you to finish and hand off for testing: push to GitHub, then pull a fresh clone and bring Docker up so they can open localhost.
+6. When handing off for testing (always, for UI/frontend work): bring up this repo’s **production** Docker stack (`docker compose -f docker-compose.yml up -d --build`), wait for http://localhost, then give the user URLs and what to check. Do not hand off on the Nuxt dev override unless the user asked for hot reload. Push/fresh-clone only when a clean copy is needed or the user asks.
 
 ## Your first step
 

@@ -124,15 +124,15 @@ const emptyTopFixesMessage = computed(() =>
             Quick stats
           </h4>
           <dl class="grid grid-cols-3 gap-3">
-            <div class="rounded-lg bg-elevated/40 ring-1 ring-default p-3 text-center">
+            <div class="rounded-lg border border-default bg-elevated/40 p-3 text-center">
               <dt class="text-xs text-muted mb-1">Failing rules</dt>
               <dd class="text-lg font-semibold tabular-nums text-default">{{ stats.failingRules }}</dd>
             </div>
-            <div class="rounded-lg bg-elevated/40 ring-1 ring-default p-3 text-center">
+            <div class="rounded-lg border border-default bg-elevated/40 p-3 text-center">
               <dt class="text-xs text-muted mb-1">Occurrences</dt>
               <dd class="text-lg font-semibold tabular-nums text-default">{{ stats.occurrences }}</dd>
             </div>
-            <div class="rounded-lg bg-elevated/40 ring-1 ring-default p-3 text-center">
+            <div class="rounded-lg border border-default bg-elevated/40 p-3 text-center">
               <dt class="text-xs text-muted mb-1">Pages affected</dt>
               <dd class="text-lg font-semibold tabular-nums text-default">{{ stats.pagesAffected }}</dd>
             </div>
@@ -147,7 +147,7 @@ const emptyTopFixesMessage = computed(() =>
             <li
               v-for="fix in topFixes"
               :key="fix.ruleId"
-              class="flex items-start justify-between gap-3 rounded-lg bg-elevated/40 ring-1 ring-default px-3 py-2.5"
+              class="flex items-start justify-between gap-3 rounded-lg border border-default bg-elevated/40 px-3 py-2.5"
             >
               <div class="min-w-0">
                 <p class="text-sm font-medium text-default truncate">{{ fix.ruleName }}</p>

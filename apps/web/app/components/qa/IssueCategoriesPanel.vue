@@ -4,18 +4,19 @@ import { totalOpenQaIssues } from '~/utils/qaIssueBreakdown'
 
 const props = defineProps<{
   rows: QaIssueBreakdownRow[]
+  /** Category currently shown in the info modal (selection highlight). */
   selectedCategoryId?: string | null
 }>()
 
 const emit = defineEmits<{
-  'update:selectedCategoryId': [categoryId: string | null]
+  select: [row: QaIssueBreakdownRow]
 }>()
 
 const hoveredCategoryId = ref<string | null>(null)
 const rowsRef = ref<HTMLElement | null>(null)
 
 const ISSUE_CATEGORIES_TOOLTIP =
-  'Open QA findings from the latest scan, grouped by check type. Select a row to filter the preview tables below.'
+  'Open QA findings from the latest scan, grouped by check type. Select a row for guidance and next steps.'
 
 const openIssueTotal = computed(() =>
   totalOpenQaIssues({
@@ -48,13 +49,6 @@ function isWithinRows(target: EventTarget | null): boolean {
   return Boolean(rowsRef.value?.contains(target))
 }
 
-function onRowClick(row: QaIssueBreakdownRow) {
-  emit(
-    'update:selectedCategoryId',
-    props.selectedCategoryId === row.id ? null : row.id
-  )
-}
-
 function onRowEnter(categoryId: string) {
   hoveredCategoryId.value = categoryId
 }
@@ -76,7 +70,7 @@ function onRowBlur(categoryId: string, event: FocusEvent) {
 
 <template>
   <div
-    class="score-conformance-card flex h-full min-h-0 flex-col gap-3 rounded-lg border border-default bg-elevated/25 p-4 sm:p-5"
+    class="score-conformance-card flex h-full min-h-0 flex-col gap-3 rounded-lg border border-default bg-elevated p-4 sm:p-5"
   >
     <div class="flex min-h-[18px] items-center gap-1.5">
       <p class="text-sm font-bold text-default">
@@ -108,7 +102,7 @@ function onRowBlur(categoryId: string, event: FocusEvent) {
         :bar-percent="barPercent(row.count, row.id)"
         :active="hoveredCategoryId === row.id"
         :selected="selectedCategoryId === row.id"
-        @click="onRowClick(row)"
+        @click="emit('select', row)"
         @mouseenter="onRowEnter(row.id)"
         @mouseleave="onRowLeave(row.id, $event)"
         @focus="onRowEnter(row.id)"

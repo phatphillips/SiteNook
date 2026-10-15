@@ -52,7 +52,7 @@ const deviceMenuOpen = ref(false)
           v-for="issue in contentIssues"
           :key="issue.id"
           type="button"
-          class="inline-flex items-center gap-1.5 rounded-md border border-default bg-elevated/30 px-2 py-1 text-xs transition-colors hover:bg-elevated/60"
+          class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-default bg-elevated px-2 py-1 text-xs transition-colors hover:bg-muted"
           @click="emit('issueClick', issue)"
         >
           <span

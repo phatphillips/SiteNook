@@ -1,7 +1,18 @@
 <script setup lang="ts">
+usePrimaryColor()
+
 const colorMode = useColorMode()
 
 const color = computed(() => themeColorMeta(colorMode.value))
+
+/** Kumo-style stacked toasts: collapse into a pile, expand on hover. */
+const toaster = {
+  position: 'bottom-right' as const,
+  expand: false,
+  duration: 5000,
+  max: 5,
+  progress: false
+}
 
 useHead({
   meta: [
@@ -31,7 +42,7 @@ useSeoMeta({
 </script>
 
 <template>
-  <UApp>
+  <UApp :toaster="toaster">
     <NuxtLoadingIndicator />
 
     <NuxtLayout>

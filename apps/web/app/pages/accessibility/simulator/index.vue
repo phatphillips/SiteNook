@@ -1,84 +1,94 @@
 <script setup lang="ts">
-import type { SimulatorPageRow } from '~/utils/simulatorPages'
-import { ALL_SITES } from '~/composables/useSites'
+import type { Scan } from '~/types/sitenook'
+import { buildContentExplorerSiteRows, type ContentExplorerSiteRow } from '~/utils/contentExplorerSites'
+import { pbRelation } from '~/utils/pbFilter'
+import { pathAfterSelectSite } from '~/utils/workspaceSwitchPath'
+import type { SimulatorVisionId } from '~/utils/simulatorChecks'
 
 definePageMeta({ middleware: 'auth' })
 
-const { siteFilter, isAllSites, resolvedSiteId } = useWorkspaceSiteFilter()
+const route = useRoute()
+const { pb } = usePocketBase()
+const { sites, fetchSites, activeSiteId, selectSite, isAllSites } = useSites()
+const resolvedSiteId = computed(() => (isAllSites.value ? undefined : activeSiteId.value) || undefined)
 
-const simulatorSiteId = computed(() =>
-  !isAllSites.value && resolvedSiteId.value && resolvedSiteId.value !== ALL_SITES
-    ? resolvedSiteId.value
-    : null
-)
+const siteRows = ref<ContentExplorerSiteRow[]>([])
+const sitesLoading = ref(false)
+const visionId = ref<SimulatorVisionId>('none')
+const tabOrder = ref(false)
 
-const { rows, loading, error, load } = useSimulatorPages(simulatorSiteId)
-
-const tableSearch = ref('')
-const initialLoading = computed(() => loading.value && !rows.value.length)
-provide('featurePageBannerLoading', initialLoading)
-
-const footerSummary = computed(() => {
-  if (loading.value && !rows.value.length) return ''
-  const count = rows.value.length
-  if (!count) return ''
-  const scope = isAllSites.value ? 'across all sites' : 'in site target'
-  return `${count.toLocaleString()} ${count === 1 ? 'page' : 'pages'} with open issues ${scope}`
-})
-
-onMounted(() => {
-  void load()
-})
-
-watch([siteFilter, isAllSites], () => {
-  void load()
-})
-
-function onSelect(row: SimulatorPageRow) {
-  if (row.siteId) {
-    navigateTo(`/sites/${row.siteId}/accessibility/simulator/${row.pageId}`)
+async function loadSiteRows() {
+  if (!pb) {
+    siteRows.value = []
     return
   }
-  navigateTo(`/accessibility/simulator/${row.pageId}`)
+  sitesLoading.value = true
+  try {
+    const scansBySiteId: Record<string, Scan[]> = {}
+    await Promise.all(sites.value.map(async (site) => {
+      const scans = await pb!.collection('scans').getList(1, 5, {
+        filter: pbRelation('site', site.id),
+        sort: '-completed_at,-started_at',
+        fields: 'id,status,completed_at,created,pages_crawled'
+      })
+      scansBySiteId[site.id] = scans.items as unknown as Scan[]
+    }))
+    siteRows.value = buildContentExplorerSiteRows(sites.value, scansBySiteId)
+  } catch {
+    siteRows.value = buildContentExplorerSiteRows(sites.value, {})
+  } finally {
+    sitesLoading.value = false
+  }
 }
+
+async function openSite(siteId: string) {
+  selectSite(siteId)
+  const next = pathAfterSelectSite(route.path, siteId)
+    || `/sites/${siteId}/accessibility/simulator`
+  await navigateTo(next)
+}
+
+onMounted(async () => {
+  await fetchSites()
+})
+
+watch([sites, resolvedSiteId], async ([, siteId]) => {
+  if (!siteId) {
+    await loadSiteRows()
+  }
+}, { immediate: true })
+
+watch(resolvedSiteId, () => {
+  visionId.value = 'none'
+})
 </script>
 
 <template>
-  <OrgFeaturePageShell title="Simulator">
-    <div class="space-y-6">
-      <p class="text-sm text-muted max-w-3xl">
-        Open a page to simulate vision impairments and keyboard tab order on a stored HTML preview,
-        then review known accessibility issues for that page.
-      </p>
-
-      <UAlert
-        v-if="error"
-        color="error"
-        variant="subtle"
-        :title="error"
-        icon="i-lucide-alert-circle"
+  <OrgFeaturePageShell
+    title="Simulator"
+    :fluid="Boolean(resolvedSiteId)"
+  >
+    <template #right>
+      <ScanTriggerButton
+        v-if="resolvedSiteId"
+        :site-id="resolvedSiteId"
       />
+    </template>
 
-      <div class="space-y-4">
-        <DataTableToolbar>
-          <template #leading>
-            <TableSearchInput
-              v-model="tableSearch"
-              placeholder="Search pages…"
-              aria-label="Search simulator pages"
-            />
-          </template>
-        </DataTableToolbar>
+    <ContentExplorerSitesTable
+      v-if="!resolvedSiteId"
+      :rows="siteRows"
+      :loading="sitesLoading"
+      heading="All sites"
+      description="Choose a site to simulate vision impairments on crawl page snapshots."
+      @select="openSite"
+    />
 
-        <AccessibilitySimulatorPagesTable
-          v-model:search="tableSearch"
-          :rows="rows"
-          :loading="loading"
-          :footer-summary="footerSummary"
-          :show-site-column="isAllSites"
-          @select="onSelect"
-        />
-      </div>
-    </div>
+    <AccessibilitySimulatorWorkspace
+      v-else
+      v-model:vision-id="visionId"
+      v-model:tab-order="tabOrder"
+      :site-id="resolvedSiteId"
+    />
   </OrgFeaturePageShell>
 </template>

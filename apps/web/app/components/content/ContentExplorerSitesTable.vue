@@ -8,10 +8,15 @@ import {
 } from '~/utils/dataTableUi'
 import { compareTimestampsDesc } from '~/utils/sortTimestamps'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   rows: ContentExplorerSiteRow[]
   loading?: boolean
-}>()
+  heading?: string
+  description?: string
+}>(), {
+  heading: 'All sites',
+  description: 'Choose a site to browse extracted page content from its latest completed scan.'
+})
 
 const emit = defineEmits<{
   select: [siteId: string]
@@ -73,22 +78,22 @@ function formatLastScan(iso: string | null) {
   <section class="space-y-4">
     <div>
       <h2 class="text-lg font-semibold text-highlighted">
-        All sites
+        {{ heading }}
       </h2>
       <p class="text-sm text-muted">
-        Choose a site to browse extracted page content from its latest completed scan.
+        {{ description }}
       </p>
     </div>
 
     <div
       v-if="loading"
-      class="rounded-lg border border-default bg-elevated/25 p-6 text-sm text-muted"
+      class="rounded-lg border border-default bg-elevated p-6 text-sm text-muted"
     >
       Loading sites…
     </div>
     <div
       v-else-if="!sortedRows.length"
-      class="rounded-lg border border-default bg-elevated/25 p-6 text-sm text-muted"
+      class="rounded-lg border border-default bg-elevated p-6 text-sm text-muted"
     >
       No sites yet.
       <NuxtLink
@@ -109,9 +114,10 @@ function formatLastScan(iso: string | null) {
               <UButton
                 color="neutral"
                 variant="ghost"
+                size="sm"
                 label="Site"
-                :icon="sortIcon('site')"
-                class="-mx-2.5"
+                :trailing-icon="sortIcon('site')"
+                class="-mx-2.5 hover:bg-elevated"
                 @click="toggleSort('site')"
               />
             </th>
@@ -119,9 +125,10 @@ function formatLastScan(iso: string | null) {
               <UButton
                 color="neutral"
                 variant="ghost"
+                size="sm"
                 label="Pages"
-                :icon="sortIcon('pages')"
-                class="-mx-2.5"
+                :trailing-icon="sortIcon('pages')"
+                class="-mx-2.5 hover:bg-elevated"
                 @click="toggleSort('pages')"
               />
             </th>
@@ -129,9 +136,10 @@ function formatLastScan(iso: string | null) {
               <UButton
                 color="neutral"
                 variant="ghost"
+                size="sm"
                 label="Last scanned"
-                :icon="sortIcon('lastScan')"
-                class="-mx-2.5"
+                :trailing-icon="sortIcon('lastScan')"
+                class="-mx-2.5 hover:bg-elevated"
                 @click="toggleSort('lastScan')"
               />
             </th>

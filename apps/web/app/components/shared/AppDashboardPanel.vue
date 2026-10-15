@@ -40,19 +40,26 @@ const commercialEnabled = computed(() => {
         class="dashboard-panel-body mx-auto flex w-full min-w-0 flex-col gap-4 sm:gap-6"
         :class="fluid ? undefined : 'max-w-[1400px]'"
       >
+        <div
+          class="dashboard-page-intro hidden min-w-0 flex-col gap-1.5 has-[#dashboard-page-title-slot:not(:empty)]:flex has-[.feature-page-intro]:flex"
+        >
+          <div
+            id="dashboard-page-title-slot"
+            class="empty:hidden"
+          />
+          <FeaturePageBannerSkeleton
+            v-if="!hideFeatureBanner && featureBanner && featureBannerLoading"
+          />
+          <FeaturePageBanner
+            v-else-if="!hideFeatureBanner && featureBanner"
+            :description="featureBanner.description"
+          />
+        </div>
         <template v-if="commercialEnabled">
           <RetentionBanner />
           <TrialBanner />
           <BillingUsageLimitBanner />
         </template>
-        <FeaturePageBannerSkeleton
-          v-if="!hideFeatureBanner && featureBanner && featureBannerLoading"
-        />
-        <FeaturePageBanner
-          v-else-if="!hideFeatureBanner && featureBanner"
-          :title="featureBanner.title"
-          :description="featureBanner.description"
-        />
         <OnboardingChecklist />
         <slot name="body" />
       </div>

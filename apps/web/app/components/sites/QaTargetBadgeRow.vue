@@ -16,11 +16,11 @@ const items = computed(() => qaTargetBadgeItems(props.settings))
 <template>
   <button
     type="button"
-    class="inline-flex h-8 max-w-full flex-wrap items-center gap-1.5 rounded-lg border border-default bg-default px-2.5 py-1 text-sm transition-colors hover:bg-elevated/50 dark:bg-elevated/50"
+    class="inline-flex h-8 max-w-full flex-wrap items-center gap-1.5 rounded-lg border border-default bg-default px-2.5 py-1 text-sm text-default transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring-color)]"
     aria-label="Edit QA report scope"
     @click="emit('edit')"
   >
-    <span class="text-muted shrink-0">QA scope:</span>
+    <span class="shrink-0 text-toned">QA scope:</span>
     <UTooltip
       v-for="item in items"
       :key="item.id"
@@ -28,13 +28,15 @@ const items = computed(() => qaTargetBadgeItems(props.settings))
       :popper="{ placement: 'top' }"
     >
       <span
-        class="inline-flex size-[22px] items-center justify-center rounded-md shrink-0 transition-opacity"
-        :class="item.enabled ? 'bg-elevated/80 text-default' : 'bg-elevated/30 text-muted opacity-50'"
+        class="inline-flex size-[22px] shrink-0 items-center justify-center rounded-md border transition-colors"
+        :class="item.enabled
+          ? 'border-default bg-elevated text-default'
+          : 'border-transparent bg-transparent text-toned opacity-55'"
         :aria-label="item.label"
       >
-        <UIcon :name="item.icon" class="size-3.5" />
+        <UIcon :name="item.icon" class="size-3.5" aria-hidden="true" />
       </span>
     </UTooltip>
-    <UIcon name="i-lucide-pencil" class="size-3.5 shrink-0 text-muted" />
+    <UIcon name="i-lucide-pencil" class="size-3.5 shrink-0 text-toned" aria-hidden="true" />
   </button>
 </template>

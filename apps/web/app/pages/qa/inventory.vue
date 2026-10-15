@@ -1,10 +1,5 @@
 <script setup lang="ts">
-
-
-
 definePageMeta({ middleware: ['auth', 'plan-feature'], planFeature: 'inventory' })
-
-
 
 const {
   tab,
@@ -40,44 +35,19 @@ const {
   showSiteColumn: computed(() => isAllSites.value),
   loadSourcePages
 })
-
 </script>
 
-
-
 <template>
-
   <OrgFeaturePageShell title="Content Inventory">
-
     <UAlert
-
       v-if="error"
-
       class="mb-4"
-
       color="error"
-
       variant="subtle"
-
       :title="error"
-
     />
 
-
-
     <div class="space-y-4">
-      <DataTableToolbar>
-        <template #actions>
-          <UButton
-            icon="i-lucide-download"
-            label="Export to CSV"
-            color="neutral"
-            variant="outline"
-            @click="exportModalOpen = true"
-          />
-        </template>
-      </DataTableToolbar>
-
       <TableExportModal
         v-model:open="exportModalOpen"
         :config="exportConfig"
@@ -86,24 +56,30 @@ const {
         @export="runExport"
       />
 
-    <QaInventoryTablePanel
-      v-model:tab="tab"
-      v-model:search="search"
-      :pages="pages"
-      :assets="assets"
-      :loading="loading"
-      :refreshing="refreshing"
-      :show-site-column="isAllSites"
-      server-paginated
-      :total="total"
-      :page="page"
-      :page-size="perPage"
-      @update:page="page = $event"
-    />
+      <QaInventoryTablePanel
+        v-model:tab="tab"
+        v-model:search="search"
+        :pages="pages"
+        :assets="assets"
+        :loading="loading"
+        :refreshing="refreshing"
+        :show-site-column="isAllSites"
+        server-paginated
+        :total="total"
+        :page="page"
+        :page-size="perPage"
+        @update:page="page = $event"
+      >
+        <template #toolbar-actions>
+          <UButton
+            icon="i-lucide-download"
+            label="Export to CSV"
+            color="neutral"
+            variant="outline"
+            @click="exportModalOpen = true"
+          />
+        </template>
+      </QaInventoryTablePanel>
     </div>
-
   </OrgFeaturePageShell>
-
 </template>
-
-

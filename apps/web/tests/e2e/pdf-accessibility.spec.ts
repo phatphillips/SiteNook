@@ -55,8 +55,8 @@ test('pdf studio deep link controls are reachable from library when a complete P
   // Studio modes + shell landmarks
   await expect(page.getByRole('tab', { name: 'Audit' })).toBeVisible()
   await expect(page.getByRole('tab', { name: 'Convert' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'Compare' })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Generate assisted fix/i })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Before & after' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Generate assisted fix/i })).toHaveCount(0)
   await expect(page.getByLabel('Pages')).toBeVisible()
   await expect(page.getByLabel('Preview')).toBeVisible()
 

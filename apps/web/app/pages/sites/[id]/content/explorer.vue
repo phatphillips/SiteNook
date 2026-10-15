@@ -194,10 +194,7 @@ async function onResetPrompt() {
 </script>
 
 <template>
-  <AppDashboardPanel
-    fluid
-    hide-feature-banner
-  >
+  <AppDashboardPanel fluid>
     <template #header>
       <DashboardPageNavbar title="Content Explorer">
         <template #right>
@@ -218,11 +215,10 @@ async function onResetPrompt() {
       <div class="space-y-3">
         <div
           ref="workspaceRef"
-          class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-default bg-default"
+          class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-default bg-elevated"
           :style="{ height: workspaceHeight }"
         >
           <ContentExplorerToolbar
-            v-model:search="treeSearch"
             v-model:add-prompt="addPrompt"
             v-model:viewport="previewViewport"
             v-model:view-mode="viewMode"

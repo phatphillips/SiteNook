@@ -11,7 +11,6 @@ import {
   shouldSkipPdfDownload,
   type PdfMergeCandidate
 } from './pdfIdentity.js'
-import { generateShareToken } from './validatePdfDocument.js'
 
 const UPLOAD_PRIORITY = 10
 const CRAWL_PRIORITY = 5
@@ -181,8 +180,7 @@ async function ensureCrawlPdfDocument(
       url,
       inventory: row.id,
       filename,
-      status: 'pending',
-      share_token: generateShareToken()
+      status: 'pending'
     })
     documentId = created.id
   } else {

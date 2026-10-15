@@ -35,24 +35,27 @@ SiteNook is a self-hosted web accessibility and QA monitoring platform (an open-
 
 ## How to Run
 
+**Production (default for handoff / user testing):**
+
 ```bash
 cp .env.example .env
 # Set PB_ADMIN_EMAIL, PB_ADMIN_PASSWORD, and related vars
 
-docker compose up -d --build
+# Explicit -f so docker-compose.override.yml is NOT auto-merged (that file enables Nuxt dev).
+docker compose -f docker-compose.yml up -d --build
 ```
 
 Dashboard: http://localhost  
-PocketBase admin (with override): http://localhost:8090/_/
+PocketBase admin (proxied): http://localhost/_/
 
-**Development (hot reload):**
+**Development (hot reload) — only when explicitly needed:**
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.override.yml up
 ```
 
-- Nuxt dev: http://localhost:3000  
-- PocketBase: http://localhost:8090  
+- Nuxt dev: http://localhost:3500  
+- PocketBase: http://localhost:8090/_/
 
 **Local without Docker:**
 

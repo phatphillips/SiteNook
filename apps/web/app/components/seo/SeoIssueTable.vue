@@ -21,7 +21,7 @@ import {
   SEO_ISSUE_TABLE_SKELETON_COLUMNS,
   SEO_ISSUE_TABLE_WITH_SITE_SKELETON_COLUMNS
 } from '~/utils/dataTableSkeletonColumns'
-import { DATA_TABLE_UI } from '~/utils/dataTableUi'
+import { DATA_TABLE_UI, dataTableSortableHeader } from '~/utils/dataTableUi'
 import { scrollDataTableIntoView } from '~/utils/dataTableScroll'
 
 type SeoIssueRow = SeoIssue & { siteId?: string, siteName?: string }
@@ -137,26 +137,7 @@ function sortableHeader(
   label: string,
   align: 'left' | 'right' | 'center' = 'left'
 ) {
-  const isSorted = column.getIsSorted()
-  const button = h(UButton, {
-    color: 'neutral',
-    variant: 'ghost',
-    size: 'xs',
-    label,
-    icon: isSorted
-      ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow')
-      : 'i-lucide-arrow-up-down',
-    class: align === 'left' ? '-ms-2' : '',
-    ui: {
-      base: 'font-medium',
-      leadingIcon: 'size-3.5'
-    },
-    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
-  })
-  if (align === 'left') return button
-  return h('div', {
-    class: align === 'right' ? 'flex justify-end' : 'flex justify-center'
-  }, [button])
+  return dataTableSortableHeader(column, label, align)
 }
 
 const columns = computed((): TableColumn<SeoIssueRow>[] => {

@@ -65,7 +65,7 @@ async function renderThumbnails(data: ArrayBuffer) {
     while (cursor <= pdf.numPages) {
       const pageNum = cursor++
       const page = await pdf.getPage(pageNum)
-      const viewport = page.getViewport({ scale: 0.22 })
+      const viewport = page.getViewport({ scale: 0.18 })
       const canvas = document.createElement('canvas')
       canvas.width = Math.ceil(viewport.width)
       canvas.height = Math.ceil(viewport.height)
@@ -153,48 +153,53 @@ onBeforeUnmount(() => {
 function onSelect(page: number) {
   emit('selectPage', page)
 }
+
+function pageAriaLabel(page: number): string {
+  const count = issueCountByPage.value.get(page) ?? 0
+  if (count > 0) {
+    return `Go to page ${page}, ${count} ${count === 1 ? 'issue' : 'issues'}`
+  }
+  return `Go to page ${page}`
+}
 </script>
 
 <template>
   <aside
-    class="pdf-pages-rail flex h-full min-h-0 flex-col border-default bg-elevated"
+    id="pdf-nav-pane-thumbnails"
+    class="pdf-pages-rail flex h-full min-h-0 w-[160px] shrink-0 flex-col border-r border-default bg-elevated"
     aria-label="Pages"
   >
-    <div class="shrink-0 border-b border-default px-3 py-2.5">
-      <h2 class="text-sm font-semibold text-highlighted">
+    <div class="flex h-14 shrink-0 flex-col justify-center border-b border-default px-2.5">
+      <h2 class="text-sm font-semibold leading-tight text-highlighted">
         Pages
       </h2>
-      <p class="text-xs text-muted">
+      <p class="text-xs leading-tight text-muted">
         Jump to a page
       </p>
     </div>
 
-    <div
-      class="min-h-0 flex-1 overflow-auto p-2
-        max-lg:flex max-lg:flex-row max-lg:gap-2 max-lg:overflow-x-auto max-lg:overflow-y-hidden
-        lg:space-y-2"
-    >
+    <div class="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-1.5">
       <div
         v-if="loading && !thumbs.length"
-        class="flex flex-col gap-2 max-lg:flex-row"
+        class="flex flex-col gap-1.5"
       >
         <div
           v-for="n in 4"
           :key="n"
-          class="h-28 w-20 shrink-0 animate-pulse rounded-md bg-muted/60 max-lg:h-24"
+          class="mx-auto h-24 w-[104px] shrink-0 animate-pulse rounded-md bg-muted/60"
         />
       </div>
 
       <p
         v-else-if="error"
-        class="px-1 py-4 text-xs text-error"
+        class="px-1 py-3 text-sm text-error"
       >
         {{ error }}
       </p>
 
       <p
         v-else-if="!thumbs.length"
-        class="px-1 py-4 text-xs text-muted"
+        class="px-1 py-3 text-sm text-muted"
       >
         No pages yet.
       </p>
@@ -203,24 +208,24 @@ function onSelect(page: number) {
         v-for="thumb in thumbs"
         :key="thumb.page"
         type="button"
-        class="group relative flex w-full shrink-0 flex-col items-center gap-1 rounded-lg border p-1.5
-          transition-all duration-150 ease-out max-lg:w-20
-          hover:border-primary/40 hover:bg-muted/40 active:scale-[0.98]
-          focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+        class="group relative mx-auto flex w-full max-w-[120px] shrink-0 flex-col items-center gap-0.5 rounded-md border p-1
+          transition-colors duration-150
+          hover:border-primary/40 hover:bg-muted/40
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         :class="currentPage === thumb.page
-          ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary/30'
+          ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
           : 'border-transparent'"
-        :aria-label="`Go to page ${thumb.page}`"
+        :aria-label="pageAriaLabel(thumb.page)"
         :aria-current="currentPage === thumb.page ? 'page' : undefined"
         @click="onSelect(thumb.page)"
       >
         <img
           :src="thumb.url"
           :alt="`Page ${thumb.page}`"
-          class="max-h-32 w-full rounded object-contain bg-white shadow-sm"
+          class="max-h-28 w-full rounded-sm object-contain bg-white shadow-sm"
           draggable="false"
         >
-        <span class="text-[10px] font-medium text-muted group-hover:text-highlighted">
+        <span class="text-xs font-medium text-muted group-hover:text-highlighted">
           {{ thumb.page }}
         </span>
         <UBadge
@@ -228,7 +233,7 @@ function onSelect(page: number) {
           color="error"
           variant="solid"
           size="sm"
-          class="absolute top-1 right-1 min-w-5 justify-center px-1"
+          class="absolute top-0.5 right-0.5 min-w-4 justify-center px-1"
         >
           {{ issueCountByPage.get(thumb.page) }}
         </UBadge>

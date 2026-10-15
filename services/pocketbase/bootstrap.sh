@@ -68,7 +68,7 @@ curl -sf -X PATCH "$PB_URL/api/collections/users" \
       "minPasswordLength": 8
     },
     "authAlert": {
-      "enabled": false
+      "enabled": true
     },
     "fields+": [{
       "name": "role",

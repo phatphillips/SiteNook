@@ -15,7 +15,7 @@ import {
   ISSUES_TABLE_READONLY_SKELETON_COLUMNS,
   ISSUES_TABLE_SKELETON_COLUMNS
 } from '~/utils/dataTableSkeletonColumns'
-import { DATA_TABLE_UI } from '~/utils/dataTableUi'
+import { DATA_TABLE_UI, dataTableSortableHeader } from '~/utils/dataTableUi'
 import { scrollDataTableIntoView } from '~/utils/dataTableScroll'
 import { issuesTableScrollKey } from '~/utils/issuesTableScroll'
 import {
@@ -216,9 +216,9 @@ const ISSUES_TABLE_UI = {
   base: 'w-full table-fixed border-collapse',
   thead: 'border-b border-default',
   tbody: '',
-  th: 'p-0 px-4 py-2.5 text-xs font-medium text-muted whitespace-nowrap overflow-hidden',
-  td: 'p-0 px-4 py-2.5 align-middle text-sm text-default whitespace-nowrap overflow-hidden',
-  tr: 'data-[expanded=true]:bg-elevated/50'
+  th: `${DATA_TABLE_UI.th} whitespace-nowrap overflow-hidden`,
+  td: `${DATA_TABLE_UI.td} whitespace-nowrap overflow-hidden`,
+  tr: 'data-[expanded=true]:bg-elevated'
 }
 
 watch(
@@ -333,26 +333,7 @@ function sortableHeader(
   label: string,
   align: 'left' | 'right' | 'center' = 'left'
 ) {
-  const isSorted = column.getIsSorted()
-  const button = h(UButton, {
-    color: 'neutral',
-    variant: 'ghost',
-    size: 'xs',
-    label,
-    icon: isSorted
-      ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow')
-      : 'i-lucide-arrow-up-down',
-    class: align === 'left' ? '-ms-2' : '',
-    ui: {
-      base: 'font-medium',
-      leadingIcon: 'size-3.5'
-    },
-    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
-  })
-  if (align === 'left') return button
-  return h('div', {
-    class: align === 'right' ? 'flex justify-end' : 'flex justify-center'
-  }, [button])
+  return dataTableSortableHeader(column, label, align)
 }
 
 function rowActions(row: Row<AccessibilityIssue>) {
@@ -1050,7 +1031,7 @@ defineExpose({
 }
 
 .issues-table-scroll--overflow-right {
-  box-shadow: inset -22px 0 22px -12px color-mix(in srgb, #000 24%, transparent 76%);
+  box-shadow: inset -12px 0 12px -8px color-mix(in srgb, #000 12%, transparent 88%);
 }
 
 .issues-table-panel :deep(.issues-table-scroll [data-slot='root']) {
@@ -1069,7 +1050,7 @@ defineExpose({
 .issues-table-panel :deep(.issues-table-scroll th),
 .issues-table-panel :deep(.issues-table-scroll td) {
   border-right: none;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg));
 }
 
 /* Flexible column. Absorbs leftover width so metrics sit on the right edge. */
@@ -1175,7 +1156,7 @@ defineExpose({
   min-width: 0;
   overflow: visible;
   position: relative;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg));
 }
 
 @media (max-width: 767px) {
@@ -1223,12 +1204,12 @@ defineExpose({
   position: sticky;
   z-index: 3;
   overflow: visible;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg));
 }
 
 .issues-table-panel :deep(thead .issues-table-sticky-col) {
   z-index: 5;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg));
 }
 
 .issues-table-panel :deep(.issues-table-sticky-col--1) {
@@ -1295,15 +1276,15 @@ defineExpose({
   right: 0;
   bottom: 0;
   z-index: 12;
-  width: 28px;
+  width: 12px;
   pointer-events: none;
   opacity: 0;
   transition: opacity 180ms ease;
   border-top-right-radius: 0.5rem;
   background: linear-gradient(
     to left,
-    color-mix(in srgb, #000 32%, transparent 68%) 0%,
-    color-mix(in srgb, #000 16%, transparent 84%) 50%,
+    color-mix(in srgb, #000 14%, transparent 86%) 0%,
+    color-mix(in srgb, #000 6%, transparent 94%) 50%,
     transparent 100%
   );
 }
@@ -1323,7 +1304,7 @@ defineExpose({
   background: linear-gradient(
     to right,
     transparent 0%,
-    var(--ui-bg) 100%
+    var(--table-surface-bg, var(--ui-bg)) 100%
   );
 }
 
@@ -1358,11 +1339,11 @@ defineExpose({
 }
 
 .issues-table-panel :deep(tr[data-expanded='true'] td:not(.issues-table-sticky-col)) {
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 
 .issues-table-panel :deep(tr[data-expanded='true'] .issues-table-sticky-col) {
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 
 /* Keep a divider under the Issue row when expanded. */
@@ -1381,11 +1362,11 @@ defineExpose({
   padding-top: 0 !important;
   padding-bottom: 0 !important;
   border-top: none;
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 
 .issues-table-panel :deep(tbody td[colspan]) {
-  background-color: var(--ui-bg);
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
   border-bottom: 1px solid color-mix(in srgb, var(--ui-border) 90%, transparent 10%);
 }
 

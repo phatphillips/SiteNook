@@ -100,7 +100,7 @@ onMounted(() => {
 
       <div
         v-if="loading && !crawlAudit"
-        class="mb-6 rounded-lg border border-default bg-elevated/25 p-5 animate-pulse"
+        class="mb-6 rounded-lg border border-default bg-elevated p-5 animate-pulse"
         aria-hidden="true"
       >
         <div class="h-4 w-40 rounded bg-muted/40 mb-4" />

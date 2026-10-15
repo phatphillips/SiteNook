@@ -1,34 +1,26 @@
 <script setup lang="ts">
 const props = defineProps<{
-  title: string
   description?: string
 }>()
 
-const titleId = useId()
 const slots = useSlots()
 const hasDescriptionSlot = computed(() => Boolean(slots.description))
+const hasDescription = computed(() => hasDescriptionSlot.value || Boolean(props.description))
 </script>
 
 <template>
-  <header
+  <div
+    v-if="hasDescription || $slots.actions"
     class="feature-page-intro min-w-0"
-    :aria-labelledby="titleId"
   >
-    <h2
-      :id="titleId"
-      class="text-base font-semibold text-highlighted sm:text-lg"
-    >
-      {{ props.title }}
-    </h2>
     <div
       v-if="hasDescriptionSlot"
-      class="mt-1.5"
     >
       <slot name="description" />
     </div>
     <p
       v-else-if="props.description"
-      class="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted"
+      class="max-w-3xl text-sm leading-relaxed text-muted"
     >
       {{ props.description }}
     </p>
@@ -38,5 +30,5 @@ const hasDescriptionSlot = computed(() => Boolean(slots.description))
     >
       <slot name="actions" />
     </div>
-  </header>
+  </div>
 </template>

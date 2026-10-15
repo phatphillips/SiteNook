@@ -4,10 +4,14 @@ import type { SiteFileRow } from '~/utils/crawlAuditDisplay'
 import { buildSiteFileRows } from '~/utils/crawlAuditDisplay'
 import type { SeoCrawlAudit } from '~/types/sitenook'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   audit?: SeoCrawlAudit | null
   issues?: SeoIssue[]
-}>()
+  /** When true, render as a section without the outer card chrome (e.g. inside a modal). */
+  embedded?: boolean
+}>(), {
+  embedded: false
+})
 
 const emit = defineEmits<{
   'view-issue': [issue: SeoIssue]
@@ -45,45 +49,94 @@ function onAction(row: SiteFileRow) {
 </script>
 
 <template>
-  <UCard v-if="rows.length" :ui="{ body: 'p-4 sm:p-6' }">
-    <h3 class="text-sm font-medium mb-4">Site files</h3>
-    <ul class="space-y-4">
-      <li
-        v-for="row in rows"
-        :key="row.key"
-        class="border-b border-default last:border-0 pb-4 last:pb-0"
-      >
-        <div class="flex items-start gap-2">
-          <TrafficLightDot :status="row.status" class="mt-1" />
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span class="font-medium text-sm">{{ row.label }}</span>
-              <span class="text-xs text-muted">
-                {{ row.found ? 'Found' : 'Missing' }}
-              </span>
+  <template v-if="rows.length">
+    <div v-if="embedded" class="space-y-4">
+      <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">
+        Site files
+      </h3>
+      <ul class="space-y-4">
+        <li
+          v-for="row in rows"
+          :key="`embedded-${row.key}`"
+          class="border-b border-default last:border-0 pb-4 last:pb-0"
+        >
+          <div class="flex items-start gap-2">
+            <TrafficLightDot :status="row.status" class="mt-1" />
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span class="font-medium text-sm">{{ row.label }}</span>
+                <span class="text-xs text-muted">
+                  {{ row.found ? 'Found' : 'Missing' }}
+                </span>
+              </div>
+              <a
+                v-if="row.url"
+                :href="row.url"
+                target="_blank"
+                rel="noopener"
+                class="text-xs text-primary hover:underline break-all"
+              >
+                {{ row.url }}
+              </a>
+              <p class="mt-1 text-sm text-muted">{{ row.summary }}</p>
+              <UButton
+                v-if="actionLabel(row)"
+                variant="link"
+                size="xs"
+                class="mt-1 px-0"
+                @click="onAction(row)"
+              >
+                {{ actionLabel(row) }} →
+              </UButton>
             </div>
-            <a
-              v-if="row.url"
-              :href="row.url"
-              target="_blank"
-              rel="noopener"
-              class="text-xs text-primary hover:underline break-all"
-            >
-              {{ row.url }}
-            </a>
-            <p class="text-sm text-muted mt-1">{{ row.summary }}</p>
-            <UButton
-              v-if="actionLabel(row)"
-              variant="link"
-              size="xs"
-              class="px-0 mt-1"
-              @click="onAction(row)"
-            >
-              {{ actionLabel(row) }} →
-            </UButton>
           </div>
-        </div>
-      </li>
-    </ul>
-  </UCard>
+        </li>
+      </ul>
+    </div>
+
+    <UCard
+      v-else
+      :ui="{ root: 'bg-elevated border border-default', body: 'p-4 sm:p-6' }"
+    >
+      <h3 class="mb-4 text-sm font-medium">Site files</h3>
+      <ul class="space-y-4">
+        <li
+          v-for="row in rows"
+          :key="row.key"
+          class="border-b border-default last:border-0 pb-4 last:pb-0"
+        >
+          <div class="flex items-start gap-2">
+            <TrafficLightDot :status="row.status" class="mt-1" />
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span class="font-medium text-sm">{{ row.label }}</span>
+                <span class="text-xs text-muted">
+                  {{ row.found ? 'Found' : 'Missing' }}
+                </span>
+              </div>
+              <a
+                v-if="row.url"
+                :href="row.url"
+                target="_blank"
+                rel="noopener"
+                class="text-xs text-primary hover:underline break-all"
+              >
+                {{ row.url }}
+              </a>
+              <p class="mt-1 text-sm text-muted">{{ row.summary }}</p>
+              <UButton
+                v-if="actionLabel(row)"
+                variant="link"
+                size="xs"
+                class="mt-1 px-0"
+                @click="onAction(row)"
+              >
+                {{ actionLabel(row) }} →
+              </UButton>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </UCard>
+  </template>
 </template>

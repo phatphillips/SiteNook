@@ -60,14 +60,16 @@ describe('pdfStructureViews', () => {
     expect(isPdfInspectorPaneView('docx')).toBe(false)
   })
 
-  it('aliases legacy structure mode to convert', () => {
+  it('aliases legacy structure and compare modes', () => {
     expect(normalizePdfStudioMode('structure')).toBe('convert')
+    expect(normalizePdfStudioMode('compare')).toBe('audit')
     expect(parsePdfStudioQuery({ mode: 'structure', view1: 'json', view2: 'markdown' })).toEqual({
       mode: 'convert',
       view1: 'json',
       view2: 'markdown',
       content: 'markdown'
     })
+    expect(parsePdfStudioQuery({ mode: 'compare' }).mode).toBe('audit')
   })
 
   it('maps bbox to css overlay', () => {

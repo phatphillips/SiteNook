@@ -1,46 +1,54 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   title?: string
 }>()
+
+const slots = useSlots()
+const hasTitle = computed(() => Boolean(props.title || slots.title))
+const hasHeaderActions = computed(() => Boolean(slots.right || slots.trailing || slots.default))
 </script>
 
 <template>
-  <UDashboardNavbar
-    class="dashboard-page-navbar -ms-[0.375rem] ps-[0.375rem]"
-    :toggle="{
-      color: 'neutral',
-      variant: 'ghost',
-      ui: { leadingIcon: 'size-4' }
-    }"
+  <!--
+    Title teleports into the scrolling panel body.
+    Actions teleports into the app header.
+    Host stays in the panel #header slot so existing call sites keep working.
+  -->
+  <div
+    class="dashboard-page-navbar-host"
+    aria-hidden="true"
+  />
+
+  <Teleport
+    v-if="hasTitle"
+    defer
+    to="#dashboard-page-title-slot"
   >
-    <template #leading>
-      <UDashboardSidebarCollapse
-        :ui="{ leadingIcon: 'size-4' }"
-      />
-    </template>
-    <template #title>
-      <div class="dashboard-page-navbar-title-row flex min-w-0 items-center gap-2 sm:gap-2.5">
-        <WorkspaceSwitcher variant="navbar" />
-        <span
-          class="dashboard-page-navbar-divider shrink-0 text-muted"
-          aria-hidden="true"
-        >/</span>
-        <h1 class="dashboard-page-navbar-title min-w-0 shrink">
-          <slot name="title">
-            <span class="block truncate">{{ title }}</span>
-          </slot>
-        </h1>
-      </div>
-    </template>
-    <template v-if="$slots.trailing" #trailing>
+    <h1
+      v-if="!$slots.title"
+      class="dashboard-page-heading"
+    >
+      {{ title }}
+    </h1>
+    <div
+      v-else
+      class="dashboard-page-heading"
+      role="heading"
+      aria-level="1"
+    >
+      <slot name="title" />
+    </div>
+  </Teleport>
+
+  <Teleport
+    v-if="hasHeaderActions"
+    defer
+    to="#dashboard-app-header-actions"
+  >
+    <div class="dashboard-app-header-actions">
       <slot name="trailing" />
-    </template>
-    <template #right>
-      <div class="flex items-center gap-2 sm:gap-3">
-        <slot name="right" />
-        <UserMenu variant="header" />
-      </div>
-    </template>
-    <slot />
-  </UDashboardNavbar>
+      <slot />
+      <slot name="right" />
+    </div>
+  </Teleport>
 </template>

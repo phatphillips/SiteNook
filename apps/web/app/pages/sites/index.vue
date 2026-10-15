@@ -76,7 +76,7 @@ async function confirmDelete() {
 <template>
   <AppDashboardPanel id="sites">
     <template #header>
-      <DashboardPageNavbar title="Sites">
+      <DashboardPageNavbar>
         <template v-if="canWrite" #right>
           <UButton
             v-if="selectedCount"

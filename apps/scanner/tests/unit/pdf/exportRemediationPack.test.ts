@@ -11,8 +11,7 @@ describe('exportRemediationPack', () => {
       structureHtml: '<h1>Demo</h1>',
       structureMarkdown: '# Demo',
       issueCsv: 'rule_id,title\nR1,Missing tags\n',
-      summary: { before: 10, after: 4 },
-      shareUrl: 'https://example.test/pdf-report/abc'
+      summary: { before: 10, after: 4 }
     })
     expect(zip.slice(0, 2).toString()).toBe('PK')
     expect(zip.length).toBeGreaterThan(100)

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { h, resolveComponent } from 'vue'
 import { upperFirst } from 'scule'
-import { getSortedRowModel } from '@tanstack/vue-table'
+import { getPaginationRowModel, getSortedRowModel } from '@tanstack/vue-table'
 import type { TableColumn } from '@nuxt/ui'
 import type { Column, SortingState } from '@tanstack/vue-table'
 import type { SpellingIssue } from '~/types/sitenook'
@@ -9,7 +9,7 @@ import {
   SPELLING_TABLE_SKELETON_COLUMNS,
   SPELLING_TABLE_WITH_SITE_SKELETON_COLUMNS
 } from '~/utils/dataTableSkeletonColumns'
-import { DATA_TABLE_UI } from '~/utils/dataTableUi'
+import { DATA_TABLE_UI, dataTableSortableHeader } from '~/utils/dataTableUi'
 import { scrollDataTableIntoView } from '~/utils/dataTableScroll'
 import { parsePageUrl } from '~/utils/issueExplanation'
 
@@ -27,16 +27,19 @@ const props = withDefaults(defineProps<{
   /** When false, parent owns Misspellings / Review tabs in the toolbar. */
   showTabs?: boolean
   tab?: 'errors' | 'review'
+  /** Fill a parent-sized workspace (table scrolls; footer stays pinned). */
+  fill?: boolean
 }>(), {
   showSiteColumn: false,
   serverPaginated: false,
   total: 0,
   page: 1,
-  pageSize: 20,
+  pageSize: 25,
   loading: false,
   footerSummary: undefined,
   showTabs: true,
-  tab: 'errors'
+  tab: 'errors',
+  fill: false
 })
 
 const emit = defineEmits<{
@@ -50,10 +53,12 @@ const dictionary = ref<string[]>([])
 const newWord = ref('')
 const sorting = ref<SortingState>([{ id: 'word', desc: false }])
 const columnVisibility = ref<Record<string, boolean>>({})
+const pagination = ref({ pageIndex: 0, pageSize: props.pageSize })
 const table = useTemplateRef<{
   tableApi?: {
     getAllColumns: () => Array<{ id: string, getCanHide: () => boolean, getIsVisible: () => boolean }>
     getColumn: (id: string) => { toggleVisibility: (v: boolean) => void } | undefined
+    getState: () => { pagination: { pageIndex: number, pageSize: number } }
   }
 }>('table')
 
@@ -83,6 +88,10 @@ const displayed = computed(() => {
   })
 })
 
+const filteredRowCount = computed(() =>
+  props.serverPaginated ? props.total : displayed.value.length
+)
+
 const skeletonLayout = computed(() =>
   props.showSiteColumn
     ? SPELLING_TABLE_WITH_SITE_SKELETON_COLUMNS
@@ -100,22 +109,7 @@ function sortableHeader(
   column: Column<SpellingIssue, unknown>,
   label: string
 ) {
-  const isSorted = column.getIsSorted()
-  return h(UButton, {
-    color: 'neutral',
-    variant: 'ghost',
-    size: 'xs',
-    label,
-    icon: isSorted
-      ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow')
-      : 'i-lucide-arrow-up-down',
-    class: '-ms-2',
-    ui: {
-      base: 'font-medium',
-      leadingIcon: 'size-3.5'
-    },
-    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
-  })
+  return dataTableSortableHeader(column, label)
 }
 
 function pageUrlCell(url: string) {
@@ -198,17 +192,47 @@ const showInitialSkeleton = computed(
   () => stableLoading.value && !props.items.length
 )
 
-const showPagination = computed(
-  () => props.serverPaginated && props.total > props.pageSize
+const activePageSize = computed(() =>
+  props.serverPaginated ? props.pageSize : pagination.value.pageSize
 )
+
+const showPagination = computed(
+  () => filteredRowCount.value > activePageSize.value
+)
+
+const pageStart = computed(() => {
+  if (filteredRowCount.value === 0) return 0
+  if (props.serverPaginated) {
+    return (props.page - 1) * props.pageSize + 1
+  }
+  return pagination.value.pageIndex * pagination.value.pageSize + 1
+})
+
+const pageEnd = computed(() => {
+  if (props.serverPaginated) {
+    return Math.min(props.page * props.pageSize, props.total)
+  }
+  return Math.min(
+    (pagination.value.pageIndex + 1) * pagination.value.pageSize,
+    filteredRowCount.value
+  )
+})
 
 const resolvedFooterSummary = computed(() => {
   if (props.footerSummary) return props.footerSummary
-  if (!showPagination.value) return ''
-  const pageStart = props.total === 0 ? 0 : (props.page - 1) * props.pageSize + 1
-  const pageEnd = Math.min(props.page * props.pageSize, props.total)
-  return `Showing ${pageStart}-${pageEnd} of ${props.total.toLocaleString()}`
+  if (!filteredRowCount.value) return ''
+  if (!showPagination.value) {
+    const category = props.tab === 'errors' ? 'misspellings' : 'words to review'
+    return `Showing ${filteredRowCount.value.toLocaleString()} ${category}`
+  }
+  return `Showing ${pageStart.value}-${pageEnd.value} of ${filteredRowCount.value.toLocaleString()}`
 })
+
+const tablePaginationOptions = computed(() =>
+  props.serverPaginated
+    ? undefined
+    : { getPaginationRowModel: getPaginationRowModel() }
+)
 
 function addWord() {
   if (newWord.value.trim()) {
@@ -221,8 +245,29 @@ const tablePanelRef = useTemplateRef<HTMLElement>('tablePanelRef')
 
 function onPaginationChange(nextPage: number) {
   scrollDataTableIntoView(tablePanelRef.value)
+  if (props.serverPaginated) {
+    emit('update:page', nextPage)
+    return
+  }
+  pagination.value.pageIndex = Math.max(0, nextPage - 1)
   emit('update:page', nextPage)
 }
+
+watch(
+  () => props.pageSize,
+  (size) => {
+    pagination.value.pageSize = size
+  }
+)
+
+watch(
+  [() => props.tab, globalFilter, () => props.items],
+  () => {
+    if (!props.serverPaginated) {
+      pagination.value.pageIndex = 0
+    }
+  }
+)
 
 watch(
   () => props.page,
@@ -241,11 +286,17 @@ defineExpose({
 </script>
 
 <template>
-  <div class="grid lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2 space-y-4">
+  <div
+    class="grid gap-4 lg:grid-cols-3 lg:gap-6"
+    :class="fill ? 'h-full min-h-0' : ''"
+  >
+    <div
+      class="lg:col-span-2"
+      :class="fill ? 'flex min-h-0 flex-col' : 'space-y-4'"
+    >
       <div
         v-if="showTabs"
-        class="flex gap-2"
+        class="flex shrink-0 gap-2"
       >
         <UButton
           :variant="tabModel === 'errors' ? 'solid' : 'outline'"
@@ -261,43 +312,56 @@ defineExpose({
         </UButton>
       </div>
 
-      <div ref="tablePanelRef" class="table-surface overflow-x-auto">
+      <div
+        ref="tablePanelRef"
+        class="table-surface"
+        :class="fill
+          ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+          : 'overflow-x-auto'"
+      >
         <DataTableSkeleton
           v-if="showInitialSkeleton"
           :rows="pageSize"
           :layout="skeletonLayout"
         />
-        <UTable
+        <div
           v-else
-          ref="table"
-          v-model:sorting="sorting"
-          v-model:column-visibility="columnVisibility"
-          :data="displayed"
-          :columns="columns"
-          :loading="stableLoading && !!items.length"
-          :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
-          :ui="{
-            ...DATA_TABLE_UI,
-            base: 'w-full min-w-[40rem] border-collapse'
-          }"
+          :class="fill ? 'min-h-0 flex-1 overflow-auto' : undefined"
         >
-          <template #loading>
-            <DataTableSkeleton
-              :rows="Math.min(pageSize, 5)"
-              :layout="skeletonLayout"
-              :show-header="false"
-            />
-          </template>
-          <template #empty>
-            <div class="py-10 text-center text-sm text-muted">
-              No spelling issues in this category yet.
-            </div>
-          </template>
-        </UTable>
+          <UTable
+            ref="table"
+            v-model:sorting="sorting"
+            v-model:column-visibility="columnVisibility"
+            v-model:pagination="pagination"
+            :data="displayed"
+            :columns="columns"
+            :loading="stableLoading && !!items.length"
+            :sorting-options="{ getSortedRowModel: getSortedRowModel() }"
+            :pagination-options="tablePaginationOptions"
+            :ui="{
+              ...DATA_TABLE_UI,
+              root: fill ? 'relative w-full' : DATA_TABLE_UI.root,
+              base: 'w-full min-w-[40rem] border-collapse'
+            }"
+          >
+            <template #loading>
+              <DataTableSkeleton
+                :rows="Math.min(pageSize, 5)"
+                :layout="skeletonLayout"
+                :show-header="false"
+              />
+            </template>
+            <template #empty>
+              <div class="py-10 text-center text-sm text-muted">
+                No spelling issues in this category yet.
+              </div>
+            </template>
+          </UTable>
+        </div>
 
         <div
           v-if="(showPagination || resolvedFooterSummary) && !showInitialSkeleton"
-          class="flex flex-wrap items-center justify-between gap-2 border-t border-default px-4 py-2"
+          class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-default px-4 py-2"
         >
           <p
             v-if="resolvedFooterSummary"
@@ -311,9 +375,9 @@ defineExpose({
           />
           <UPagination
             v-if="showPagination"
-            :page="page"
-            :items-per-page="pageSize"
-            :total="total"
+            :page="serverPaginated ? page : pagination.pageIndex + 1"
+            :items-per-page="activePageSize"
+            :total="filteredRowCount"
             class="ms-auto"
             @update:page="onPaginationChange"
           />
@@ -321,7 +385,10 @@ defineExpose({
       </div>
     </div>
 
-    <div class="table-surface p-4 space-y-3 h-fit">
+    <div
+      class="table-surface space-y-3 p-4"
+      :class="fill ? 'min-h-0 overflow-auto' : 'h-fit'"
+    >
       <h3 class="text-sm font-medium">
         Custom Dictionary
       </h3>

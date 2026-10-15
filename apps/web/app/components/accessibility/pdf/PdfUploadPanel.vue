@@ -43,7 +43,7 @@ function onDrop(event: DragEvent) {
 </script>
 
 <template>
-  <div class="rounded-lg border border-default bg-elevated/25 p-4 sm:p-5 space-y-3">
+  <div class="rounded-lg border border-default bg-elevated p-4 sm:p-5 space-y-3">
     <div class="flex flex-wrap items-end justify-between gap-3">
       <h2 class="text-base font-semibold text-highlighted">
         Upload PDFs
@@ -65,7 +65,7 @@ function onDrop(event: DragEvent) {
       </div>
     </div>
     <div
-      class="rounded-lg border-2 border-dashed p-6 text-center transition-colors sm:p-8"
+      class="rounded-lg border-2 border-dashed bg-elevated p-6 text-center transition-colors sm:p-8"
       :class="dragOver && canUpload ? 'border-primary bg-primary/5' : 'border-default'"
       @dragover.prevent="dragOver = true"
       @dragleave.prevent="dragOver = false"

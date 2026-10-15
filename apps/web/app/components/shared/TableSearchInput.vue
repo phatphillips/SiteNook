@@ -71,7 +71,7 @@ function onKeydown(event: KeyboardEvent) {
       class="w-full"
       :ui="{
         root: 'relative inline-flex items-center w-full h-8',
-        base: 'h-8 min-h-8 py-0 text-sm text-default bg-elevated ring-muted placeholder:text-muted',
+        base: 'h-8 min-h-8 py-0 text-sm text-[var(--input-surface-fg)] bg-[var(--input-surface-bg)] ring-0 border border-[var(--input-surface-border)] placeholder:text-muted hover:bg-[var(--input-surface-hover-bg)]',
         leading: 'ps-2.5',
         leadingIcon: 'size-4 text-muted'
       }"

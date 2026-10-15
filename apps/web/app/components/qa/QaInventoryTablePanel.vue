@@ -6,7 +6,7 @@ import type { Column, SortingState } from '@tanstack/vue-table'
 import type { InventoryPageRow } from '~/types/sitenook'
 import type { OrgInventoryTab } from '~/composables/useOrgInventory'
 import { INVENTORY_TABLE_SKELETON_COLUMNS } from '~/utils/dataTableSkeletonColumns'
-import { DATA_TABLE_UI } from '~/utils/dataTableUi'
+import { DATA_TABLE_UI, dataTableSortableHeader } from '~/utils/dataTableUi'
 import { formatInventoryFileSize, inventoryRowSizeBytes } from '~/utils/inventoryPages'
 import { isInventoryImageUrl, isInventoryPdfUrl, normalizeInventoryUrl } from '~/utils/inventoryUrl'
 import { scrollDataTableIntoView } from '~/utils/dataTableScroll'
@@ -139,21 +139,7 @@ watch(
 )
 
 function sortableHeader<T>(column: Column<T, unknown>, label: string, align: 'left' | 'right' | 'center' = 'left') {
-  const isSorted = column.getIsSorted()
-  const button = h(UButton, {
-    color: 'neutral',
-    variant: 'ghost',
-    label,
-    icon: isSorted
-      ? (isSorted === 'asc' ? 'i-lucide-arrow-up-narrow-wide' : 'i-lucide-arrow-down-wide-narrow')
-      : 'i-lucide-arrow-up-down',
-    class: '-mx-2.5',
-    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc')
-  })
-  if (align === 'left') return button
-  return h('div', {
-    class: align === 'right' ? 'flex justify-end' : 'flex justify-center'
-  }, [button])
+  return dataTableSortableHeader(column, label, align)
 }
 
 function assetSiteId(row: AssetRow): string {
@@ -401,20 +387,22 @@ watch(
         :items="tabItems"
         class="min-w-0"
       />
-      <TableSearchInput
-        v-model="searchModel"
-        placeholder="Search URL…"
-        aria-label="Search inventory"
-        class="ms-auto"
-      />
-      <UBadge
-        v-if="refreshing"
-        color="neutral"
-        variant="subtle"
-        size="sm"
-      >
-        Updating…
-      </UBadge>
+      <div class="ms-auto flex min-w-0 flex-wrap items-center gap-2">
+        <TableSearchInput
+          v-model="searchModel"
+          placeholder="Search URL…"
+          aria-label="Search inventory"
+        />
+        <slot name="toolbar-actions" />
+        <UBadge
+          v-if="refreshing"
+          color="neutral"
+          variant="subtle"
+          size="sm"
+        >
+          Updating…
+        </UBadge>
+      </div>
     </div>
 
     <div class="table-surface inventory-table-surface">

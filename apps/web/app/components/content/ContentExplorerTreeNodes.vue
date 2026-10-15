@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import type { ContentExplorerEntry, ContentExplorerTreeNode } from '~/types/sitenook'
 
-defineProps<{
+withDefaults(defineProps<{
   nodes: ContentExplorerTreeNode[]
   selectedIds: Set<string>
   expanded: Set<string>
   activeEntryId?: string | null
-}>()
+  showMultiSelect?: boolean
+}>(), {
+  showMultiSelect: true
+})
 
 const emit = defineEmits<{
   select: [entry: ContentExplorerEntry]
@@ -53,7 +56,7 @@ function rowIcon(node: ContentExplorerTreeNode, isOpen: boolean): string {
         />
 
         <UCheckbox
-          v-if="node.entry"
+          v-if="showMultiSelect && node.entry"
           :model-value="selectedIds.has(node.entry.id)"
           :disabled="!node.entry.hasContent"
           :aria-label="`Select ${node.label}`"
@@ -98,6 +101,7 @@ function rowIcon(node: ContentExplorerTreeNode, isOpen: boolean): string {
           :selected-ids="selectedIds"
           :expanded="expanded"
           :active-entry-id="activeEntryId"
+          :show-multi-select="showMultiSelect"
           @select="emit('select', $event)"
           @toggle="(entry, checked) => emit('toggle', entry, checked)"
           @toggle-folder="emit('toggle-folder', $event)"

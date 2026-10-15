@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto'
 import type PocketBase from 'pocketbase'
 import { extractPdfMetadata } from './extractPdfMetadata.js'
 import { mapVeraPdfReport } from './mapVeraPdfReport.js'
@@ -24,10 +23,6 @@ async function enqueueStructureAfterValidate(pb: PocketBase, documentId: string)
       err instanceof Error ? err.message : err
     )
   }
-}
-
-export function generateShareToken(): string {
-  return randomBytes(24).toString('base64url')
 }
 
 export async function validatePdfDocument(

@@ -184,7 +184,7 @@ watch(
           </div>
         </div>
 
-        <div class="rounded-lg border border-default bg-elevated/25 p-4 space-y-3">
+        <div class="rounded-lg border border-default bg-elevated p-4 space-y-3">
           <p class="text-sm text-default">{{ method.summary }}</p>
           <p class="text-xs text-muted">
             <span class="font-medium text-default">Best practice:</span>

@@ -156,14 +156,14 @@ const {
         class="space-y-4"
       >
         <template v-if="summaryInitialLoading">
-          <div class="rounded-lg border border-default bg-elevated/25 p-4 sm:p-5">
+          <div class="rounded-lg border border-default bg-elevated p-4 sm:p-5">
             <AccessibilityReadabilityScoreGaugeSkeleton />
           </div>
           <AccessibilityReadabilityDistributionPanelSkeleton />
         </template>
 
         <template v-else-if="summaryPages.length">
-          <div class="rounded-lg border border-default bg-elevated/25 p-4 sm:p-5">
+          <div class="rounded-lg border border-default bg-elevated p-4 sm:p-5">
             <AccessibilityReadabilityScoreGauge
               :method-id="activeMethodId"
               :position="gaugePosition"

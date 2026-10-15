@@ -80,15 +80,17 @@ Copying `.env.example` seeds these defaults (change them before any real deploym
 | `APP_USER_EMAIL` / `APP_USER_PASSWORD` | Your first login to the dashboard (seeded on first boot) |
 | `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` | Admin login for the PocketBase database |
 
-Then:
+Then start the **production** stack (this is the default way to run and test SiteNook):
 
 ```bash
-docker compose up -d --build
+# Use -f docker-compose.yml so the optional override file is NOT loaded.
+# (A plain `docker compose up` would auto-merge docker-compose.override.yml and run Nuxt in dev mode.)
+docker compose -f docker-compose.yml up -d --build
 ```
 
 Go to **http://localhost** and sign in with the dashboard email/password above (or whatever you set in `.env`).
 
-> First build can take a few minutes. It's downloading a real browser to scan with.
+> First build can take a few minutes. It's compiling the Nuxt production image and downloading a real browser for the scanner.
 
 ### Your first scan
 
@@ -96,7 +98,7 @@ Go to **http://localhost** and sign in with the dashboard email/password above (
 2. Hit **Scan Now**
 3. Once it's done, check **Accessibility**, **QA**, or **SEO**
 
-Done scanning for now? `docker compose down`. Your data stays put in the `pb_data` volume.
+Done scanning for now? `docker compose -f docker-compose.yml down`. Your data stays put in the `pb_data` volume.
 
 ### Optional extras
 
@@ -105,19 +107,19 @@ Done scanning for now? `docker compose down`. Your data stays put in the `pb_dat
 # Set TYPESENSE_ENABLED=1 in .env (this is the default)
 
 # Add PDF accessibility checking
-docker compose --profile pdf up -d --build
+docker compose -f docker-compose.yml --profile pdf up -d --build
 ```
 
-### Developing locally
+### Production vs development
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.override.yml up
-```
+| Mode | Command | What you get |
+|------|---------|--------------|
+| **Production (default)** | `docker compose -f docker-compose.yml up -d --build` | Built Nuxt image behind nginx on **http://localhost**. Use this for normal use and for reviewing UI changes. |
+| **Development (hot reload)** | `docker compose -f docker-compose.yml -f docker-compose.override.yml up` | Nuxt dev server on **http://localhost:3500**, PocketBase admin on **http://localhost:8090/_/**. Only when you are editing frontend code and want live reload. |
 
-- Dashboard: http://localhost:3500
-- Database: http://localhost:8090
+Important: if `docker-compose.override.yml` is present, Docker Compose merges it automatically unless you pass `-f docker-compose.yml` alone. That is why the production commands above always include `-f docker-compose.yml`.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run tests and which package manager goes where.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run tests and which package manager goes where. More command detail: [docs/operations/commands.md](docs/operations/commands.md).
 
 ---
 

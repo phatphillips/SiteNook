@@ -453,24 +453,16 @@ function runExport(options: import('~/utils/tableExportScope').TableExportOption
             </div>
           </template>
           <template #actions>
-            <UButton
-              icon="i-lucide-history"
+            <TableToolbarMenuButton
               label="History"
-              color="neutral"
-              variant="outline"
-              size="sm"
-              class="max-lg:aspect-square max-lg:!px-2"
-              :ui="{ base: 'h-8', label: 'hidden lg:inline' }"
+              icon="i-lucide-history"
+              aria-label="History"
               @click="historyOpen = true"
             />
-            <UButton
-              icon="i-lucide-download"
+            <TableToolbarMenuButton
               label="Export to CSV"
-              color="neutral"
-              variant="outline"
-              size="sm"
-              class="max-lg:aspect-square max-lg:!px-2"
-              :ui="{ base: 'h-8', label: 'hidden lg:inline' }"
+              icon="i-lucide-download"
+              aria-label="Export to CSV"
               @click="exportModalOpen = true"
             />
           </template>

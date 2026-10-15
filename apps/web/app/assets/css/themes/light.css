@@ -7,7 +7,7 @@
  */
 :root.light,
 .light {
-  --ui-primary: #3f3f46;
+  /* --ui-primary is owned by Nuxt UI (appConfig.ui.colors.primary). */
   --ui-secondary: #71717a;
   --ui-success: #00a155;
   --ui-info: #2563eb;
@@ -21,16 +21,28 @@
   --ui-text-highlighted: #18181b;
   --ui-text-inverted: #fafafa;
 
-  /* Slightly cool grey canvas; cards/panels lift to white. */
-  --ui-bg: #f4f4f5;
-  --ui-bg-muted: #ebebed;
+  /* Cool grey canvas (darker than cards so white elevated surfaces lift clearly). */
+  --ui-bg: #e8e8ec;
+  --ui-bg-muted: #dedee3;
   --ui-bg-elevated: #ffffff;
-  --ui-bg-accented: #e4e4e7;
+  --ui-bg-accented: #d4d4d8;
   --ui-bg-inverted: #27272a;
 
-  --ui-border: #e4e4e7;
-  --ui-border-muted: #ececee;
-  --ui-border-accented: #d4d4d8;
+  /* Score overview: donut remainder + conformance bar tracks. */
+  --score-donut-track: rgba(24, 24, 27, 0.12);
+  --score-bar-track: rgba(24, 24, 27, 0.1);
+
+  --score-chip-track: #e4e4e7;
+  --score-chip-fill: #3f3f46;
+  --score-chip-fill-hover: var(--ui-primary);
+  --score-chip-text: #18181b;
+  --score-chip-text-on-fill: #ffffff;
+  --score-chip-text-on-hover: #000000;
+
+  /* Darker chrome lines: header, sidebar divider, section cards (`border-default`). */
+  --ui-border: #c0c0c0;
+  --ui-border-muted: #d4d4d4;
+  --ui-border-accented: #b0b0b0;
   --ui-border-inverted: #3f3f46;
 
   --color-background-secondary: rgba(24, 24, 27, 0.04);
@@ -44,17 +56,34 @@
   --color-text-secondary: #71717a;
   --color-border-secondary: rgba(24, 24, 27, 0.1);
   --color-border-tertiary: rgba(24, 24, 27, 0.06);
-  --color-chart-line: #00c16a;
-  --color-chart-line-rgb: 0, 193, 106;
+  /* Chart line + RGB are set at runtime from the active primary (primaryColor plugin). */
 
   /* Soft charcoal CTA — readable, not pure black. */
   --color-action-solid: #3f3f46;
   --color-action-solid-text: #fafafa;
 
+  /* Sidebar rail + shared surfaces. */
+  --sidebar-bg: #fafafa;
   /* Active nav: soft fill on the light rail (not white-on-white). */
   --sidebar-nav-active-bg: #ebebed;
   --sidebar-nav-hover-bg: rgba(24, 24, 27, 0.05);
   --sidebar-nav-active-shadow: none;
+  --sidebar-nav-fg: #3f3f46;
+  --sidebar-nav-icon: #52525b;
+  /* Tables / expanded issue panels: solid white (not sidebar off-white). */
+  --table-surface-bg: #ffffff;
+  --table-surface-border: #c0c0c0;
+  --control-surface-bg: #d9d9dc;
+  --control-surface-hover-bg: #cbcbcf;
+  --control-surface-fg: #18181b;
+  --input-surface-bg: #ffffff;
+  --input-surface-hover-bg: #ffffff;
+  --input-surface-border: #c0c0c0;
+  --input-surface-border-hover: #8f8f8f;
+  --input-surface-fg: #18181b;
+  --focus-ring-color: #2563eb;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
 }
 
 .light .auth-page {

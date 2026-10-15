@@ -16,7 +16,7 @@ const tabItems = [
     size="sm"
     class="issues-view-tabs h-8 shrink-0"
     :ui="{
-      list: 'relative flex h-8 p-0.5 rounded-lg bg-default dark:bg-elevated/50 border border-default w-auto',
+      list: 'relative flex h-8 p-0.5 rounded-lg bg-elevated border border-default w-auto',
       indicator: 'inset-y-0.5 rounded-md shadow-sm bg-white dark:bg-white',
       trigger: [
         'h-7 grow justify-center px-2 sm:px-3 text-sm font-medium min-w-0',

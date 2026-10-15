@@ -12,6 +12,8 @@ import {
 import { seoTargetSummary } from '~/utils/seoRules'
 import { getSiteHostname, isValidHttpUrl } from '~/utils/scanConfig'
 
+type SettingsTab = 'accessibility' | 'qa' | 'seo' | 'notifications'
+
 const props = defineProps<{
   site: Site | null
 }>()
@@ -32,7 +34,7 @@ const toast = useToast()
 const name = ref('')
 const url = ref('')
 const settingsState = reactive<SiteSettings>(getDefaultSiteSettings())
-const accordionOpen = ref<string | string[]>(['accessibility'])
+const activeTab = ref<SettingsTab>('accessibility')
 const saving = ref(false)
 const scanning = ref(false)
 const showDeleteConfirm = ref(false)
@@ -49,11 +51,6 @@ const wcagConformanceItems = [
   { label: 'Level A', value: 'A', badge: 'A', badgeClass: 'site-target-badge site-target-badge--a' },
   { label: 'Level AA', value: 'AA', badge: 'AA', badgeClass: 'site-target-badge site-target-badge--aa' },
   { label: 'Level AAA', value: 'AAA', badge: 'AAA', badgeClass: 'site-target-badge site-target-badge--aaa' }
-]
-
-const issueTypeItems = [
-  { label: 'Issues', value: 'includeIssues', icon: 'i-lucide-circle-alert', iconClass: 'text-error' },
-  { label: 'Potential issues', value: 'includePotentialIssues', icon: 'i-lucide-triangle-alert', iconClass: 'text-warning' }
 ]
 
 const spellLanguageItems = [
@@ -79,28 +76,25 @@ const notifyEnabled = computed({
   }
 })
 
-const accordionItems = computed(() => [
-  {
-    label: `Accessibility  ›  ${accessibilityTargetSummary(settingsState)}`,
-    value: 'accessibility',
-    slot: 'accessibility' as const
-  },
-  {
-    label: `Quality Assurance  ›  ${qaTargetSummary(settingsState)}`,
-    value: 'qa',
-    slot: 'qa' as const
-  },
-  {
-    label: `SEO  ›  ${seoTargetSummary(settingsState)}`,
-    value: 'seo',
-    slot: 'seo' as const
-  },
-  {
-    label: `Notifications  ›  ${notificationsTargetSummary(settingsState)}`,
-    value: 'notifications',
-    slot: 'notifications' as const
+const tabItems = [
+  { label: 'Accessibility', value: 'accessibility' as const, icon: 'i-lucide-accessibility' },
+  { label: 'Quality Assurance', value: 'qa' as const, icon: 'i-lucide-shield-check' },
+  { label: 'SEO', value: 'seo' as const, icon: 'i-lucide-search' },
+  { label: 'Notifications', value: 'notifications' as const, icon: 'i-lucide-bell' }
+]
+
+const tabSummary = computed(() => {
+  switch (activeTab.value) {
+    case 'accessibility':
+      return accessibilityTargetSummary(settingsState)
+    case 'qa':
+      return qaTargetSummary(settingsState)
+    case 'seo':
+      return seoTargetSummary(settingsState)
+    case 'notifications':
+      return notificationsTargetSummary(settingsState)
   }
-])
+})
 
 function resetForm() {
   const site = resolvedSite.value
@@ -117,7 +111,7 @@ watch(open, async (isOpen) => {
   try {
     await refreshSite(site.id)
     resetForm()
-    accordionOpen.value = ['accessibility']
+    activeTab.value = 'accessibility'
   } catch (e: unknown) {
     formError.value = String(e)
   }
@@ -204,10 +198,14 @@ async function confirmDelete() {
     v-model:open="open"
     title="Site settings"
     :description="hostname"
-    :ui="{ content: 'sm:max-w-3xl', description: 'text-muted' }"
+    :ui="{
+      content: 'sm:max-w-4xl',
+      description: 'text-muted',
+      body: 'min-h-[40rem] max-h-[min(44rem,calc(100dvh-10rem))] overflow-y-auto'
+    }"
   >
     <template v-if="resolvedSite" #body>
-      <div class="space-y-6 max-h-[70vh] scroll-region">
+      <div class="space-y-4">
         <p class="text-sm text-muted">
           Configure how this site appears in reports. The scanner always records every finding; these settings filter what counts toward your site target.
         </p>
@@ -223,160 +221,164 @@ async function confirmDelete() {
 
         <UAlert v-if="formError" color="error" variant="subtle" :title="formError" />
 
-        <UAccordion
-          v-model="accordionOpen"
-          type="multiple"
-          :items="accordionItems"
-          :unmount-on-hide="false"
-          class="space-y-1"
-        >
-          <template #accessibility-body>
-            <div class="space-y-5 pt-2">
-              <UFormField label="WCAG version">
-                <URadioGroup
-                  v-model="settingsState.wcagVersion"
-                  :items="wcagVersionItems"
-                  orientation="horizontal"
-                  variant="table"
-                />
-              </UFormField>
+        <UTabs
+          v-model="activeTab"
+          :content="false"
+          :items="tabItems"
+          color="info"
+          variant="link"
+          size="md"
+          class="w-full site-settings-tabs"
+          :ui="{
+            list: 'gap-1 border-b border-default pb-0',
+            trigger: 'group relative grow gap-1.5 rounded-md px-2.5 py-1.5 font-medium text-muted transition-colors hover:bg-elevated/50 hover:text-highlighted data-[state=active]:text-info',
+            leadingIcon: 'size-5 shrink-0 text-dimmed transition-colors group-hover:text-default group-data-[state=active]:text-info'
+          }"
+        />
+        <p class="text-sm text-muted">{{ tabSummary }}</p>
 
-              <UFormField label="WCAG conformance">
-                <URadioGroup
-                  v-model="settingsState.wcagConformance"
-                  :items="wcagConformanceItems.map(item => ({ label: item.label, value: item.value }))"
-                  orientation="horizontal"
-                  variant="table"
-                />
-                <div class="flex flex-wrap gap-2 mt-2">
-                  <span
-                    v-for="item in wcagConformanceItems"
-                    :key="item.value"
-                    :class="item.badgeClass"
-                  >{{ item.badge }}</span>
-                </div>
-              </UFormField>
+        <div v-show="activeTab === 'accessibility'" class="space-y-5">
+          <UFormField label="WCAG version">
+            <URadioGroup
+              v-model="settingsState.wcagVersion"
+              :items="wcagVersionItems"
+              orientation="horizontal"
+              variant="table"
+            />
+          </UFormField>
 
-              <UFormField label="ARIA conformance">
-                <UCheckbox
-                  v-model="settingsState.ariaConformance"
-                  label="WAI-ARIA authoring practices"
-                >
-                  <template #label>
-                    <span class="inline-flex items-center gap-2">
-                      WAI-ARIA authoring practices
-                      <span class="site-target-badge site-target-badge--aria">ARIA</span>
-                    </span>
-                  </template>
-                </UCheckbox>
-              </UFormField>
-
-              <UFormField label="Best practices">
-                <UCheckbox v-model="settingsState.bestPractices">
-                  <template #label>
-                    <span class="inline-flex items-center gap-2">
-                      Accessibility best practices
-                      <span class="site-target-badge site-target-badge--bp">S</span>
-                    </span>
-                  </template>
-                </UCheckbox>
-              </UFormField>
-
-              <UFormField label="Page depth weighting">
-                <UCheckbox
-                  v-model="settingsState.depthWeightedScoring"
-                  label="Weight shallow pages more heavily in scores"
-                />
-                <p class="text-xs text-muted mt-1">
-                  When enabled, homepage and top-level pages influence the accessibility and QA scores more than deep pages.
-                </p>
-              </UFormField>
-
-              <UFormField label="Issue type">
-                <div class="flex flex-wrap gap-4">
-                  <UCheckbox v-model="settingsState.includeIssues">
-                    <template #label>
-                      <span class="inline-flex items-center gap-2">
-                        <UIcon name="i-lucide-circle-alert" class="size-4 text-error" />
-                        Issues
-                      </span>
-                    </template>
-                  </UCheckbox>
-                  <UCheckbox v-model="settingsState.includePotentialIssues">
-                    <template #label>
-                      <span class="inline-flex items-center gap-2">
-                        <UIcon name="i-lucide-triangle-alert" class="size-4 text-warning" />
-                        Potential issues
-                      </span>
-                    </template>
-                  </UCheckbox>
-                </div>
-              </UFormField>
+          <UFormField label="WCAG conformance">
+            <URadioGroup
+              v-model="settingsState.wcagConformance"
+              :items="wcagConformanceItems.map(item => ({ label: item.label, value: item.value }))"
+              orientation="horizontal"
+              variant="table"
+            />
+            <div class="flex flex-wrap gap-2 mt-2">
+              <span
+                v-for="item in wcagConformanceItems"
+                :key="item.value"
+                :class="item.badgeClass"
+              >{{ item.badge }}</span>
             </div>
-          </template>
+          </UFormField>
 
-          <template #qa-body>
-            <div class="space-y-4 pt-2">
-              <UFormField label="Check broken links">
-                <USwitch v-model="settingsState.checkLinks" />
-              </UFormField>
-              <UFormField label="Spell check">
-                <USwitch v-model="settingsState.checkSpelling" />
-              </UFormField>
-              <UFormField v-if="settingsState.checkSpelling" label="Language">
-                <USelectMenu v-model="settingsState.spellLanguage" :items="spellLanguageItems" value-key="value" />
-              </UFormField>
-              <UFormField label="Readability scoring">
-                <USwitch v-model="settingsState.checkReadability" />
-              </UFormField>
-              <UFormField label="Run custom policies">
-                <USwitch v-model="settingsState.runPolicies" />
-              </UFormField>
-            </div>
-          </template>
+          <UFormField label="ARIA conformance">
+            <UCheckbox
+              v-model="settingsState.ariaConformance"
+              label="WAI-ARIA authoring practices"
+            >
+              <template #label>
+                <span class="inline-flex items-center gap-2">
+                  WAI-ARIA authoring practices
+                  <span class="site-target-badge site-target-badge--aria">ARIA</span>
+                </span>
+              </template>
+            </UCheckbox>
+          </UFormField>
 
-          <template #seo-body>
-            <div class="space-y-4 pt-2">
-              <UFormField label="SEO checks">
-                <USwitch v-model="settingsState.checkSeo" />
-              </UFormField>
-              <UFormField label="Structured data checks">
-                <USwitch v-model="settingsState.checkStructuredData" :disabled="!settingsState.checkSeo" />
-              </UFormField>
-              <div class="grid sm:grid-cols-2 gap-4">
-                <UFormField label="Title min length">
-                  <UInput v-model.number="settingsState.seoTitleMinLength" type="number" min="10" max="80" />
-                </UFormField>
-                <UFormField label="Title max length">
-                  <UInput v-model.number="settingsState.seoTitleMaxLength" type="number" min="40" max="120" />
-                </UFormField>
-                <UFormField label="Description min length">
-                  <UInput v-model.number="settingsState.seoDescMinLength" type="number" min="50" max="200" />
-                </UFormField>
-                <UFormField label="Description max length">
-                  <UInput v-model.number="settingsState.seoDescMaxLength" type="number" min="120" max="320" />
-                </UFormField>
-                <UFormField label="Thin content threshold (words)">
-                  <UInput v-model.number="settingsState.thinContentWordThreshold" type="number" min="100" max="2000" />
-                </UFormField>
-              </div>
-            </div>
-          </template>
+          <UFormField label="Best practices">
+            <UCheckbox v-model="settingsState.bestPractices">
+              <template #label>
+                <span class="inline-flex items-center gap-2">
+                  Accessibility best practices
+                  <span class="site-target-badge site-target-badge--bp">S</span>
+                </span>
+              </template>
+            </UCheckbox>
+          </UFormField>
 
-          <template #notifications-body>
-            <div class="space-y-4 pt-2">
-              <UFormField label="Email on completion">
-                <USwitch v-model="notifyEnabled" />
-              </UFormField>
-              <UFormField v-if="notifyEnabled" label="Email address">
-                <UInput v-model="settingsState.notifyEmail" type="email" />
-              </UFormField>
-              <UFormField label="Show diff from last scan">
-                <USwitch v-model="settingsState.diffFromPrevious" />
-              </UFormField>
+          <UFormField label="Page depth weighting">
+            <UCheckbox
+              v-model="settingsState.depthWeightedScoring"
+              label="Weight shallow pages more heavily in scores"
+            />
+            <p class="text-xs text-muted mt-1">
+              When enabled, homepage and top-level pages influence the accessibility and QA scores more than deep pages.
+            </p>
+          </UFormField>
+
+          <UFormField label="Issue type">
+            <div class="flex flex-wrap gap-4">
+              <UCheckbox v-model="settingsState.includeIssues">
+                <template #label>
+                  <span class="inline-flex items-center gap-2">
+                    <UIcon name="i-lucide-circle-alert" class="size-4 text-error" />
+                    Issues
+                  </span>
+                </template>
+              </UCheckbox>
+              <UCheckbox v-model="settingsState.includePotentialIssues">
+                <template #label>
+                  <span class="inline-flex items-center gap-2">
+                    <UIcon name="i-lucide-triangle-alert" class="size-4 text-warning" />
+                    Potential issues
+                  </span>
+                </template>
+              </UCheckbox>
             </div>
-          </template>
-        </UAccordion>
+          </UFormField>
+        </div>
+
+        <div v-show="activeTab === 'qa'" class="space-y-4">
+          <UFormField label="Check broken links">
+            <USwitch v-model="settingsState.checkLinks" />
+          </UFormField>
+          <UFormField label="Spell check">
+            <USwitch v-model="settingsState.checkSpelling" />
+          </UFormField>
+          <UFormField v-if="settingsState.checkSpelling" label="Language">
+            <USelectMenu v-model="settingsState.spellLanguage" :items="spellLanguageItems" value-key="value" />
+          </UFormField>
+          <UFormField label="Readability scoring">
+            <USwitch v-model="settingsState.checkReadability" />
+          </UFormField>
+          <UFormField label="Run custom policies">
+            <USwitch v-model="settingsState.runPolicies" />
+          </UFormField>
+        </div>
+
+        <div v-show="activeTab === 'seo'" class="space-y-4">
+          <UFormField label="SEO checks">
+            <USwitch v-model="settingsState.checkSeo" />
+          </UFormField>
+          <UFormField label="Structured data checks">
+            <USwitch v-model="settingsState.checkStructuredData" :disabled="!settingsState.checkSeo" />
+          </UFormField>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <UFormField label="Title min length">
+              <UInput v-model.number="settingsState.seoTitleMinLength" type="number" min="10" max="80" />
+            </UFormField>
+            <UFormField label="Title max length">
+              <UInput v-model.number="settingsState.seoTitleMaxLength" type="number" min="40" max="120" />
+            </UFormField>
+            <UFormField label="Description min length">
+              <UInput v-model.number="settingsState.seoDescMinLength" type="number" min="50" max="200" />
+            </UFormField>
+            <UFormField label="Description max length">
+              <UInput v-model.number="settingsState.seoDescMaxLength" type="number" min="120" max="320" />
+            </UFormField>
+            <UFormField label="Thin content threshold (words)">
+              <UInput v-model.number="settingsState.thinContentWordThreshold" type="number" min="100" max="2000" />
+            </UFormField>
+          </div>
+        </div>
+
+        <div v-show="activeTab === 'notifications'" class="space-y-4">
+          <UFormField label="Email on completion">
+            <USwitch v-model="notifyEnabled" />
+          </UFormField>
+          <UFormField v-if="notifyEnabled" label="Email address">
+            <UInput
+              :model-value="settingsState.notifyEmail ?? ''"
+              type="email"
+              @update:model-value="settingsState.notifyEmail = String($event || '')"
+            />
+          </UFormField>
+          <UFormField label="Show diff from last scan">
+            <USwitch v-model="settingsState.diffFromPrevious" />
+          </UFormField>
+        </div>
       </div>
     </template>
 
@@ -430,38 +432,3 @@ async function confirmDelete() {
   </UModal>
 </template>
 
-<style scoped>
-.site-target-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  color: #fff;
-}
-
-.site-target-badge--a {
-  background: #c2185b;
-}
-
-.site-target-badge--aa {
-  background: #7b1fa2;
-}
-
-.site-target-badge--aaa {
-  background: linear-gradient(135deg, #3949ab, #7b1fa2);
-}
-
-.site-target-badge--aria {
-  background: #1565c0;
-}
-
-.site-target-badge--bp {
-  background: #0d47a1;
-}
-</style>

@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import type { PdfDocument, PdfIssue } from '~/types/sitenook'
+import type { PdfDocument, PdfIssue, PdfStructureOutlineItem } from '~/types/sitenook'
 import type { PdfContentPaneView, PdfStudioMode } from '~/utils/pdfStructureViews'
-import { fitPdfPreviewScale } from '~/utils/pdfStructureViews'
 import { fetchAuthedPdfBuffer } from '~/utils/fetchAuthedPdf'
+import PdfNavRail, { type PdfNavMode } from '~/components/accessibility/pdf/PdfNavRail.vue'
+import PdfOutlineNav from '~/components/accessibility/pdf/PdfOutlineNav.vue'
 import PdfPageThumbnails from '~/components/accessibility/pdf/PdfPageThumbnails.vue'
 import PdfPreviewViewer from '~/components/accessibility/pdf/PdfPreviewViewer.vue'
 import PdfAuditContext from '~/components/accessibility/pdf/PdfAuditContext.vue'
 import PdfConvertContext from '~/components/accessibility/pdf/PdfConvertContext.vue'
 
 const props = defineProps<{
-  mode: Extract<PdfStudioMode, 'audit' | 'convert'>
+  mode: PdfStudioMode
   document: PdfDocument
   fileUrl: string | null
   issues: PdfIssue[]
@@ -29,22 +30,13 @@ const emit = defineEmits<{
 const { pb } = usePocketBase()
 
 const previewRef = useTemplateRef('previewRef')
-const previewColumnRef = useTemplateRef<HTMLElement>('previewColumnRef')
+const navMode = ref<PdfNavMode>('thumbnails')
+const selectedOutlineId = ref<string | number | null>(null)
 const currentPage = ref(props.initialPage && props.initialPage > 0 ? props.initialPage : 1)
 const pdfData = shallowRef<ArrayBuffer | null>(null)
 const sourceLoading = ref(false)
 const sourceError = ref('')
-/** Natural PDF page size in points (scale 1). */
-const naturalPageSize = ref<{ width: number, height: number } | null>(null)
-const previewColumnWidth = ref(0)
 let loadGeneration = 0
-let columnResizeObserver: ResizeObserver | null = null
-
-const PANE_HEADER_PX = 52
-const PREVIEW_PAD_PX = 48
-const SHELL_MIN_PX = 480
-const SHELL_MAX_PX = 920
-const SHELL_FALLBACK_PX = 640
 
 const selectedIssue = computed(() =>
   props.issues.find(issue => issue.id === props.selectedIssueId) ?? null
@@ -55,32 +47,6 @@ const highlightLabel = computed(() =>
 const highlightPage = computed(() =>
   props.mode === 'audit' ? (selectedIssue.value?.page_number ?? null) : null
 )
-
-/**
- * Shell height from page aspect × preview column width.
- * Uses natural PDF metrics + column WIDTH only. Never fitted canvas height —
- * so ResizeObserver re-fits cannot recurse into shell height.
- */
-const shellHeightPx = computed(() => {
-  const page = naturalPageSize.value
-  const colW = previewColumnWidth.value
-  if (!page || page.width <= 0 || page.height <= 0 || colW <= 0) {
-    return SHELL_FALLBACK_PX
-  }
-  const scale = fitPdfPreviewScale(page.width, colW, PREVIEW_PAD_PX)
-  const pageCssHeight = page.height * scale
-  const next = Math.round(pageCssHeight + PANE_HEADER_PX + PREVIEW_PAD_PX)
-  return Math.min(SHELL_MAX_PX, Math.max(SHELL_MIN_PX, next))
-})
-
-function measurePreviewColumn() {
-  const el = previewColumnRef.value
-  if (!el) return
-  const width = Math.round(el.getBoundingClientRect().width)
-  if (width > 0 && Math.abs(width - previewColumnWidth.value) >= 1) {
-    previewColumnWidth.value = width
-  }
-}
 
 async function loadSharedSource() {
   if (!import.meta.client || !props.fileUrl) {
@@ -106,37 +72,26 @@ async function loadSharedSource() {
 }
 
 watch(() => props.fileUrl, () => {
-  naturalPageSize.value = null
   void loadSharedSource()
 }, { immediate: true })
 
-onMounted(() => {
-  if (!import.meta.client) return
-  measurePreviewColumn()
-  if (typeof ResizeObserver === 'undefined') return
-  columnResizeObserver = new ResizeObserver(() => measurePreviewColumn())
-  if (previewColumnRef.value) columnResizeObserver.observe(previewColumnRef.value)
-})
-
-watch(previewColumnRef, (el, prev) => {
-  if (!columnResizeObserver) return
-  if (prev) columnResizeObserver.unobserve(prev)
-  if (el) {
-    columnResizeObserver.observe(el)
-    measurePreviewColumn()
-  }
-})
-
 onBeforeUnmount(() => {
   loadGeneration += 1
-  columnResizeObserver?.disconnect()
-  columnResizeObserver = null
 })
 
 function onSelectPage(page: number) {
   currentPage.value = page
   previewRef.value?.goToPage?.(page)
   emit('go-to-page', page)
+}
+
+function onSelectOutline(item: PdfStructureOutlineItem) {
+  selectedOutlineId.value = item.id
+  if (item.page) {
+    currentPage.value = item.page
+    previewRef.value?.goToPage?.(item.page)
+    emit('go-to-page', item.page)
+  }
 }
 
 function onSelectIssue(issue: PdfIssue) {
@@ -157,19 +112,6 @@ function onPreviewPageChange(page: number) {
   currentPage.value = page
 }
 
-function onPageSize(size: { width: number, height: number }) {
-  if (size.width <= 0 || size.height <= 0) return
-  const prev = naturalPageSize.value
-  if (
-    prev
-    && Math.abs(prev.width - size.width) < 0.5
-    && Math.abs(prev.height - size.height) < 0.5
-  ) {
-    return
-  }
-  naturalPageSize.value = { width: size.width, height: size.height }
-}
-
 async function retrySource() {
   await loadSharedSource()
 }
@@ -181,17 +123,16 @@ defineExpose({
 </script>
 
 <template>
-  <div
-    class="pdf-inspector-shell flex min-h-[480px] flex-col overflow-hidden rounded-xl border border-default"
-    :style="{ height: `${shellHeightPx}px` }"
-  >
-    <!--
-      < xl: Pages strip on top, then Preview | Context (row from lg)
-      xl+: equal-width Pages | Preview | Context (33% each)
-    -->
-    <div class="flex min-h-0 flex-1 flex-col xl:flex-row">
+  <div class="pdf-inspector-shell flex h-full min-h-0 flex-col overflow-hidden lg:flex-row">
+    <!-- Pages / Outline rail: full height, flush to workspace top -->
+    <div class="flex min-h-0 max-lg:max-h-40 max-lg:shrink-0 max-lg:border-b max-lg:border-default lg:h-full">
+      <PdfNavRail v-model="navMode" />
+
       <PdfPageThumbnails
-        class="min-h-0 max-xl:max-h-36 max-xl:shrink-0 max-xl:border-b xl:w-1/3 xl:shrink-0 xl:border-r"
+        v-show="navMode === 'thumbnails'"
+        class="min-h-0"
+        :aria-hidden="navMode !== 'thumbnails' ? true : undefined"
+        :inert="navMode !== 'thumbnails' ? true : undefined"
         :file-url="null"
         :pdf-data="pdfData"
         :waiting="sourceLoading && !pdfData"
@@ -201,24 +142,37 @@ defineExpose({
         @select-page="onSelectPage"
       />
 
-      <div class="flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row xl:contents">
+      <PdfOutlineNav
+        v-show="navMode === 'outline'"
+        :aria-hidden="navMode !== 'outline' ? true : undefined"
+        :inert="navMode !== 'outline' ? true : undefined"
+        :document="document"
+        :structure-loading="structureLoading"
+        :selected-item-id="selectedOutlineId"
+        @select="onSelectOutline"
+      />
+    </div>
+
+    <!-- Preview + context: optional chrome sits only over these columns -->
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div
+        v-if="$slots.toolbar"
+        class="flex h-14 shrink-0 items-center border-b border-default bg-elevated px-3"
+      >
+        <slot name="toolbar" />
+      </div>
+
+      <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
         <section
-          ref="previewColumnRef"
-          class="flex min-h-0 min-w-0 flex-1 flex-col border-default lg:border-r xl:w-1/3 xl:shrink-0"
+          class="flex min-h-0 min-w-0 flex-1 flex-col border-default lg:border-r"
           aria-label="Preview"
         >
-          <div class="flex shrink-0 items-center justify-between gap-2 border-b border-default px-3 py-2.5">
-            <div class="min-w-0">
-              <h2 class="text-sm font-semibold text-highlighted">
-                Preview
-              </h2>
-              <p class="text-xs text-muted">
-                View the current page
-              </p>
-            </div>
+          <div
+            v-if="sourceError"
+            class="flex shrink-0 items-center justify-end gap-2 border-b border-default px-2 py-1.5"
+          >
             <UButton
-              v-if="sourceError"
-              size="xs"
+              size="sm"
               color="neutral"
               variant="outline"
               icon="i-lucide-refresh-cw"
@@ -261,7 +215,6 @@ defineExpose({
               :highlight-label="highlightLabel"
               :highlight-page="highlightPage"
               @update:page="onPreviewPageChange"
-              @update:page-size="onPageSize"
             />
           </div>
         </section>
@@ -269,9 +222,7 @@ defineExpose({
         <section
           :key="mode"
           class="min-h-0 w-full shrink-0 overflow-hidden border-t border-default
-            transition-opacity duration-200
-            lg:min-h-0 lg:w-[min(100%,340px)] lg:border-t-0
-            xl:w-1/3 xl:shrink-0"
+            lg:w-[320px] lg:border-t-0"
           :aria-label="mode === 'audit' ? 'Issues' : 'Content'"
         >
           <PdfAuditContext
@@ -279,6 +230,7 @@ defineExpose({
             class="h-full"
             :issues="issues"
             :selected-issue-id="selectedIssueId"
+            :current-page="currentPage"
             @select="onSelectIssue"
             @go-to-page="onGoToPage"
           />
@@ -291,7 +243,6 @@ defineExpose({
             :structure-text="structureText"
             :structure-loading="structureLoading"
             @update:content="emit('update:content', $event)"
-            @go-to-page="onGoToPage"
           />
         </section>
       </div>

@@ -2,9 +2,9 @@
 import AccessibilityIssuesTrendExpandModal from '~/components/accessibility/IssuesTrendExpandModal.vue'
 import AccessibilityScoreTrendExpandModal from '~/components/accessibility/ScoreTrendExpandModal.vue'
 import type { OrgDashboardAggregates } from '~/utils/dashboardAggregates'
+import type { OverviewDateRange } from '~/utils/overviewDateRange'
 import { siteIssueBarPoints } from '~/utils/orgSiteMetrics'
 import { trendDelta } from '~/utils/scanTrendSeries'
-import { trafficLightFromCount } from '~/utils/trafficLightStatus'
 
 const props = defineProps<{
   siteId?: string
@@ -12,16 +12,12 @@ const props = defineProps<{
   orgLoading?: boolean
 }>()
 
+/** Shared date range from the site Overview navbar (site mode only). */
+const dateRange = defineModel<OverviewDateRange>('dateRange', {
+  default: () => ({ preset: 30 as const })
+})
+
 const isOrgMode = computed(() => !props.siteId && !!props.orgAggregates)
-
-const siteIdRef = computed(() => props.siteId ?? '')
-
-const {
-  currentA11y,
-  loading,
-  displayScore,
-  openIssueCount
-} = useAccessibilitySummary(siteIdRef)
 
 const orgSiteIds = computed(() =>
   (props.orgAggregates?.siteSnapshots ?? []).map(snapshot => snapshot.siteId)
@@ -74,58 +70,11 @@ const openIssuesTrendDirection = computed((): 'up' | 'down' | null => {
   if (delta == null || delta === 0) return null
   return delta > 0 ? 'up' : 'down'
 })
-
-const issueSummary = computed(() => {
-  if (!props.orgAggregates) return null
-  const total = props.orgAggregates.totalOpenA11yIssues
-  return `${total} open issue${total === 1 ? '' : 's'} across all sites`
-})
-
-const severity = computed(() =>
-  currentA11y.value?.by_severity ?? { critical: 0, serious: 0, moderate: 0, minor: 0 }
-)
-
-const metricCards = computed(() => {
-  const s = severity.value
-  return [
-    {
-      label: 'Critical',
-      count: s.critical,
-      to: `/sites/${props.siteId}/accessibility/issues?impact=critical`
-    },
-    {
-      label: 'Serious',
-      count: s.serious,
-      to: `/sites/${props.siteId}/accessibility/issues?impact=serious`
-    },
-    {
-      label: 'Moderate',
-      count: s.moderate,
-      to: `/sites/${props.siteId}/accessibility/issues?impact=moderate`
-    },
-    {
-      label: 'Minor',
-      count: s.minor,
-      to: `/sites/${props.siteId}/accessibility/issues?impact=minor`
-    }
-  ]
-})
-
-function ringColor(count: number) {
-  if (count === 0) return 'text-green-500'
-  if (count <= 10) return 'text-amber-500'
-  return 'text-red-500'
-}
-
 </script>
 
 <template>
   <div>
-    <div v-if="!isOrgMode && loading" class="flex justify-center py-10">
-      <UIcon name="i-lucide-loader-circle" class="size-7 animate-spin text-muted" />
-    </div>
-
-    <template v-else-if="isOrgMode">
+    <template v-if="isOrgMode">
       <div v-if="orgLoading && !orgAggregates" class="flex justify-center py-10">
         <UIcon name="i-lucide-loader-circle" class="size-7 animate-spin text-muted" />
       </div>
@@ -135,7 +84,7 @@ function ringColor(count: number) {
       >
         <section class="scroll-mt-6">
           <div class="mb-4 flex items-end justify-between gap-3">
-            <div>
+            <div class="min-w-0">
               <h2 class="text-lg font-semibold text-highlighted">
                 Accessibility score
               </h2>
@@ -143,12 +92,19 @@ function ringColor(count: number) {
                 Average accessibility score across your workspace.
               </p>
             </div>
+            <DashboardSectionViewLink
+              to="/accessibility"
+              label="View accessibility"
+            />
           </div>
 
           <div class="grid gap-4 lg:grid-cols-3 lg:items-stretch">
             <DashboardOrgAverageScoreCard
+              title="Average accessibility score"
               :score="orgAggregates.avgAccessibilityScore"
               empty-label="Average score appears after sites complete scans."
+              cta-to="/accessibility"
+              cta-label="View accessibility"
             />
 
             <AccessibilityMetricTrendCard
@@ -220,17 +176,18 @@ function ringColor(count: number) {
 
         <section class="scroll-mt-6">
           <div class="mb-4 flex items-end justify-between gap-3">
-            <div>
+            <div class="min-w-0">
               <h2 class="text-lg font-semibold text-highlighted">
                 Open issues by site
               </h2>
               <p class="text-sm text-muted">
-                {{ issueSummary }}
+                Compare open accessibility issues across your sites.
               </p>
             </div>
-            <UButton to="/accessibility/issues" size="sm" variant="outline">
-              View issues
-            </UButton>
+            <DashboardSectionViewLink
+              to="/accessibility/issues"
+              label="View accessibility issues"
+            />
           </div>
 
           <AccessibilitySiteIssuesBarCard
@@ -248,41 +205,12 @@ function ringColor(count: number) {
       </p>
     </template>
 
-    <template v-else-if="siteId">
-      <div class="grid items-center gap-6 lg:grid-cols-[minmax(0,12rem)_1fr] lg:gap-8">
-        <div class="flex flex-col items-center justify-center gap-2">
-          <AccessibilityScoreDonut
-            v-if="displayScore != null"
-            :score="displayScore"
-            label="Accessibility score"
-          />
-          <p v-else class="max-w-xs text-center text-sm text-muted">
-            Accessibility score appears after a completed scan.
-          </p>
-          <p v-if="openIssueCount" class="text-sm text-muted">
-            {{ openIssueCount }} open issue{{ openIssueCount === 1 ? '' : 's' }}
-          </p>
-        </div>
-
-        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <NuxtLink
-            v-for="card in metricCards"
-            :key="card.label"
-            :to="card.to"
-            class="rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/40"
-          >
-            <div class="mb-1 flex items-center gap-2">
-              <TrafficLightDot :status="trafficLightFromCount(card.count)" />
-              <p class="text-sm text-muted">
-                {{ card.label }}
-              </p>
-            </div>
-            <p class="text-2xl font-bold" :class="ringColor(card.count)">
-              {{ card.count }}
-            </p>
-          </NuxtLink>
-        </div>
-      </div>
-    </template>
+    <AccessibilitySiteOverviewPanel
+      v-else-if="siteId"
+      :site-id="siteId"
+      :sync-route-site="false"
+      :show-toolbar="false"
+      v-model:date-range="dateRange"
+    />
   </div>
 </template>

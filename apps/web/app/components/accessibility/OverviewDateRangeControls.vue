@@ -8,10 +8,23 @@ const customOpen = ref(false)
 const draftStart = ref('')
 const draftEnd = ref('')
 
-const presetItems = [
-  { label: '30 days', value: 30 as const },
-  { label: '90 days', value: 90 as const }
-] as const
+const presetTabItems = [
+  { label: '30 days', value: '30' },
+  { label: '90 days', value: '90' }
+]
+
+const activePreset = computed({
+  get(): string {
+    const preset = range.value.preset
+    if (preset === 30) return '30'
+    if (preset === 90) return '90'
+    return ''
+  },
+  set(value: string) {
+    if (value === '30') selectPreset(30)
+    if (value === '90') selectPreset(90)
+  }
+})
 
 function selectPreset(preset: 30 | 90) {
   range.value = { preset }
@@ -46,22 +59,23 @@ watch(
 
 <template>
   <div class="flex flex-wrap items-center justify-end gap-2">
-    <div
-      class="a11y-segmented-control"
-      role="group"
-      aria-label="Trend period"
-    >
-      <button
-        v-for="item in presetItems"
-        :key="item.value"
-        type="button"
-        class="a11y-segmented-control__btn"
-        :aria-pressed="range.preset === item.value"
-        @click="selectPreset(item.value)"
-      >
-        {{ item.label }}
-      </button>
-    </div>
+    <UTabs
+      v-model="activePreset"
+      :content="false"
+      :items="presetTabItems"
+      color="neutral"
+      size="sm"
+      class="overview-date-range-tabs h-8 shrink-0"
+      :ui="{
+        list: 'relative flex h-8 w-auto p-0.5 rounded-lg bg-elevated border border-default',
+        indicator: 'inset-y-0.5 rounded-md shadow-sm bg-default',
+        trigger: [
+          'h-7 grow justify-center px-3 text-sm font-medium min-w-0',
+          'data-[state=inactive]:text-muted hover:data-[state=inactive]:not-disabled:text-default',
+          'data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-highlighted'
+        ].join(' ')
+      }"
+    />
 
     <UPopover v-model:open="customOpen">
       <UButton
@@ -69,15 +83,20 @@ watch(
         variant="outline"
         size="sm"
         class="h-8"
-        :class="range.preset === 'custom' ? 'ring-1 ring-default border-default' : ''"
+        :aria-pressed="range.preset === 'custom'"
+        :ui="{
+          base: range.preset === 'custom'
+            ? 'h-8 border border-default ring-1 ring-primary/30'
+            : 'h-8'
+        }"
         @click="openCustom"
       >
         Custom
-        <UIcon name="i-lucide-chevron-down" class="size-4 ms-1 opacity-70" />
+        <UIcon name="i-lucide-chevron-down" class="ms-1 size-4 opacity-80" aria-hidden="true" />
       </UButton>
 
       <template #content>
-        <div class="p-4 w-72 space-y-4">
+        <div class="w-72 space-y-4 p-4">
           <p class="text-sm font-medium">
             Custom range
           </p>

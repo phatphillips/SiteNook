@@ -23,16 +23,7 @@ const emit = defineEmits<{
   blur: [event: FocusEvent]
 }>()
 
-const ACCENT_BY_BADGE: Record<string, string> = {
-  'site-target-badge--a': '#c2185b',
-  'site-target-badge--aa': '#7b1fa2',
-  'site-target-badge--aaa': '#3949ab',
-  'site-target-badge--aria': '#1565c0',
-  'site-target-badge--bp': '#0d47a1'
-}
-
 const displayScore = computed(() => formatAccessibilityScore(props.score))
-const accentColor = computed(() => ACCENT_BY_BADGE[props.badgeClass] ?? '#7b1fa2')
 const fillWidth = computed(() => {
   const clamped = Math.max(0, Math.min(100, props.score))
   if (clamped <= 0) return '0%'
@@ -41,9 +32,13 @@ const fillWidth = computed(() => {
 
 const showChevron = computed(() => props.selected || props.active)
 
+const rowAriaLabel = computed(
+  () => `${props.label}, ${displayScore.value} percent`
+)
+
 const rowStateClass = computed(() => {
   if (props.selected) {
-    return 'bg-elevated/70 border-default shadow-sm ring-1 ring-default/80'
+    return 'bg-elevated/70 border-default shadow-sm'
   }
   if (props.active) {
     return 'bg-elevated/50 border-default/80'
@@ -60,7 +55,7 @@ const rowStyle = computed(() => {
   if (!props.selected) return base
   return {
     ...base,
-    boxShadow: `inset 3px 0 0 ${accentColor.value}, 0 1px 2px rgb(0 0 0 / 0.05)`
+    boxShadow: `inset 3px 0 0 ${A11Y_BAR_FILL_HOVER}, 0 1px 2px rgb(0 0 0 / 0.05)`
   }
 })
 
@@ -86,6 +81,7 @@ function onHelpClick(event: MouseEvent) {
       }
     ]"
     :style="rowStyle"
+    :aria-label="rowAriaLabel"
     :aria-pressed="selected"
     @click="onRowClick"
     @mouseenter="emit('mouseenter')"
@@ -94,10 +90,11 @@ function onHelpClick(event: MouseEvent) {
     @blur="emit('blur', $event)"
   >
     <div class="flex h-5 items-center gap-2 min-w-0">
-      <span class="site-target-badge shrink-0" :class="badgeClass">{{ badge }}</span>
+      <span class="site-target-badge shrink-0" :class="badgeClass" aria-hidden="true">{{ badge }}</span>
       <span
         class="truncate flex-1 min-w-0 text-sm transition-[font-weight,color] duration-150"
         :class="selected ? 'font-semibold text-default' : active ? 'font-medium text-default' : 'text-default'"
+        aria-hidden="true"
       >{{ label }}</span>
       <UTooltip v-if="tooltip" :text="tooltip" :popper="{ placement: 'top' }">
         <span
@@ -118,7 +115,7 @@ function onHelpClick(event: MouseEvent) {
           : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-hover:translate-x-0.5'"
         aria-hidden="true"
       />
-      <span class="text-sm font-semibold tabular-nums shrink-0 text-highlighted">
+      <span class="text-sm font-semibold tabular-nums shrink-0 text-highlighted" aria-hidden="true">
         {{ displayScore }}%
       </span>
     </div>

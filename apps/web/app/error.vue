@@ -18,7 +18,15 @@ useHead({
 </script>
 
 <template>
-  <UApp>
+  <UApp
+    :toaster="{
+      position: 'bottom-right',
+      expand: false,
+      duration: 5000,
+      max: 5,
+      progress: false
+    }"
+  >
     <UError :error="error" />
   </UApp>
 </template>

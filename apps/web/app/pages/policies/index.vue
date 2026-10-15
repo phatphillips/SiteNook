@@ -275,7 +275,7 @@ function matchesPath(policy: Policy) {
 
         <div
           v-else
-          class="overflow-x-auto rounded-lg border border-default"
+          class="table-surface overflow-x-auto"
         >
           <UTable
             :data="policies"

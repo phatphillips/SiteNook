@@ -1,5 +1,15 @@
 <script setup lang="ts">
 import type { AccessibilityIssue } from '~/types/sitenook'
+import {
+  DEFAULT_DONUT_CHART_STYLE,
+  DONUT_SEGMENT_TOKENS,
+  DONUT_VIEWBOX,
+  donutRingGeometry,
+  layoutDonutSegments,
+  scoreDonutSegments,
+  type DonutChartStyle,
+  type DonutSegmentInput
+} from '~/utils/donutChart'
 
 export interface DonutSegment {
   label: string
@@ -12,15 +22,14 @@ const props = defineProps<{
   label?: string
   size?: 'sm' | 'lg'
   variant?: 'default' | 'site-target'
-  /** Override arc/value color (defaults to score severity ring color). */
+  /** Override score segment colour (defaults to --donut-segment-1 / primary). */
   ringColor?: string
   /**
    * When true, hovering swaps the score arc to severity color (green/amber/red).
    */
   severityHover?: boolean
   /**
-   * When true, hovering slightly scales the rings and thickens the score arc
-   * without changing its color.
+   * When true, hovering slightly scales the ring without changing its color.
    */
   hoverZoom?: boolean
   /** Main chart: show "Overall score" + calculation tooltip */
@@ -34,29 +43,52 @@ const props = defineProps<{
   potentialScore?: number | null
   /** Show a subtle updating indicator (site-target variant). */
   scoreUpdating?: boolean
+  /** Optional unit shown on the value baseline (default "%"). */
+  unit?: string
+  /** Centre caption under the value (overrides default site/overall labels). */
+  caption?: string
+  /**
+   * Optional custom donut slices (breakdown modal). When set, replaces the
+   * default score-vs-remaining progress ring.
+   */
+  segments?: DonutSegmentInput[]
+  /** Sort custom segments largest-first (category breakdown charts). */
+  sortSegments?: boolean
+  /** Full ring or 180° semi-gauge. Defaults to full. */
+  chartStyle?: DonutChartStyle
 }>()
 
 const SCORE_TOOLTIP =
   'Overall accessibility score uses the Siteimprove model: 90 points for WCAG checks (weighted by level A / AA / AAA) and 10 for best practices, with progress based on failed vs total occurrences per check and a logarithmic curve near 100%.'
 
-const IMPACT_COLORS: Record<string, string> = {
-  critical: '#ef4444',
-  serious: '#f97316',
-  moderate: '#eab308',
-  minor: '#a78bfa'
+const IMPACT_COLOR_TOKENS: Record<string, string> = {
+  critical: 'var(--donut-segment-4)',
+  serious: 'var(--donut-segment-4)',
+  moderate: 'var(--donut-segment-2)',
+  minor: 'var(--donut-segment-3)'
 }
 
-const TRACK_COLOR = 'rgba(255, 255, 255, 0.06)'
-
 const hovered = ref(false)
+const reduceMotion = ref(false)
+
+onMounted(() => {
+  if (!import.meta.client) return
+  const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+  reduceMotion.value = mq.matches
+  const onChange = () => {
+    reduceMotion.value = mq.matches
+  }
+  mq.addEventListener('change', onChange)
+  onUnmounted(() => mq.removeEventListener('change', onChange))
+})
 
 const hoverInteractive = computed(() => props.severityHover || props.hoverZoom)
 
-const color = computed(() => {
+const scoreSegmentColor = computed(() => {
   if (props.severityHover && hovered.value) {
     return scoreRingColor(props.score)
   }
-  return props.ringColor ?? scoreRingColor(props.score)
+  return props.ringColor ?? 'var(--donut-segment-1)'
 })
 
 function onDonutEnter() {
@@ -69,7 +101,70 @@ function onDonutLeave() {
   hovered.value = false
 }
 
-const impactSegments = computed((): DonutSegment[] => {
+const isSiteTarget = computed(() => props.variant === 'site-target')
+const chartStyle = computed((): DonutChartStyle => props.chartStyle ?? DEFAULT_DONUT_CHART_STYLE)
+const isSemi = computed(() => chartStyle.value === 'semi')
+const geometry = computed(() => donutRingGeometry())
+
+const normalizedScore = computed(() => Math.max(0, Math.min(100, props.score)))
+
+const scoreSegments = computed((): DonutSegmentInput[] => {
+  if (props.segments?.length) {
+    return props.segments.map((segment, index) => ({
+      label: segment.label,
+      value: segment.value,
+      color: segment.color || DONUT_SEGMENT_TOKENS[index % DONUT_SEGMENT_TOKENS.length]!
+    }))
+  }
+  const inputs = scoreDonutSegments(normalizedScore.value, {
+    scoreLabel: props.label || (isSiteTarget.value ? 'Site score' : 'Overall score'),
+    remainderLabel: 'Remaining'
+  })
+  return inputs.map((segment) => {
+    if (segment.color === 'var(--donut-segment-1)') {
+      return { ...segment, color: scoreSegmentColor.value }
+    }
+    return segment
+  })
+})
+
+const laidOutScoreSegments = computed(() =>
+  layoutDonutSegments(scoreSegments.value, {
+    sortDescending: Boolean(props.segments?.length && props.sortSegments),
+    geometry: geometry.value,
+    chartStyle: chartStyle.value
+  })
+)
+
+const normalizedPotential = computed(() => {
+  const potential = props.potentialScore
+  if (potential == null) return null
+  return Math.max(0, Math.min(100, potential))
+})
+
+const showPotentialGain = computed(() => {
+  if (!isSiteTarget.value || normalizedPotential.value == null) return false
+  return normalizedPotential.value > normalizedScore.value + 0.05
+})
+
+const gainSegment = computed(() => {
+  if (!showPotentialGain.value || normalizedPotential.value == null) return null
+  const gain = normalizedPotential.value - normalizedScore.value
+  if (gain <= 0) return null
+  const inputs: DonutSegmentInput[] = [
+    { label: 'Score', value: normalizedScore.value, color: 'transparent' },
+    { label: 'Gain', value: gain, color: scoreSegmentColor.value },
+    { label: 'Remaining', value: Math.max(0, 100 - normalizedPotential.value), color: 'transparent' }
+  ]
+  const laidOut = layoutDonutSegments(inputs, {
+    sortDescending: false,
+    geometry: geometry.value,
+    chartStyle: chartStyle.value
+  })
+  return laidOut.find(segment => segment.label === 'Gain') ?? null
+})
+
+const impactSegments = computed((): DonutSegmentInput[] => {
   if (!props.impactIssues?.length) return []
   const counts: Record<string, number> = {
     critical: 0,
@@ -85,116 +180,41 @@ const impactSegments = computed((): DonutSegment[] => {
     .map(key => ({
       label: key.charAt(0).toUpperCase() + key.slice(1),
       value: counts[key]!,
-      color: IMPACT_COLORS[key]!
+      color: IMPACT_COLOR_TOKENS[key]!
     }))
 })
 
-const RADIUS = 42
-const IMPACT_RADIUS = 46
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS
-const IMPACT_CIRCUMFERENCE = 2 * Math.PI * IMPACT_RADIUS
-const SEGMENT_GAP = 3
-
-const isSiteTarget = computed(() => props.variant === 'site-target')
-
-const strokeWidth = computed(() => (props.size === 'sm' ? 7 : 9))
-const impactStrokeWidth = 4
-
-const CENTER = 50
-const ringCircleProps = computed(() => ({
-  cx: CENTER,
-  cy: CENTER,
-  r: RADIUS,
-  fill: 'none' as const,
-  'stroke-width': strokeWidth.value,
-  'stroke-linecap': 'butt' as const
-}))
-
-const normalizedScore = computed(() =>
-  Math.max(0, Math.min(100, props.score))
-)
-
-function scoreArcSegment(fromPercent: number, toPercent: number) {
-  const from = Math.max(0, Math.min(100, fromPercent))
-  const to = Math.max(from, Math.min(100, toPercent))
-  const segmentLength = ((to - from) / 100) * CIRCUMFERENCE
-  if (segmentLength <= 0) {
-    return { dashArray: `0 ${CIRCUMFERENCE}`, dashOffset: 0, visible: false }
-  }
-  const skipLength = (from / 100) * CIRCUMFERENCE
-  return {
-    dashArray: `${segmentLength} ${CIRCUMFERENCE - segmentLength}`,
-    dashOffset: -skipLength,
-    visible: true
-  }
-}
-
-const scoreArc = computed(() => {
-  const scored = normalizedScore.value
-  const capCorrection = strokeWidth.value
-
-  if (scored >= 100) {
-    return { dashArray: `${CIRCUMFERENCE}`, dashOffset: 0, visible: true }
-  }
-  if (scored <= 0) {
-    return { dashArray: `0 ${CIRCUMFERENCE}`, dashOffset: 0, visible: false }
-  }
-  const filled = (CIRCUMFERENCE * scored) / 100
-  const dashLength = Math.max(0.01, filled - capCorrection)
-  return {
-    dashArray: `${dashLength} ${CIRCUMFERENCE - dashLength}`,
-    dashOffset: 0,
-    visible: true
-  }
-})
-
-const normalizedPotential = computed(() => {
-  const potential = props.potentialScore
-  if (potential == null) return null
-  return Math.max(0, Math.min(100, potential))
-})
-
-const showPotentialGain = computed(() => {
-  if (!isSiteTarget.value || normalizedPotential.value == null) return false
-  return normalizedPotential.value > normalizedScore.value + 0.05
-})
-
-const gainArc = computed(() => {
-  if (!showPotentialGain.value || normalizedPotential.value == null) {
-    return { dashArray: `0 ${CIRCUMFERENCE}`, dashOffset: 0, visible: false }
-  }
-  return scoreArcSegment(normalizedScore.value, normalizedPotential.value)
-})
-
-const gainArcColor = computed(() => {
-  const base = color.value
-  return `${base}66`
-})
-
-const impactArcs = computed(() => {
-  const segments = impactSegments.value
-  if (!segments.length) return []
-
-  const total = segments.reduce((sum, segment) => sum + segment.value, 0)
-  if (total <= 0) return []
-
-  let offset = 0
-  return segments.map((segment) => {
-    const fraction = segment.value / total
-    const arcLength = Math.max(0, IMPACT_CIRCUMFERENCE * fraction - SEGMENT_GAP)
-    const dashOffset = -offset
-    offset += IMPACT_CIRCUMFERENCE * fraction
-    return {
-      color: segment.color,
-      dashArray: `${arcLength} ${IMPACT_CIRCUMFERENCE - arcLength}`,
-      dashOffset
-    }
+const impactGeometry = computed(() => {
+  const base = geometry.value
+  const thickness = Math.max(4, base.outerRadius - base.innerRadius) * 0.38
+  return donutRingGeometry({
+    outerRadius: Math.min(49.5, base.outerRadius + thickness + 1.25),
+    thickness,
+    cornerRadius: Math.max(1.6, base.cornerRadius * 0.7),
+    gapDeg: 4
   })
 })
 
+const laidOutImpactSegments = computed(() => {
+  if (!impactSegments.value.length) return []
+  return layoutDonutSegments(impactSegments.value, {
+    sortDescending: true,
+    geometry: impactGeometry.value,
+    colorTokens: DONUT_SEGMENT_TOKENS
+  })
+})
+
+const showImpactRing = computed(() =>
+  !isSemi.value
+  && !isSiteTarget.value
+  && props.showOverallLabel
+  && laidOutImpactSegments.value.length > 0
+)
+
 const sizeClass = computed(() => {
-  if (isSiteTarget.value) return 'size-52'
-  return props.size === 'sm' ? 'size-20' : 'size-40'
+  if (props.size === 'sm') return 'size-20'
+  // Overview / default large charts match Nuxt Charts DonutChart `:height="200"`.
+  return 'size-[200px]'
 })
 const isLarge = computed(() => props.size !== 'sm' || isSiteTarget.value)
 
@@ -204,9 +224,24 @@ const displayPotentialScore = computed(() =>
     ? null
     : formatAccessibilityScore(normalizedPotential.value)
 )
-const showImpactRing = computed(() =>
-  !isSiteTarget.value && props.showOverallLabel && impactSegments.value.length > 0
-)
+
+const displayValue = computed(() => {
+  if (showPotentialGain.value && displayPotentialScore.value) {
+    return displayPotentialScore.value
+  }
+  return displayScore.value
+})
+
+const displayUnit = computed(() => props.unit ?? '%')
+
+const displayCaption = computed(() => {
+  if (props.caption) return props.caption
+  if (showPotentialGain.value) return 'Could be'
+  if (props.label) return props.label
+  if (isSiteTarget.value) return 'Site score'
+  if (props.showOverallLabel && isLarge.value) return 'Overall score'
+  return ''
+})
 
 const deltaClass = computed(() => {
   if (!props.delta) return 'text-muted'
@@ -216,159 +251,172 @@ const deltaClass = computed(() => {
 })
 
 const ariaLabel = computed(() => {
-  if (props.label) return `${props.label} score ${displayScore.value}`
+  const parts = laidOutScoreSegments.value.map(
+    segment => `${segment.label} ${Math.round(segment.fraction * 100)} percent`
+  )
+  const summary = parts.join(', ')
+  if (props.label) return `${props.label} score ${displayScore.value}. ${summary}`
   if (isSiteTarget.value) {
     const deltaPart = props.delta ? `, change ${props.delta}` : ''
-    return `Site score ${displayScore.value} percent${deltaPart}`
+    return `Site score ${displayScore.value} percent${deltaPart}. ${summary}`
   }
-  return `Overall score ${displayScore.value}`
+  return `Overall score ${displayScore.value}. ${summary}`
+})
+
+const hiddenBreakdown = computed(() => {
+  const rows = [...laidOutScoreSegments.value]
+  if (showImpactRing.value) {
+    rows.push(...laidOutImpactSegments.value)
+  }
+  return rows
 })
 </script>
 
 <template>
   <div
     class="score-donut relative inline-flex flex-col items-center"
-    :class="[sizeClass, { 'score-donut--interactive': hoverInteractive, 'score-donut--hovered': hoverInteractive && hovered }]"
+    :class="[
+      sizeClass,
+      {
+        'score-donut--interactive': hoverInteractive,
+        'score-donut--hovered': hoverInteractive && hovered,
+        'score-donut--animate': !reduceMotion,
+        'score-donut--semi': isSemi
+      }
+    ]"
     @mouseenter="onDonutEnter"
     @mouseleave="onDonutLeave"
   >
     <svg
-      class="size-full"
-      viewBox="0 0 100 100"
+      class="score-donut-svg size-full"
+      :viewBox="`0 0 ${DONUT_VIEWBOX} ${DONUT_VIEWBOX}`"
       role="img"
       :aria-label="ariaLabel"
     >
       <g class="score-donut-rings-group">
-        <circle
-          v-bind="ringCircleProps"
-          :stroke="TRACK_COLOR"
-          class="score-donut-track"
+        <path
+          v-for="(segment, index) in laidOutScoreSegments"
+          :key="`score-${segment.label}-${index}`"
+          class="score-donut-segment"
+          :d="segment.path"
+          :fill="segment.color"
         />
-        <circle
-          v-if="scoreArc.visible"
-          v-bind="ringCircleProps"
-          :stroke="color"
-          :stroke-width="hoverInteractive && hovered ? strokeWidth + 1.5 : strokeWidth"
-          stroke-linecap="round"
-          class="score-donut-arc"
-          :stroke-dasharray="scoreArc.dashArray"
-          :stroke-dashoffset="scoreArc.dashOffset"
-          :transform="`rotate(-90 ${CENTER} ${CENTER})`"
+        <path
+          v-if="gainSegment"
+          class="score-donut-gain"
+          :d="gainSegment.path"
+          :fill="gainSegment.color"
+          opacity="0.4"
         />
       </g>
-      <circle
-        v-if="gainArc.visible"
-        v-bind="ringCircleProps"
-        :stroke="gainArcColor"
-        stroke-linecap="round"
-        class="score-donut-gain"
-        :stroke-dasharray="gainArc.dashArray"
-        :stroke-dashoffset="gainArc.dashOffset"
-        :transform="`rotate(-90 ${CENTER} ${CENTER})`"
-      />
-      <template v-if="showImpactRing">
-        <circle
-          v-for="(arc, index) in impactArcs"
-          :key="`impact-${index}`"
-          cx="50"
-          cy="50"
-          :r="IMPACT_RADIUS"
-          fill="none"
-          :stroke="arc.color"
-          :stroke-width="impactStrokeWidth"
-          stroke-linecap="round"
-          :stroke-dasharray="arc.dashArray"
-          :stroke-dashoffset="arc.dashOffset"
-          transform="rotate(-90 50 50)"
+      <g v-if="showImpactRing" class="score-donut-impact-group">
+        <path
+          v-for="(segment, index) in laidOutImpactSegments"
+          :key="`impact-${segment.label}-${index}`"
+          class="score-donut-segment"
+          :d="segment.path"
+          :fill="segment.color"
         />
-      </template>
+      </g>
     </svg>
-    <div class="score-donut-center absolute inset-0 flex flex-col items-center justify-center px-2 text-center pointer-events-none">
-      <template v-if="isSiteTarget">
-        <template v-if="showPotentialGain && displayPotentialScore">
-          <span class="text-base font-semibold text-highlighted">Could be</span>
-          <span class="score-donut-value font-bold leading-none text-4xl mt-0.5">
-            {{ displayPotentialScore }}%
-          </span>
-        </template>
-        <template v-else>
-          <div class="flex items-center gap-1.5">
-            <span class="text-base font-semibold text-highlighted">Site score</span>
-            <span
-              v-if="scoreUpdating"
-              class="inline-flex items-center gap-1 text-xs font-medium text-muted"
-              role="status"
-              aria-live="polite"
-            >
-              <UIcon name="i-lucide-loader-circle" class="size-3.5 animate-spin" />
-            </span>
-          </div>
-          <span class="score-donut-value font-bold leading-none text-4xl mt-0.5">
-            {{ displayScore }}%
-          </span>
-        </template>
-        <div
-          v-if="delta && !showPotentialGain"
-          class="score-donut-delta mt-1.5 flex items-center gap-1 text-sm font-medium pointer-events-auto"
-          :class="deltaClass"
-        >
-          <span>{{ delta }}</span>
-          <UTooltip
-            v-if="deltaTooltip"
-            :text="deltaTooltip"
-            :popper="{ placement: 'bottom' }"
-          >
-            <button
-              type="button"
-              class="text-muted hover:text-default transition-colors"
-              aria-label="About score change"
-            >
-              <UIcon name="i-lucide-circle-help" class="size-3.5" />
-            </button>
-          </UTooltip>
-        </div>
-      </template>
-      <template v-else>
+
+    <div
+      class="score-donut-center absolute inset-0 flex flex-col items-center px-[12%] text-center pointer-events-none"
+      :class="isSemi ? 'score-donut-center--semi' : 'justify-center'"
+    >
+      <div class="score-donut-value-row flex items-baseline justify-center gap-[0.12em] leading-none">
+        <span class="score-donut-value font-bold tabular-nums tracking-tight">
+          {{ displayValue }}
+        </span>
+        <span class="score-donut-unit font-semibold tabular-nums">
+          {{ displayUnit }}
+        </span>
         <span
-          class="score-donut-value font-bold leading-none"
-          :class="size === 'sm' ? 'text-lg' : 'text-3xl'"
-        >{{ displayScore }}%</span>
-        <span v-if="label" class="text-xs text-muted mt-0.5">{{ label }}</span>
-        <template v-else-if="showOverallLabel && isLarge">
-          <span class="text-xs text-muted mt-1">Overall score</span>
-          <UTooltip :text="SCORE_TOOLTIP" :popper="{ placement: 'bottom' }">
-            <button
-              type="button"
-              class="mt-1 text-muted hover:text-default transition-colors pointer-events-auto"
-              aria-label="How overall score is calculated"
-            >
-              <UIcon name="i-lucide-info" class="size-3.5" />
-            </button>
-          </UTooltip>
-        </template>
-      </template>
+          v-if="scoreUpdating && isSiteTarget && !showPotentialGain"
+          class="score-donut-updating inline-flex items-center text-muted pointer-events-auto"
+          role="status"
+          aria-live="polite"
+        >
+          <UIcon name="i-lucide-loader-circle" class="size-[0.9em] animate-spin" />
+        </span>
+      </div>
+      <span
+        v-if="displayCaption"
+        class="score-donut-caption mt-[0.35em] font-normal"
+      >
+        {{ displayCaption }}
+      </span>
+      <div
+        v-if="delta && isSiteTarget && !showPotentialGain"
+        class="score-donut-delta mt-[0.45em] flex items-center gap-1 font-medium pointer-events-auto"
+        :class="deltaClass"
+      >
+        <span>{{ delta }}</span>
+        <UTooltip
+          v-if="deltaTooltip"
+          :text="deltaTooltip"
+          :popper="{ placement: 'bottom' }"
+        >
+          <button
+            type="button"
+            class="text-muted hover:text-default transition-colors"
+            aria-label="About score change"
+          >
+            <UIcon name="i-lucide-circle-help" class="size-3.5" />
+          </button>
+        </UTooltip>
+      </div>
+      <UTooltip
+        v-else-if="showOverallLabel && isLarge && !isSiteTarget && !props.caption"
+        :text="SCORE_TOOLTIP"
+        :popper="{ placement: 'bottom' }"
+      >
+        <button
+          type="button"
+          class="mt-1 text-muted hover:text-default transition-colors pointer-events-auto"
+          aria-label="How overall score is calculated"
+        >
+          <UIcon name="i-lucide-info" class="size-3.5" />
+        </button>
+      </UTooltip>
     </div>
+
+    <table class="sr-only">
+      <caption>Donut chart values</caption>
+      <thead>
+        <tr>
+          <th scope="col">Segment</th>
+          <th scope="col">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(row, index) in hiddenBreakdown" :key="`a11y-${row.label}-${index}`">
+          <td>{{ row.label }}</td>
+          <td>{{ row.value }}</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </template>
 
 <style scoped>
+.score-donut {
+  container-type: inline-size;
+  container-name: score-donut;
+}
+
 .score-donut--interactive {
   cursor: default;
 }
 
-.score-donut-arc {
-  transition:
-    stroke 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    stroke-dasharray 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    stroke-dashoffset 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    stroke-width 320ms cubic-bezier(0.22, 1, 0.36, 1);
+.score-donut-segment {
+  transition: fill 320ms cubic-bezier(0.22, 1, 0.36, 1), stroke 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .score-donut-gain {
   transition:
+    fill 320ms cubic-bezier(0.22, 1, 0.36, 1),
     stroke 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    stroke-dasharray 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    stroke-dashoffset 320ms cubic-bezier(0.22, 1, 0.36, 1),
     opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -379,11 +427,7 @@ const ariaLabel = computed(() => {
 }
 
 .score-donut--hovered .score-donut-rings-group {
-  transform: scale(1.045);
-}
-
-.score-donut-track {
-  transition: stroke-width 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform: scale(1.04);
 }
 
 .score-donut-center {
@@ -392,11 +436,80 @@ const ariaLabel = computed(() => {
   transition: transform 380ms cubic-bezier(0.34, 1.45, 0.64, 1);
 }
 
+/* Nest the label just under the semi-gauge diameter (viewBox centre). */
+.score-donut-center--semi {
+  justify-content: flex-start;
+  padding-top: 46%;
+}
+
 .score-donut--hovered .score-donut-center {
-  transform: scale(1.045);
+  transform: scale(1.04);
 }
 
 .score-donut-value {
-  display: inline-block;
+  color: var(--donut-label);
+  font-size: 15cqw;
+  line-height: 1;
+}
+
+.score-donut-unit {
+  color: var(--donut-label-muted);
+  font-size: calc(15cqw * 0.35);
+  line-height: 1;
+}
+
+.score-donut-caption {
+  color: var(--donut-label-muted);
+  font-size: calc(15cqw * 0.4);
+  line-height: 1.2;
+}
+
+.score-donut-delta {
+  font-size: calc(15cqw * 0.32);
+}
+
+.score-donut-updating {
+  font-size: 15cqw;
+}
+
+.score-donut--semi .score-donut-rings-group {
+  transform-origin: 50% 50%;
+}
+
+.score-donut--semi.score-donut--hovered .score-donut-rings-group {
+  transform: scale(1.03);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .score-donut--animate .score-donut-rings-group {
+    transform-origin: 50% 50%;
+    animation: score-donut-sweep 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .score-donut--animate.score-donut--semi .score-donut-rings-group {
+    animation-name: score-donut-semi-sweep;
+  }
+}
+
+@keyframes score-donut-sweep {
+  from {
+    opacity: 0;
+    transform: rotate(-24deg) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes score-donut-semi-sweep {
+  from {
+    opacity: 0;
+    transform: rotate(-12deg) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
 }
 </style>

@@ -82,7 +82,7 @@ PocketBase ships a built-in auth collection (`users` / `_pb_users_auth_`). Boots
 - **`deleteRule`**: org **`admin`** may delete teammates in the same org, but not themselves (hook enforces last-admin / last-billing-contact rules)
 - **`role` field**: `admin` or `viewer` — enforced in PocketBase rules, security hooks, and the dashboard UI (`canWriteOrg`, team management)
 - **`is_billing_contact`**: boolean on admin users; at least one per org required (see [users-and-teams.md](./users-and-teams.md))
-- **Login alert emails** disabled (`authAlert.enabled: false`)
+- **Login alert emails** enabled for new devices (`authAlert.enabled: true`). Known devices are stored in PocketBase `_authOrigins` (IP + user-agent fingerprint). Boot patches set `meta.appName` to SiteNook and trust nginx `X-Forwarded-For` / `X-Real-IP` so container restarts do not look like a new location. The seed app-user password is only rewritten when env credentials are out of sync (re-hashing clears known devices).
 
 Default install also seeds an app user from `APP_USER_EMAIL` / `APP_USER_PASSWORD` env vars (see `services/pocketbase/seed.sh`). Idempotent updates run on every boot via `patch-users.sh`.
 
@@ -367,7 +367,8 @@ sequenceDiagram
 |------|-------------|
 | `services/pocketbase/Dockerfile` | PocketBase `0.25.8` image |
 | `services/pocketbase/bootstrap.sh` | One-time setup: org-admin user create rules, `role` field, email auth options |
-| `services/pocketbase/patch-users.sh` | Idempotent users rules, reset-password template URL, seed user sync |
+| `services/pocketbase/patch-app-settings.sh` | Sets `meta.appName` to SiteNook and trusted proxy IP headers |
+| `services/pocketbase/patch-users.sh` | Idempotent users rules, auth alert template, reset-password URL, seed user sync (password only when out of sync) |
 | `services/pocketbase/pb_hooks/users_security.pb.js` | Users security hook entry points |
 | `services/pocketbase/pb_hooks/users_security_lib.js` | Shared hook logic (required for isolated handler scopes) |
 | `services/pocketbase/pb_hooks/mailer_tenant_reset.pb.js` | Rewrites password-reset email links to tenant subdomain |

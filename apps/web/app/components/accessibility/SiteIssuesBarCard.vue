@@ -2,7 +2,8 @@
 import type { SiteMetricBarPoint } from '~/utils/orgSiteMetrics'
 import {
   A11Y_BAR_FILL,
-  A11Y_BAR_FILL_HOVER
+  A11Y_BAR_FILL_HOVER,
+  A11Y_BAR_TRACK
 } from '~/utils/chartTheme'
 
 const props = withDefaults(defineProps<{
@@ -44,7 +45,7 @@ function onRowKeydown(event: KeyboardEvent, point: SiteMetricBarPoint) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 overflow-hidden rounded-lg border border-default bg-elevated/25 p-4 shadow-none ring-0 sm:p-5">
+  <div class="flex flex-col gap-3 overflow-hidden rounded-lg border border-default bg-elevated p-4 shadow-none ring-0 sm:p-5">
     <div class="flex items-start gap-3">
       <p class="shrink-0 text-2xl sm:text-3xl font-semibold tabular-nums tracking-tight leading-none pt-0.5">
         {{ value }}
@@ -82,7 +83,8 @@ function onRowKeydown(event: KeyboardEvent, point: SiteMetricBarPoint) {
             class="site-issues-row group grid w-full grid-cols-[minmax(7rem,10rem)_1fr_2.5rem] items-center gap-3 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-primary"
             :style="{
               '--bar-fill': A11Y_BAR_FILL,
-              '--bar-fill-hover': A11Y_BAR_FILL_HOVER
+              '--bar-fill-hover': A11Y_BAR_FILL_HOVER,
+              '--bar-track': A11Y_BAR_TRACK
             }"
             :title="point.tooltipLines?.join(' · ')"
             @click="onRowActivate(point)"
@@ -92,7 +94,7 @@ function onRowKeydown(event: KeyboardEvent, point: SiteMetricBarPoint) {
               {{ point.label }}
             </span>
             <span
-              class="site-issues-row__track relative h-7 overflow-hidden rounded bg-default/60"
+              class="site-issues-row__track relative h-7 overflow-hidden rounded"
               aria-hidden="true"
             >
               <span
@@ -118,6 +120,7 @@ function onRowKeydown(event: KeyboardEvent, point: SiteMetricBarPoint) {
 <style scoped>
 .site-issues-row__track {
   overflow: hidden;
+  background-color: var(--bar-track);
   transform-origin: left center;
   transition: transform 380ms cubic-bezier(0.34, 1.45, 0.64, 1);
 }

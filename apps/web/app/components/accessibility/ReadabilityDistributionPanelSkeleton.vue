@@ -8,7 +8,7 @@ const rowWidths = ['45%', '55%', '70%', '60%', '80%', '95%']
 
 <template>
   <div
-    class="rounded-lg border border-default bg-elevated/25 px-4 py-4"
+    class="rounded-lg border border-default bg-elevated px-4 py-4"
     aria-hidden="true"
   >
     <div class="flex items-center justify-between gap-3 pb-3 border-b border-default">

@@ -9,6 +9,8 @@ const { spelling, loading } = useQA(siteId, { summary: false, parts: ['spelling'
 const tab = ref<'errors' | 'review'>('errors')
 const tableSearch = ref('')
 const tableRef = useTemplateRef('tableRef')
+const workspaceRef = useTemplateRef<HTMLElement>('workspaceRef')
+const { height: workspaceHeight, update: updateWorkspaceHeight } = useViewportRemainderHeight(workspaceRef)
 
 const displayed = computed(() =>
   spelling.value.filter(i =>
@@ -17,19 +19,19 @@ const displayed = computed(() =>
 )
 
 const page = ref(1)
-const pageSize = ref(1)
+const pageSize = ref(25)
 
-watch(displayed, (rows) => {
-  pageSize.value = Math.max(1, rows.length)
+watch(tab, () => {
+  page.value = 1
 })
 
-const footerSummary = computed(() => {
-  if (loading.value && !displayed.value.length) return ''
-  const count = displayed.value.length
-  if (!count) return ''
-  const category = tab.value === 'errors' ? 'misspellings' : 'words to review'
-  const searchSuffix = tableSearch.value.trim() ? ' (filtered)' : ''
-  return `Showing ${count.toLocaleString()} ${category} in site target${searchSuffix}`
+watch(tableSearch, () => {
+  page.value = 1
+})
+
+watch([loading, spelling], async () => {
+  await nextTick()
+  updateWorkspaceHeight()
 })
 
 const {
@@ -51,12 +53,12 @@ const {
 </script>
 
 <template>
-  <AppDashboardPanel>
+  <AppDashboardPanel fluid>
     <template #header>
       <DashboardPageNavbar title="Spelling" />
     </template>
     <template #body>
-      <div class="space-y-4">
+      <div class="space-y-3">
         <DataTableToolbar>
           <template #leading>
             <div class="flex min-w-0 flex-nowrap items-center gap-1.5 sm:gap-2">
@@ -109,15 +111,24 @@ const {
           @export="runExport"
         />
 
-        <QaSpellingTable
-          ref="tableRef"
-          v-model:tab="tab"
-          v-model:search="tableSearch"
-          :show-tabs="false"
-          :items="spelling"
-          :loading="loading"
-          :footer-summary="footerSummary"
-        />
+        <div
+          ref="workspaceRef"
+          class="min-h-0"
+          :style="{ height: workspaceHeight }"
+        >
+          <QaSpellingTable
+            ref="tableRef"
+            v-model:tab="tab"
+            v-model:search="tableSearch"
+            fill
+            :show-tabs="false"
+            :items="spelling"
+            :loading="loading"
+            :page="page"
+            :page-size="pageSize"
+            @update:page="page = $event"
+          />
+        </div>
       </div>
     </template>
   </AppDashboardPanel>

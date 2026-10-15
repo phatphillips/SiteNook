@@ -46,6 +46,7 @@ if [ ! -f /pb/pb_data/.seeded ]; then
 fi
 
 /pb/patch-multi-tenant.sh || true
+/pb/patch-app-settings.sh || true
 /pb/patch-users.sh || true
 /pb/patch-scan-status.sh || true
 /pb/patch-site-schedule.sh || true

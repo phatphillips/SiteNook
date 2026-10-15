@@ -144,6 +144,7 @@ services:
 
   pocketbase:
     build: ./services/pocketbase
+    restart: unless-stopped
     volumes:
       - pb_data:/pb/pb_data
     environment:
@@ -153,7 +154,8 @@ services:
       APP_USER_PASSWORD: ${APP_USER_PASSWORD}
       DEFAULT_ORG_SUBDOMAIN: ${DEFAULT_ORG_SUBDOMAIN:-default}
       DEFAULT_ORG_NAME: ${DEFAULT_ORG_NAME:-Default Organization}
-      APP_DASHBOARD_URL: ${APP_DASHBOARD_URL:-http://localhost:3000}
+      APP_NAME: ${APP_NAME:-SiteNook}
+      APP_DASHBOARD_URL: ${APP_DASHBOARD_URL:-http://localhost}
       APP_PUBLIC_DOMAIN: ${NUXT_PUBLIC_APP_DOMAIN:-localhost}
       SITENOOK_COMMERCIAL: ${SITENOOK_COMMERCIAL:-0}
     healthcheck:

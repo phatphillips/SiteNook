@@ -58,7 +58,7 @@ function onPrimaryCopy() {
     aria-label="Copy options"
   >
     <UButton
-      size="xs"
+      size="sm"
       color="neutral"
       variant="outline"
       icon="i-lucide-copy"
@@ -73,7 +73,7 @@ function onPrimaryCopy() {
       :disabled="disabled"
     >
       <UButton
-        size="xs"
+        size="sm"
         color="neutral"
         variant="outline"
         icon="i-lucide-chevron-down"

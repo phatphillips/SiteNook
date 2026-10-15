@@ -12,7 +12,8 @@ Related docs: [dev-operations.md](./dev-operations.md) (data reset detail), [CLA
 cp .env.example .env
 # Edit .env — set PB_ADMIN_*, APP_USER_*, NUXT_PUBLIC_*, Stripe keys as needed
 
-docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+# Production stack (default). -f docker-compose.yml prevents auto-merge of the override file.
+docker compose -f docker-compose.yml up -d --build
 ```
 
 Install dependencies for local (non-Docker) work:
@@ -29,33 +30,47 @@ npm install
 
 ## Docker — run the stack
 
+Docker Compose **auto-merges** `docker-compose.override.yml` when you omit `-f`. That switches web to Nuxt **dev**. For production, always pass `-f docker-compose.yml` alone.
+
 | Goal | Command |
 |------|---------|
-| **Dev** (hot reload, ports 3000 / 8090) | `docker compose -f docker-compose.yml -f docker-compose.override.yml up` |
+| **Production (default)** nginx on port 80 | `docker compose -f docker-compose.yml up -d --build` |
+| **Dev** (hot reload, ports 3500 / 8090) | `docker compose -f docker-compose.yml -f docker-compose.override.yml up` |
 | **Dev detached** | `docker compose -f docker-compose.yml -f docker-compose.override.yml up -d` |
-| **Production-style** (nginx on port 80) | `docker compose up -d --build` |
-| **Rebuild one service** | `docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build --force-recreate pocketbase web` |
-| **Rebuild everything** | `docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build --force-recreate` |
-| **Stop** | `docker compose down` |
-| **Logs (web)** | `docker compose logs -f web` |
-| **Logs (pocketbase)** | `docker compose logs -f pocketbase` |
-| **Logs (scanner)** | `docker compose logs -f scanner` |
-| **Shell in scanner container** | `docker compose exec scanner sh` |
+| **Rebuild web (production)** | `docker compose -f docker-compose.yml up -d --build --force-recreate web` |
+| **Rebuild everything (production)** | `docker compose -f docker-compose.yml up -d --build --force-recreate` |
+| **Stop (production)** | `docker compose -f docker-compose.yml down` |
+| **Stop (whatever is running)** | `docker compose down` |
+| **Logs (web)** | `docker compose -f docker-compose.yml logs -f web` |
+| **Logs (pocketbase)** | `docker compose -f docker-compose.yml logs -f pocketbase` |
+| **Logs (scanner)** | `docker compose -f docker-compose.yml logs -f scanner` |
+| **Shell in scanner container** | `docker compose -f docker-compose.yml exec scanner sh` |
 
-After web starts, wait for **`Nuxt Nitro server built`** in logs before opening the app (first build can take ~45–60s).
+After a **production** web start, wait until http://localhost returns 200 (image already contains the Nuxt build). After a **dev** start, wait for **`Nuxt Nitro server built`** in logs (first cold start can take several minutes).
 
 ---
 
-## Local URLs (dev override)
+## Local URLs
+
+### Production (`-f docker-compose.yml` only)
 
 | Service | URL |
 |---------|-----|
-| Nuxt dashboard | http://localhost:3000 |
-| Marketing / apex | http://localhost:3000/ |
-| Tenant example | http://{subdomain}.localhost:3000/login |
+| Dashboard (nginx) | http://localhost |
+| Tenant example | http://{subdomain}.localhost/login |
+| PocketBase admin (proxied) | http://localhost/_/ |
+| PocketBase API (proxied) | http://localhost/api/ |
+
+### Dev override
+
+| Service | URL |
+|---------|-----|
+| Nuxt dashboard | http://localhost:3500 |
+| Marketing / apex | http://localhost:3500/ |
+| Tenant example | http://{subdomain}.localhost:3500/login |
 | PocketBase admin | http://localhost:8090/_/ |
 | PocketBase API | http://localhost:8090/api/ |
-| Production-style (nginx) | http://localhost |
+| Nginx (also up with override) | http://localhost |
 
 ---
 

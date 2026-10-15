@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { OrgDashboardAggregates } from '~/utils/dashboardAggregates'
+import type { OverviewDateRange } from '~/utils/overviewDateRange'
 import { siteIssueBarPoints } from '~/utils/orgSiteMetrics'
 import { trendDelta } from '~/utils/scanTrendSeries'
 import SharedMetricTrendExpandModal from '~/components/shared/MetricTrendExpandModal.vue'
@@ -10,11 +11,12 @@ const props = defineProps<{
   orgLoading?: boolean
 }>()
 
-const isOrgMode = computed(() => !props.siteId && !!props.orgAggregates)
-const siteIdRef = computed(() => props.siteId ?? '')
+/** Shared date range from the site Overview navbar (site mode only). */
+const dateRange = defineModel<OverviewDateRange>('dateRange', {
+  default: () => ({ preset: 30 as const })
+})
 
-const { brokenLinkCount, misspellingCount, policyMatchCount, avgReadability, latestScan, loading } = useQA(siteIdRef)
-const qaScore = computed(() => latestScan.value?.score_qa ?? null)
+const isOrgMode = computed(() => !props.siteId && !!props.orgAggregates)
 
 const orgSiteIds = computed(() =>
   (props.orgAggregates?.siteSnapshots ?? []).map(snapshot => snapshot.siteId)
@@ -35,12 +37,6 @@ const {
   latestBrokenLinkCount,
   loading: brokenLinksTrendLoading
 } = useOrgQaBrokenLinksTrend(orgSiteIds)
-
-const issueSummary = computed(() => {
-  if (!props.orgAggregates) return null
-  const total = props.orgAggregates.totalBrokenLinks
-  return `${total} broken link${total === 1 ? '' : 's'} across all sites`
-})
 
 const brokenLinksBySiteBars = computed(() => {
   if (!props.orgAggregates) return []
@@ -81,21 +77,11 @@ const brokenLinksTrendDirection = computed((): 'up' | 'down' | null => {
   if (delta == null || delta === 0) return null
   return delta > 0 ? 'up' : 'down'
 })
-
-function ringColor(count: number) {
-  if (count === 0) return 'text-green-500'
-  if (count <= 10) return 'text-amber-500'
-  return 'text-red-500'
-}
 </script>
 
 <template>
   <div>
-    <div v-if="isOrgMode ? orgLoading && !orgAggregates : loading" class="flex justify-center py-10">
-      <UIcon name="i-lucide-loader-circle" class="size-7 animate-spin text-muted" />
-    </div>
-
-    <template v-else-if="isOrgMode">
+    <template v-if="isOrgMode">
       <div v-if="orgLoading && !orgAggregates" class="flex justify-center py-10">
         <UIcon name="i-lucide-loader-circle" class="size-7 animate-spin text-muted" />
       </div>
@@ -105,7 +91,7 @@ function ringColor(count: number) {
       >
         <section class="scroll-mt-6">
           <div class="mb-4 flex items-end justify-between gap-3">
-            <div>
+            <div class="min-w-0">
               <h2 class="text-lg font-semibold text-highlighted">
                 Quality assurance score
               </h2>
@@ -113,6 +99,10 @@ function ringColor(count: number) {
                 Average QA score across your workspace.
               </p>
             </div>
+            <DashboardSectionViewLink
+              to="/qa"
+              label="View quality assurance"
+            />
           </div>
 
           <div class="grid gap-4 lg:grid-cols-3 lg:items-stretch">
@@ -120,7 +110,8 @@ function ringColor(count: number) {
               title="Average QA score"
               :score="orgAggregates.avgQaScore"
               empty-label="Average QA score appears after sites complete scans."
-              :issue-summary="`${orgAggregates.totalOpenQaIssues} open QA issue${orgAggregates.totalOpenQaIssues === 1 ? '' : 's'} across all sites`"
+              cta-to="/qa"
+              cta-label="View quality assurance"
             />
 
             <AccessibilityMetricTrendCard
@@ -194,17 +185,18 @@ function ringColor(count: number) {
 
         <section class="scroll-mt-6">
           <div class="mb-4 flex items-end justify-between gap-3">
-            <div>
+            <div class="min-w-0">
               <h2 class="text-lg font-semibold text-highlighted">
                 Broken links by site
               </h2>
               <p class="text-sm text-muted">
-                {{ issueSummary }}
+                Compare broken links across your sites.
               </p>
             </div>
-            <UButton to="/qa/links" size="sm" variant="outline">
-              View broken links
-            </UButton>
+            <DashboardSectionViewLink
+              to="/qa/links"
+              label="View broken links"
+            />
           </div>
 
           <AccessibilitySiteIssuesBarCard
@@ -222,57 +214,11 @@ function ringColor(count: number) {
       </p>
     </template>
 
-    <template v-else-if="siteId">
-      <div class="grid items-center gap-6 lg:grid-cols-[minmax(0,12rem)_1fr] lg:gap-8">
-        <div class="flex flex-col items-center justify-center gap-2">
-          <AccessibilityScoreDonut
-            v-if="qaScore != null"
-            :score="qaScore"
-            label="QA score"
-          />
-          <p v-else class="max-w-xs text-center text-sm text-muted">
-            QA score appears after a completed scan with quality checks enabled.
-          </p>
-        </div>
-
-        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <NuxtLink
-            :to="`/sites/${siteId}/qa/links`"
-            class="rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/40"
-          >
-            <p class="text-sm text-muted">Broken links</p>
-            <p class="text-2xl font-bold" :class="ringColor(brokenLinkCount)">
-              {{ brokenLinkCount }}
-            </p>
-          </NuxtLink>
-          <NuxtLink
-            :to="`/sites/${siteId}/qa/spelling`"
-            class="rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/40"
-          >
-            <p class="text-sm text-muted">Misspellings</p>
-            <p class="text-2xl font-bold" :class="ringColor(misspellingCount)">
-              {{ misspellingCount }}
-            </p>
-          </NuxtLink>
-          <NuxtLink
-            :to="`/sites/${siteId}/qa/policies`"
-            class="rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/40"
-          >
-            <p class="text-sm text-muted">Policies</p>
-            <p class="text-2xl font-bold" :class="ringColor(policyMatchCount)">
-              {{ policyMatchCount }}
-            </p>
-          </NuxtLink>
-          <div class="rounded-lg border border-default bg-elevated/40 p-4">
-            <p class="text-sm text-muted">
-              Readability
-            </p>
-            <p class="text-2xl font-bold">
-              {{ avgReadability || '—' }}
-            </p>
-          </div>
-        </div>
-      </div>
-    </template>
+    <QaSiteOverviewPanel
+      v-else-if="siteId"
+      :site-id="siteId"
+      :show-toolbar="false"
+      v-model:date-range="dateRange"
+    />
   </div>
 </template>

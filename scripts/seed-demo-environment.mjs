@@ -98,15 +98,40 @@ function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n))
 }
 
-/** Per-site score curves ending near a target latest score. */
-function historyPoints(seed) {
-  const base = 58 + (seed % 17)
-  return [28, 21, 14, 7, 3].map((daysAgo, i) => {
-    const progress = i / 4
-    const overall = clamp(Math.round(base + progress * 22 + (seed % 5) - 2), 45, 92)
-    const qa = clamp(overall - 4 + (seed % 3), 40, 95)
-    const seo = clamp(overall - 6 + ((seed + 1) % 4), 38, 93)
-    const openIssues = Math.max(4, Math.round(55 - progress * 40 - (seed % 6)))
+/**
+ * Build prior scans that slowly improve into the latest real scan:
+ * scores rise gently; open issues + broken links fall gradually (active remediation story).
+ */
+function historyPoints(seed, latest) {
+  const days = [28, 21, 14, 7, 3]
+  const endIssues = Math.max(8, Number(latest?.open_issue_count) || 80)
+  const endBroken = Math.max(0, Number(latest?.broken_link_count) || 3)
+  const endOverall = clamp(Number(latest?.score_overall) || 82, 50, 99)
+  const endQa = clamp(Number(latest?.score_qa) || endOverall - 4, 45, 99)
+  const endSeo = clamp(Number(latest?.score_seo) || endOverall - 6, 40, 99)
+  const endPages = Math.max(8, Number(latest?.pages_crawled) || 16)
+
+  // Oldest point: clearly worse, then ease toward just above today's real scan.
+  const startIssues = Math.round(endIssues * (1.55 + (seed % 4) * 0.04))
+  const nearIssues = Math.round(endIssues * 1.06)
+  const startBroken = Math.max(endBroken + 8, Math.round(endBroken * 2.4) + 5)
+  const nearBroken = Math.max(endBroken + 1, Math.round(endBroken * 1.12))
+  const startOverall = clamp(endOverall - (13 + (seed % 4)), 42, 96)
+  const nearOverall = clamp(endOverall - 1, startOverall + 1, 99)
+  const startQa = clamp(endQa - (12 + (seed % 3)), 40, 96)
+  const nearQa = clamp(endQa - 1, startQa + 1, 99)
+  const startSeo = clamp(endSeo - (14 + ((seed + 1) % 4)), 38, 96)
+  const nearSeo = clamp(endSeo - 1, startSeo + 1, 99)
+
+  return days.map((daysAgo, i) => {
+    const t = i / (days.length - 1)
+    // Ease-out: remediation progresses steadily, slightly faster later.
+    const ease = 1 - (1 - t) ** 1.35
+    const overall = clamp(Math.round(startOverall + (nearOverall - startOverall) * ease), 40, 99)
+    const qa = clamp(Math.round(startQa + (nearQa - startQa) * ease), 38, 99)
+    const seo = clamp(Math.round(startSeo + (nearSeo - startSeo) * ease), 36, 99)
+    const openIssues = Math.max(endIssues, Math.round(startIssues + (nearIssues - startIssues) * ease))
+    const broken = Math.max(endBroken, Math.round(startBroken + (nearBroken - startBroken) * ease))
     return {
       daysAgo,
       score_overall: overall,
@@ -118,8 +143,8 @@ function historyPoints(seed) {
       score_seo_technical: clamp(seo + 2, 0, 100),
       score_seo_content: clamp(seo - 3, 0, 100),
       open_issue_count: openIssues,
-      pages_crawled: 12 + i * 2 + (seed % 4),
-      broken_link_count: Math.max(0, 8 - i * 2)
+      pages_crawled: Math.max(6, endPages - (days.length - 1 - i) * 2 + (seed % 3)),
+      broken_link_count: broken
     }
   })
 }
@@ -334,29 +359,28 @@ async function waitForScans(token, siteIds, timeoutMs = 45 * 60 * 1000) {
 }
 
 async function seedHistory(token, site, seed) {
-  const existing = await listAll(token, 'scans', `site="${site.id}" && status="complete"`)
-  const latestReal = existing
+  const existing = await listAll(token, 'scans', `site="${site.id}"`)
+  const realScans = existing.filter(s => !s.diff_summary?.demoHistory)
+  const latestReal = realScans
+    .filter(s => s.status === 'complete' || s.status === 'complete_with_errors')
     .slice()
     .sort((a, b) => String(b.completed_at || b.created).localeCompare(String(a.completed_at || a.created)))[0]
 
   const tagged = existing.filter(s => s.diff_summary?.demoHistory === true)
-  if (tagged.length >= 5) {
-    console.log(`History already present for ${site.name}`)
-    return
-  }
 
-  // Remove prior demo-history rows only (keep real scans)
+  // Always refresh demo-history rows so trends stay anchored to the latest real scan.
   for (const row of tagged) {
     await pb(`/api/collections/scans/records/${row.id}`, { method: 'DELETE', token })
   }
 
-  const points = historyPoints(seed)
+  const points = historyPoints(seed, latestReal)
+  let created = 0
   for (const point of points) {
     const completedAt = daysAgoIso(point.daysAgo, 9 + (seed % 5))
     const startedAt = daysAgoIso(point.daysAgo, 8 + (seed % 5))
     // Skip if a real scan already exists on the same calendar day
     const day = completedAt.slice(0, 10)
-    const clash = existing.some((s) => String(s.completed_at || '').startsWith(day) && !s.diff_summary?.demoHistory)
+    const clash = realScans.some((s) => String(s.completed_at || '').startsWith(day))
     if (clash) continue
 
     await pb('/api/collections/scans/records', {
@@ -387,12 +411,17 @@ async function seedHistory(token, site, seed) {
         }
       }
     })
+    created += 1
   }
 
   if (latestReal) {
-    console.log(`Seeded history before latest scan ${latestReal.id} for ${site.name}`)
+    console.log(
+      `Seeded ${created} history row(s) for ${site.name} `
+      + `(issues ${points[0]?.open_issue_count}→${latestReal.open_issue_count}, `
+      + `broken ${points[0]?.broken_link_count}→${latestReal.broken_link_count ?? 0})`
+    )
   } else {
-    console.log(`Seeded history for ${site.name} (no completed real scan yet)`)
+    console.log(`Seeded ${created} history row(s) for ${site.name} (no completed real scan yet)`)
   }
 }
 

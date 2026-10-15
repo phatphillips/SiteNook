@@ -9,13 +9,6 @@ function pocketBaseErrorMessage(error: unknown): string {
   return 'PDF operation failed'
 }
 
-function generateShareToken(): string {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID().replace(/-/g, '')
-  }
-  return `${Date.now()}_${Math.random().toString(36).slice(2)}`
-}
-
 const MAX_UPLOAD_FILES = 10
 const MAX_FILE_BYTES = 20 * 1024 * 1024
 
@@ -172,7 +165,6 @@ export function useOrgPdfDocuments(siteFilter: Ref<string> | ComputedRef<string>
         formData.append('file', file)
         formData.append('filename', file.name)
         formData.append('status', 'pending')
-        formData.append('share_token', generateShareToken())
         if (userId) formData.append('uploaded_by', userId)
 
         const doc = await pb.collection('pdf_documents').create(formData)
@@ -275,14 +267,6 @@ export function useOrgPdfDocuments(siteFilter: Ref<string> | ComputedRef<string>
     await fetchDocuments({ silent: true })
   }
 
-  async function copyShareLink(token: string) {
-    const config = useRuntimeConfig()
-    const base = config.public.appUrl || (import.meta.client ? window.location.origin : '')
-    const url = `${base.replace(/\/$/, '')}/pdf-report/${token}`
-    await navigator.clipboard.writeText(url)
-    return url
-  }
-
   return {
     documents,
     loading,
@@ -298,7 +282,6 @@ export function useOrgPdfDocuments(siteFilter: Ref<string> | ComputedRef<string>
     requestValidation,
     requestBulkValidation,
     requestBulkRemediation,
-    copyShareLink,
     maxUploadFiles: MAX_UPLOAD_FILES,
     maxFileSizeMb: 20
   }

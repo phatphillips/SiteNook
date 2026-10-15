@@ -23,8 +23,16 @@ describe('simulatorChecks', () => {
   it('returns css filters and tunnel overlay', () => {
     expect(visionCssFilter('none')).toBe('')
     expect(visionCssFilter('achromatopsia')).toContain('grayscale')
+    expect(visionCssFilter('tritanopia')).toContain('hue-rotate')
+    expect(visionCssFilter('protanopia')).not.toContain('url(')
     expect(visionOverlayClass('tunnel_vision')).toBe('simulator-overlay--tunnel')
     expect(getSimulatorCheck('tab_order').independent).toBe(true)
+  })
+
+  it('provides learn-more links for impairments', () => {
+    expect(getSimulatorCheck('protanopia').learnMoreUrl).toContain('wikipedia')
+    expect(getSimulatorCheck('cataracts').learnMoreUrl).toContain('wikipedia')
+    expect(getSimulatorCheck('none').learnMoreUrl).toBeUndefined()
   })
 })
 

@@ -23,7 +23,9 @@ onMounted(async () => {
 
     const siteId = record.site
     if (siteId) {
-      await navigateTo(`/sites/${siteId}/accessibility/simulator/${pageId.value}`, {
+      await navigateTo({
+        path: `/sites/${siteId}/accessibility/simulator`,
+        query: { page: pageId.value },
         replace: true
       })
       return
@@ -40,7 +42,7 @@ onMounted(async () => {
 
 <template>
   <OrgFeaturePageShell title="Simulator">
-    <div class="py-12 flex flex-col items-center gap-3 text-center">
+    <div class="flex flex-col items-center gap-3 py-12 text-center">
       <UIcon
         v-if="loading"
         name="i-lucide-loader-circle"
@@ -54,8 +56,11 @@ onMounted(async () => {
         icon="i-lucide-alert-circle"
         class="max-w-lg"
       />
-      <p v-else class="text-sm text-muted">
-        Redirecting to the site simulator…
+      <p
+        v-else
+        class="text-sm text-muted"
+      >
+        Opening simulator…
       </p>
       <UButton
         to="/accessibility/simulator"

@@ -73,12 +73,14 @@ export const READABILITY_TABLE_SKELETON_COLUMNS: DataTableSkeletonColumn[] = [
   { width: '4rem', align: 'right', cellVariant: 'single' }
 ]
 
-/** Broken links flat table (site + url + page + status). */
+/** Broken links flat table (site + broken url + found on + http + type + actions). */
 export const BROKEN_LINKS_TABLE_SKELETON_COLUMNS: DataTableSkeletonColumn[] = [
-  { cellVariant: 'single' },
+  { width: '7rem', cellVariant: 'single' },
   { cellVariant: 'double' },
   { cellVariant: 'double' },
-  { width: '5rem', align: 'right', cellVariant: 'chip' }
+  { width: '4.5rem', align: 'right', cellVariant: 'chip' },
+  { width: '5rem', cellVariant: 'chip' },
+  { width: '7rem', align: 'right', cellVariant: 'button' }
 ]
 
 /** Inventory table (URL + file size). */

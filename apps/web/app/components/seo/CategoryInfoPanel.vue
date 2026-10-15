@@ -45,7 +45,7 @@ const focusItems = computed(() =>
 
 <template>
   <div
-    class="score-info-panel flex h-full min-h-0 w-full flex-col gap-4 rounded-lg border border-default bg-elevated/25 p-4"
+    class="score-info-panel flex h-full min-h-0 w-full flex-col gap-4 rounded-lg border border-default bg-elevated p-4"
   >
     <div class="flex min-h-[18px] min-w-0 items-center gap-2">
       <p class="min-w-0 text-sm font-bold text-default">
@@ -74,19 +74,19 @@ const focusItems = computed(() =>
         Category scores
       </h4>
       <dl class="grid grid-cols-3 gap-3">
-        <div class="rounded-lg bg-elevated/40 p-3 text-center ring-1 ring-default">
+        <div class="rounded-lg border border-default bg-elevated p-3 text-center">
           <dt class="mb-1 text-xs text-muted">Technical</dt>
           <dd class="text-lg font-semibold tabular-nums text-default">
             {{ technicalScore != null ? technicalScore : '—' }}
           </dd>
         </div>
-        <div class="rounded-lg bg-elevated/40 p-3 text-center ring-1 ring-default">
+        <div class="rounded-lg border border-default bg-elevated p-3 text-center">
           <dt class="mb-1 text-xs text-muted">Crawlability</dt>
           <dd class="text-lg font-semibold tabular-nums text-default">
             {{ crawlabilityScore != null ? crawlabilityScore : '—' }}
           </dd>
         </div>
-        <div class="rounded-lg bg-elevated/40 p-3 text-center ring-1 ring-default">
+        <div class="rounded-lg border border-default bg-elevated p-3 text-center">
           <dt class="mb-1 text-xs text-muted">Content</dt>
           <dd class="text-lg font-semibold tabular-nums text-default">
             {{ contentScore != null ? contentScore : '—' }}
@@ -117,7 +117,7 @@ const focusItems = computed(() =>
         >
           <NuxtLink
             :to="item.to"
-            class="flex items-start justify-between gap-3 rounded-lg bg-elevated/40 px-3 py-2.5 ring-1 ring-default transition-colors hover:bg-elevated/60 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            class="flex items-start justify-between gap-3 rounded-lg border border-default bg-elevated px-3 py-2.5 transition-colors hover:bg-muted hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <div class="min-w-0">
               <p class="text-sm font-medium text-default">{{ item.label }}</p>

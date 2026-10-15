@@ -118,10 +118,10 @@ async function fetchLiveMeta() {
 
     <div
       v-else
-      class="overflow-hidden rounded-xl border border-default bg-default"
+      class="overflow-hidden rounded-xl border border-default bg-elevated"
     >
       <div class="grid grid-cols-1 lg:grid-cols-[minmax(20rem,42%)_1fr]">
-        <div class="min-w-0 space-y-5 border-b border-default p-4 sm:p-5 lg:border-b-0 lg:border-r">
+        <div class="min-w-0 space-y-5 border-b border-default bg-elevated p-4 sm:p-5 lg:border-b-0 lg:border-r">
           <div class="space-y-3">
             <SeoSerpPagePicker
               v-model="selectedKey"
@@ -158,7 +158,7 @@ async function fetchLiveMeta() {
           />
         </div>
 
-        <div class="min-w-0 bg-elevated/20 p-4 sm:p-5 lg:sticky lg:top-0 lg:self-start">
+        <div class="min-w-0 bg-elevated p-4 sm:p-5 lg:sticky lg:top-0 lg:self-start">
           <div class="mb-3 space-y-1">
             <p class="text-sm font-medium text-highlighted">
               Search result preview

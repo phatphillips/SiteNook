@@ -15,9 +15,8 @@ Honest capability envelope:
 | Route | Purpose |
 |-------|---------|
 | `/sites/:id/accessibility/pdfs` | Library KPIs, upload, unified PDF table (select / rescan / ignore / remove), bulk assisted fix |
-| `/sites/:id/accessibility/pdfs/[documentId]` | **PDF Inspector** — Audit / Convert / Compare |
-| `/sites/:id/accessibility/pdfs/[documentId]?mode=convert&content=markdown` | Convert deep link (`view2` and legacy `mode=structure` still accepted) |
-| `/pdf-report/[token]` | Shareable read-only report (token-gated) |
+| `/sites/:id/accessibility/pdfs/[documentId]` | **PDF Inspector** — Audit / Convert |
+| `/sites/:id/accessibility/pdfs/[documentId]?mode=convert&content=markdown` | Convert deep link (`view2` and legacy `mode=structure` still accepted; `mode=compare` maps to Audit) |
 
 Breadcrumb chrome: **PDFs / PDF Inspector** (literal slash). The decoded filename appears as a muted subtitle, not the primary title.
 
@@ -34,10 +33,9 @@ Unified three-column layout:
 | Mode | Context pane |
 |------|----------------|
 | **Audit** | Accessibility issue list + selected issue guidance (how to fix, evidence, go-to-page). Preview shows a page cue when an issue is selected. |
-| **Convert** | Copyable extracted content: **Markdown \| HTML \| JSON \| Gutenberg \| Image assets**, with Copy (raw / LLM prompt). Optional structure outline accordion when extraction has items. |
-| **Compare** | Original preview + **What improved** assisted-fix summary (metrics, original issue list, remaining work). Optional preview of the fixed PDF. |
+| **Convert** | Copyable extracted content: **Markdown \| HTML \| JSON \| Gutenberg \| Image assets**, with Copy (raw / LLM prompt). Outline lives in the left rail. |
 
-Primary CTA: **Generate assisted fix**. Secondary: issue CSV, remediation pack ZIP, share.
+Audit and Convert share the same inspector shell (nav rail, preview, right context). Mode tabs sit on the filename row.
 
 ---
 
@@ -103,10 +101,8 @@ After stack is up (`docker compose` with veraPDF + OpenDataLoader):
 2. Wait until validation completes → **Audit** shows Pages thumbnails, Preview, and Issues context
 3. Open **Convert** → Preview stays PDF; Content defaults to Markdown (or HTML); switch JSON / Gutenberg / Image assets; use **Copy**
 4. Click a page thumbnail → Preview jumps to that page
-5. Click **Generate suggested tags** → job completes → original unchanged; suggested file downloadable
-6. Open **Compare** → before/after score/issue delta visible
-7. Download **issue CSV** and **remediation pack ZIP**
-8. Deep-link `?mode=convert&content=markdown` restores Convert content format (`view2` and `mode=structure` still work)
+5. Open **Convert** → format pills match Audit scope controls; extracted content loads when structure is ready
+6. Deep-link `?mode=convert&content=markdown` restores Convert content format (`view2` and `mode=structure` still work)
 
 ### Automated
 

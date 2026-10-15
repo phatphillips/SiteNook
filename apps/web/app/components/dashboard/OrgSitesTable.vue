@@ -6,15 +6,8 @@ import {
   dataTableTdClass,
   dataTableThClass
 } from '~/utils/dataTableUi'
-import { formatAccessibilityScore } from '~/utils/siteimproveScore'
 import { compareTimestampsDesc } from '~/utils/sortTimestamps'
-import {
-  A11Y_BAR_FILL,
-  A11Y_BAR_FILL_HOVER,
-  A11Y_BAR_TEXT,
-  A11Y_BAR_TEXT_ON_HOVER,
-  A11Y_BAR_TRACK
-} from '~/utils/chartTheme'
+import ScoreProgressChip from '~/components/shared/ScoreProgressChip.vue'
 
 const props = withDefaults(defineProps<{
   snapshots: SiteDashboardSnapshot[]
@@ -94,20 +87,10 @@ function formatLastScan(iso: string | null) {
   }
 }
 
-function scoreBarWidth(score: number): string {
-  return `${Math.max(0, Math.min(100, score))}%`
-}
+const scoreColThClass = computed(() => dataTableThClass())
+const scoreColTdClass = computed(() => dataTableTdClass())
 
-function scoreChipStyle(score: number) {
-  return {
-    '--bar-fill': A11Y_BAR_FILL,
-    '--bar-fill-hover': A11Y_BAR_FILL_HOVER,
-    '--bar-track': A11Y_BAR_TRACK,
-    '--bar-text': A11Y_BAR_TEXT,
-    '--bar-text-hover': A11Y_BAR_TEXT_ON_HOVER,
-    '--score-pct': scoreBarWidth(score)
-  }
-}
+const sortBtnClass = 'data-table-sort-btn -mx-2.5'
 </script>
 
 <template>
@@ -126,54 +109,65 @@ function scoreChipStyle(score: number) {
       </UButton>
     </div>
 
-    <div v-if="!rows.length" class="rounded-lg border border-default bg-elevated/25 p-6 text-sm text-muted">
+    <div v-if="!rows.length" class="rounded-lg border border-default bg-elevated p-6 text-sm text-muted">
       No sites yet.
-      <NuxtLink to="/sites" class="text-primary hover:underline">
+      <NuxtLink to="/sites" class="text-link text-primary">
         Add your first site
       </NuxtLink>.
     </div>
 
     <div v-else class="table-surface overflow-x-auto">
       <table class="min-w-full table-fixed border-collapse">
+        <colgroup>
+          <col class="w-[36%]">
+          <col class="w-[16%]">
+          <col v-if="showQa" class="w-[16%]">
+          <col v-if="showSeoColumn" class="w-[16%]">
+          <col>
+        </colgroup>
         <thead :class="DATA_TABLE_THEAD_CLASS">
           <tr>
             <th :class="dataTableThClass()">
               <UButton
                 color="neutral"
                 variant="ghost"
+                size="sm"
                 label="Site"
-                :icon="sortIcon('site')"
-                class="-mx-2.5"
+                :trailing-icon="sortIcon('site')"
+                :class="sortBtnClass"
                 @click="toggleSort('site')"
               />
             </th>
-            <th :class="dataTableThClass()">
+            <th :class="scoreColThClass">
               <UButton
                 color="neutral"
                 variant="ghost"
+                size="sm"
                 label="Accessibility"
-                :icon="sortIcon('accessibility')"
-                class="-mx-2.5"
+                :trailing-icon="sortIcon('accessibility')"
+                :class="sortBtnClass"
                 @click="toggleSort('accessibility')"
               />
             </th>
-            <th v-if="showQa" :class="dataTableThClass()">
+            <th v-if="showQa" :class="scoreColThClass">
               <UButton
                 color="neutral"
                 variant="ghost"
+                size="sm"
                 label="QA"
-                :icon="sortIcon('qa')"
-                class="-mx-2.5"
+                :trailing-icon="sortIcon('qa')"
+                :class="sortBtnClass"
                 @click="toggleSort('qa')"
               />
             </th>
-            <th v-if="showSeoColumn" :class="dataTableThClass()">
+            <th v-if="showSeoColumn" :class="scoreColThClass">
               <UButton
                 color="neutral"
                 variant="ghost"
+                size="sm"
                 label="SEO"
-                :icon="sortIcon('seo')"
-                class="-mx-2.5"
+                :trailing-icon="sortIcon('seo')"
+                :class="sortBtnClass"
                 @click="toggleSort('seo')"
               />
             </th>
@@ -181,9 +175,10 @@ function scoreChipStyle(score: number) {
               <UButton
                 color="neutral"
                 variant="ghost"
+                size="sm"
                 label="Last scan"
-                :icon="sortIcon('lastScan')"
-                class="-mx-2.5"
+                :trailing-icon="sortIcon('lastScan')"
+                :class="sortBtnClass"
                 @click="toggleSort('lastScan')"
               />
             </th>
@@ -198,7 +193,7 @@ function scoreChipStyle(score: number) {
             <td :class="dataTableTdClass()">
               <NuxtLink
                 :to="`/sites/${site.siteId}`"
-                class="font-medium text-highlighted hover:text-primary"
+                class="dashboard-inline-link block truncate text-sm font-medium text-highlighted hover:text-primary"
               >
                 {{ site.siteName }}
               </NuxtLink>
@@ -206,82 +201,31 @@ function scoreChipStyle(score: number) {
                 {{ site.siteUrl }}
               </p>
             </td>
-            <td :class="dataTableTdClass()">
-              <NuxtLink
+            <td :class="scoreColTdClass">
+              <ScoreProgressChip
                 v-if="site.accessibilityScore != null"
+                :score="site.accessibilityScore"
                 :to="`/sites/${site.siteId}/accessibility`"
-                class="a11y-score-chip group relative flex h-8 w-full max-w-[8.5rem] items-center justify-center overflow-hidden rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                :style="scoreChipStyle(site.accessibilityScore)"
-              >
-                <span class="a11y-score-chip__track absolute inset-0 rounded-md" aria-hidden="true" />
-                <span
-                  class="a11y-score-chip__bar absolute inset-y-0 left-0 rounded-md"
-                  :style="{ width: 'var(--score-pct)' }"
-                  aria-hidden="true"
-                />
-                <span class="a11y-score-chip__text a11y-score-chip__text--base absolute inset-0 z-10 flex items-center justify-center text-sm font-semibold tabular-nums">
-                  {{ formatAccessibilityScore(site.accessibilityScore) }}%
-                </span>
-                <span
-                  class="a11y-score-chip__text a11y-score-chip__text--on-fill absolute inset-0 z-20 flex items-center justify-center text-sm font-semibold tabular-nums"
-                  aria-hidden="true"
-                >
-                  {{ formatAccessibilityScore(site.accessibilityScore) }}%
-                </span>
-              </NuxtLink>
-              <span v-else class="text-muted">—</span>
+              />
+              <span v-else class="text-sm text-muted">—</span>
             </td>
-            <td v-if="showQa" :class="dataTableTdClass()">
-              <NuxtLink
+            <td v-if="showQa" :class="scoreColTdClass">
+              <ScoreProgressChip
                 v-if="site.qaScore != null"
+                :score="site.qaScore"
                 :to="`/sites/${site.siteId}/qa`"
-                class="a11y-score-chip group relative flex h-8 w-full max-w-[8.5rem] items-center justify-center overflow-hidden rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                :style="scoreChipStyle(site.qaScore)"
-              >
-                <span class="a11y-score-chip__track absolute inset-0 rounded-md" aria-hidden="true" />
-                <span
-                  class="a11y-score-chip__bar absolute inset-y-0 left-0 rounded-md"
-                  :style="{ width: 'var(--score-pct)' }"
-                  aria-hidden="true"
-                />
-                <span class="a11y-score-chip__text a11y-score-chip__text--base absolute inset-0 z-10 flex items-center justify-center text-sm font-semibold tabular-nums">
-                  {{ formatAccessibilityScore(site.qaScore) }}%
-                </span>
-                <span
-                  class="a11y-score-chip__text a11y-score-chip__text--on-fill absolute inset-0 z-20 flex items-center justify-center text-sm font-semibold tabular-nums"
-                  aria-hidden="true"
-                >
-                  {{ formatAccessibilityScore(site.qaScore) }}%
-                </span>
-              </NuxtLink>
-              <span v-else class="text-muted">—</span>
+              />
+              <span v-else class="text-sm text-muted">—</span>
             </td>
-            <td v-if="showSeoColumn" :class="dataTableTdClass()">
-              <NuxtLink
+            <td v-if="showSeoColumn" :class="scoreColTdClass">
+              <ScoreProgressChip
                 v-if="site.seoScore != null"
+                :score="site.seoScore"
                 :to="`/sites/${site.siteId}/seo`"
-                class="a11y-score-chip group relative flex h-8 w-full max-w-[8.5rem] items-center justify-center overflow-hidden rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                :style="scoreChipStyle(site.seoScore)"
-              >
-                <span class="a11y-score-chip__track absolute inset-0 rounded-md" aria-hidden="true" />
-                <span
-                  class="a11y-score-chip__bar absolute inset-y-0 left-0 rounded-md"
-                  :style="{ width: 'var(--score-pct)' }"
-                  aria-hidden="true"
-                />
-                <span class="a11y-score-chip__text a11y-score-chip__text--base absolute inset-0 z-10 flex items-center justify-center text-sm font-semibold tabular-nums">
-                  {{ formatAccessibilityScore(site.seoScore) }}%
-                </span>
-                <span
-                  class="a11y-score-chip__text a11y-score-chip__text--on-fill absolute inset-0 z-20 flex items-center justify-center text-sm font-semibold tabular-nums"
-                  aria-hidden="true"
-                >
-                  {{ formatAccessibilityScore(site.seoScore) }}%
-                </span>
-              </NuxtLink>
-              <span v-else class="text-muted">—</span>
+              />
+              <span v-else class="text-sm text-muted">—</span>
             </td>
-            <td :class="[dataTableTdClass(), 'text-muted']">
+            <td :class="[dataTableTdClass(), 'text-sm text-muted']">
               {{ formatLastScan(site.lastScanAt) }}
             </td>
           </tr>
@@ -290,46 +234,3 @@ function scoreChipStyle(score: number) {
     </div>
   </section>
 </template>
-
-<style scoped>
-.a11y-score-chip__track {
-  background-color: var(--bar-track);
-}
-
-.a11y-score-chip__bar {
-  background-color: var(--bar-fill);
-  transition: background-color 180ms ease;
-}
-
-.a11y-score-chip:hover .a11y-score-chip__bar,
-.a11y-score-chip:focus-visible .a11y-score-chip__bar,
-.org-sites-row:hover .a11y-score-chip__bar {
-  background-color: var(--bar-fill-hover);
-}
-
-.a11y-score-chip__text--base {
-  color: var(--bar-text);
-  clip-path: none;
-  transition: clip-path 0ms;
-}
-
-/* On hover: white only over the dark track; black only over purple fill (no overlap/bleed). */
-.a11y-score-chip:hover .a11y-score-chip__text--base,
-.a11y-score-chip:focus-visible .a11y-score-chip__text--base,
-.org-sites-row:hover .a11y-score-chip__text--base {
-  clip-path: inset(0 0 0 var(--score-pct));
-}
-
-.a11y-score-chip__text--on-fill {
-  color: var(--bar-text-hover);
-  clip-path: inset(0 calc(100% - var(--score-pct)) 0 0);
-  opacity: 0;
-  pointer-events: none;
-}
-
-.a11y-score-chip:hover .a11y-score-chip__text--on-fill,
-.a11y-score-chip:focus-visible .a11y-score-chip__text--on-fill,
-.org-sites-row:hover .a11y-score-chip__text--on-fill {
-  opacity: 1;
-}
-</style>

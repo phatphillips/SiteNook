@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  SIMULATOR_CVD_SVG_FILTERS,
   visionCssFilter,
   visionOverlayClass,
   type SimulatorVisionId
@@ -11,6 +10,11 @@ import {
   type SimulatorTabOrderPayload
 } from '~/utils/simulatorTabOrder'
 import { orgApiFetch } from '~/utils/orgApiFetch'
+import {
+  freezeFrameSandbox,
+  previewIframeLayout,
+  type PreviewViewportId
+} from '~/utils/previewViewport'
 
 const props = defineProps<{
   siteId: string
@@ -22,23 +26,41 @@ const props = defineProps<{
 }>()
 
 const toast = useToast()
-const { pb, awaitAuthReady } = usePocketBase()
 
-const previewSource = ref<'screenshot' | null>(null)
-const previewObjectUrl = ref<string | null>(null)
 const tabOrderPayload = ref<SimulatorTabOrderPayload | null>(null)
 const previewLoading = ref(false)
 const previewError = ref<string | null>(null)
+const snapshotUrl = ref<string | null>(null)
+const iframeReady = ref(false)
+const previewViewport = ref<PreviewViewportId>('fit')
 
-const imageRef = ref<HTMLImageElement | null>(null)
+const previewShellRef = ref<HTMLElement | null>(null)
+const iframeRef = ref<HTMLIFrameElement | null>(null)
+const { width: previewShellWidth, height: previewShellHeight } = useElementSize(previewShellRef)
 const displaySize = ref({ width: 0, height: 0 })
-const naturalSize = ref({ width: 0, height: 0 })
 
-const showLoading = computed(() => props.loading || previewLoading.value)
+const showLoading = computed(() => props.loading || previewLoading.value || !iframeReady.value)
+const previewFrameUrl = computed(() => snapshotUrl.value)
+/** Freeze-frame only — same-origin so CSS vision filters apply to iframe paint. */
+const iframeSandbox = computed(() => freezeFrameSandbox())
 
-const filterStyle = computed(() => {
+const previewLayout = computed(() => previewIframeLayout(
+  previewViewport.value,
+  previewShellWidth.value,
+  previewShellHeight.value
+))
+
+const previewIframeStyle = computed(() => {
+  const layout = previewLayout.value
   const filter = visionCssFilter(props.visionId)
-  return filter ? { filter } : undefined
+  return {
+    width: `${layout.width}px`,
+    height: `${layout.height}px`,
+    transform: layout.scale === 1 ? 'none' : `scale(${layout.scale})`,
+    transformOrigin: 'top left',
+    // Apply on the iframe itself — parent wrappers often do not filter iframe paint.
+    ...(filter ? { filter } : {})
+  }
 })
 
 const overlayClass = computed(() => visionOverlayClass(props.visionId))
@@ -49,76 +71,112 @@ const markers = computed<ScaledTabMarker[]>(() => {
     tabOrderPayload.value,
     displaySize.value.width,
     displaySize.value.height,
-    naturalSize.value.width,
-    naturalSize.value.height
+    tabOrderPayload.value?.pageWidth,
+    tabOrderPayload.value?.pageHeight
   )
 })
 
-function revokeObjectUrl() {
-  if (previewObjectUrl.value) {
-    URL.revokeObjectURL(previewObjectUrl.value)
-    previewObjectUrl.value = null
-  }
-}
-
 function updateDisplayMetrics() {
-  const img = imageRef.value
-  if (!img) return
+  const el = iframeRef.value
+  if (!el) return
+  const layout = previewLayout.value
   displaySize.value = {
-    width: img.clientWidth,
-    height: img.clientHeight
-  }
-  naturalSize.value = {
-    width: img.naturalWidth,
-    height: img.naturalHeight
+    width: layout.width * layout.scale,
+    height: layout.height * layout.scale
   }
 }
 
-async function loadPreviewImage(path: string) {
-  await awaitAuthReady()
-  const token = pb?.authStore.token
-  if (!token) throw new Error('Authentication required')
+let iframeReadyTimer: ReturnType<typeof setTimeout> | undefined
 
-  const response = await fetch(path, {
-    headers: { Authorization: `Bearer ${token}` }
-  })
-  if (!response.ok) {
-    throw new Error(`Preview image failed (${response.status})`)
+function armIframeReadyFallback() {
+  if (iframeReadyTimer) clearTimeout(iframeReadyTimer)
+  iframeReadyTimer = setTimeout(() => {
+    iframeReady.value = true
+  }, 12_000)
+}
+
+const VISION_STYLE_ID = 'sitenook-simulator-vision-filter'
+
+/** Inject filter into the freeze-frame document (iframe CSS filter is unreliable). */
+function applyVisionFilterToSnapshot() {
+  const iframe = iframeRef.value
+  if (!iframe) return
+  try {
+    const doc = iframe.contentDocument
+    if (!doc?.documentElement) return
+    let styleEl = doc.getElementById(VISION_STYLE_ID) as HTMLStyleElement | null
+    const filter = visionCssFilter(props.visionId)
+    if (!filter) {
+      styleEl?.remove()
+      return
+    }
+    if (!styleEl) {
+      styleEl = doc.createElement('style')
+      styleEl.id = VISION_STYLE_ID
+      doc.documentElement.appendChild(styleEl)
+    }
+    styleEl.textContent = `html { filter: ${filter} !important; }`
+  } catch {
+    // Cross-origin or sandbox blocked — outer iframe filter is the fallback.
   }
-  const blob = await response.blob()
-  revokeObjectUrl()
-  previewObjectUrl.value = URL.createObjectURL(blob)
+}
+
+function onPreviewIframeLoad() {
+  if (iframeReadyTimer) clearTimeout(iframeReadyTimer)
+  iframeReady.value = true
+  nextTick(() => {
+    updateDisplayMetrics()
+    applyVisionFilterToSnapshot()
+  })
+}
+
+async function onPreviewIframeError() {
+  if (iframeReadyTimer) clearTimeout(iframeReadyTimer)
+  snapshotUrl.value = null
+  iframeReady.value = true
+  previewError.value = 'Page snapshot is not available for this page.'
 }
 
 async function loadPreview() {
   if (!props.siteId || !props.pageId) return
   previewLoading.value = true
   previewError.value = null
+  iframeReady.value = false
+  snapshotUrl.value = null
+  tabOrderPayload.value = null
+
   try {
-    const result = await orgApiFetch<{
-      source: 'screenshot' | null
-      previewImageUrl: string | null
-      tabOrder: SimulatorTabOrderPayload | null
-      pageUrl: string
-      title: string
-    }>(`/api/sites/${props.siteId}/accessibility/simulator/preview`, {
-      pageId: props.pageId
-    })
+    const [ticket, meta] = await Promise.all([
+      orgApiFetch<{
+        livePreviewUrl?: string | null
+        snapshotUrl?: string | null
+      }>(`/api/sites/${props.siteId}/pages/${props.pageId}/snapshot-ticket`),
+      orgApiFetch<{
+        tabOrder: SimulatorTabOrderPayload | null
+      }>(`/api/sites/${props.siteId}/accessibility/simulator/preview`, {
+        pageId: props.pageId
+      }).catch(() => ({ tabOrder: null }))
+    ])
 
-    tabOrderPayload.value = result.tabOrder
-    previewSource.value = result.source
+    const requestPageId = props.pageId
+    tabOrderPayload.value = meta.tabOrder
+    if (props.pageId !== requestPageId) return
 
-    if (result.previewImageUrl) {
-      await loadPreviewImage(result.previewImageUrl)
-    } else {
-      revokeObjectUrl()
-      previewError.value = 'No screenshot preview yet. Re-run a scan to generate one.'
+    // Prefer freeze-frame (same-origin). Live cross-origin iframes ignore CSS filters.
+    snapshotUrl.value = ticket.snapshotUrl || null
+
+    if (!snapshotUrl.value) {
+      previewError.value = 'No page snapshot yet. Re-run a scan to capture one.'
+      iframeReady.value = true
+      return
     }
+
+    armIframeReadyFallback()
   } catch (e) {
-    revokeObjectUrl()
-    previewSource.value = null
+    snapshotUrl.value = null
     tabOrderPayload.value = null
     previewError.value = e instanceof Error ? e.message : String(e)
+    iframeReady.value = true
     toast.add({
       title: 'Preview unavailable',
       description: previewError.value,
@@ -135,64 +193,53 @@ watch(
   { immediate: true }
 )
 
+watch([previewShellWidth, previewShellHeight, previewLayout], () => {
+  updateDisplayMetrics()
+})
+
+watch(() => props.visionId, () => {
+  applyVisionFilterToSnapshot()
+})
+
 onMounted(() => {
   if (!import.meta.client) return
   window.addEventListener('resize', updateDisplayMetrics)
 })
 
 onBeforeUnmount(() => {
+  if (iframeReadyTimer) clearTimeout(iframeReadyTimer)
   if (import.meta.client) {
     window.removeEventListener('resize', updateDisplayMetrics)
   }
-  revokeObjectUrl()
 })
 </script>
 
 <template>
-  <div class="flex flex-col min-h-0 h-full rounded-lg border border-default bg-default overflow-hidden">
-    <div class="px-4 py-3 border-b border-default flex items-center justify-between gap-2 shrink-0">
-      <div>
-        <h2 class="text-sm font-semibold text-default">Page preview</h2>
-        <p class="text-xs text-muted mt-0.5">
-          <template v-if="previewSource === 'screenshot'">
-            Screenshot from the latest crawl
-          </template>
-          <template v-else>
-            Loading page preview…
-          </template>
-        </p>
-      </div>
-      <UButton
-        v-if="pageUrl"
-        size="xs"
-        color="neutral"
-        variant="outline"
-        icon="i-lucide-external-link"
-        label="Open live page"
-        :to="pageUrl"
-        target="_blank"
-        external
-      />
-    </div>
-
-    <div class="relative flex-1 min-h-[28rem] bg-muted/30 overflow-auto">
+  <div class="flex h-full min-h-0 flex-col overflow-hidden bg-elevated">
+    <div class="relative min-h-0 flex-1 overflow-hidden bg-neutral-200 dark:bg-neutral-800">
       <div
-        v-if="showLoading"
-        class="absolute inset-0 flex items-center justify-center"
+        v-if="showLoading && !previewError"
+        class="absolute inset-0 z-10 flex items-center justify-center bg-white/80 text-sm text-muted"
       >
-        <UIcon name="i-lucide-loader-circle" class="size-6 animate-spin text-muted" />
+        <UIcon
+          name="i-lucide-loader-circle"
+          class="size-6 animate-spin text-muted"
+        />
       </div>
 
       <div
-        v-else-if="previewError || !previewObjectUrl"
+        v-if="previewError && !previewFrameUrl"
         class="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center"
       >
-        <UIcon name="i-lucide-image-off" class="size-10 text-muted" />
-        <p class="text-sm text-muted max-w-sm">
-          {{ previewError || 'No screenshot is available for this page preview.' }}
-          Re-run a scan to capture a rendered preview.
+        <UIcon
+          name="i-lucide-app-window"
+          class="size-10 text-muted"
+        />
+        <p class="max-w-sm text-sm text-muted">
+          {{ previewError }}
+          Re-run a scan to capture a page snapshot.
         </p>
-        <div class="flex flex-wrap gap-2 justify-center">
+        <div class="flex flex-wrap justify-center gap-2">
           <UButton
             size="sm"
             color="neutral"
@@ -214,35 +261,46 @@ onBeforeUnmount(() => {
       </div>
 
       <div
-        v-else
-        class="relative w-full simulator-preview-stage"
-        :class="overlayClass"
+        v-else-if="previewFrameUrl"
+        ref="previewShellRef"
+        class="relative h-full min-h-0 overflow-hidden"
+        :class="[
+          overlayClass,
+          previewLayout.centered ? 'flex justify-center' : ''
+        ]"
       >
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <div class="sr-only" aria-hidden="true" v-html="SIMULATOR_CVD_SVG_FILTERS" />
-        <div class="relative inline-block min-w-full" :style="filterStyle">
-          <img
-            ref="imageRef"
-            class="simulator-preview-image block w-full h-auto"
-            :src="previewObjectUrl"
-            alt="Simulated page preview"
-            @load="updateDisplayMetrics"
+        <div
+          class="relative h-full min-h-0"
+          :class="previewLayout.centered ? 'shrink-0' : 'absolute inset-0'"
+        >
+          <iframe
+            ref="iframeRef"
+            :key="`${pageId}:${previewFrameUrl}`"
+            :src="previewFrameUrl"
+            title="Simulated page snapshot"
+            class="simulator-preview-iframe border-0 bg-white"
+            :class="previewLayout.centered ? 'relative shrink-0' : 'absolute left-0 top-0'"
+            :style="previewIframeStyle"
+            :sandbox="iframeSandbox"
+            referrerpolicy="no-referrer-when-downgrade"
+            @load="onPreviewIframeLoad"
+            @error="onPreviewIframeError"
+          />
+        </div>
+        <div
+          v-if="tabOrder && markers.length"
+          class="pointer-events-none absolute inset-0"
+          aria-hidden="true"
+        >
+          <span
+            v-for="marker in markers"
+            :key="marker.index"
+            class="simulator-tab-badge"
+            :style="{ left: `${marker.left}px`, top: `${marker.top}px` }"
+            :title="marker.label"
           >
-          <div
-            v-if="tabOrder && markers.length"
-            class="absolute inset-0 pointer-events-none"
-            aria-hidden="true"
-          >
-            <span
-              v-for="marker in markers"
-              :key="marker.index"
-              class="simulator-tab-badge"
-              :style="{ left: `${marker.left}px`, top: `${marker.top}px` }"
-              :title="marker.label"
-            >
-              {{ marker.index }}
-            </span>
-          </div>
+            {{ marker.index }}
+          </span>
         </div>
       </div>
     </div>
@@ -250,12 +308,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.simulator-preview-stage {
-  position: relative;
-}
-
-.simulator-preview-image {
-  background: white;
+.simulator-preview-iframe {
+  /* Force a composited layer so CSS filter paints over iframe content reliably. */
+  will-change: filter;
+  isolation: isolate;
 }
 
 .simulator-tab-badge {

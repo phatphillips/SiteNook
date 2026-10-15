@@ -16,14 +16,14 @@ const rowWidths = ['55%', '70%', '45%', '60%', '35%']
       <USkeleton :class="`h-3 w-32 ${skeleton}`" />
     </div>
 
-    <div class="lg:col-span-2 rounded-lg border border-default bg-elevated/25 p-4 sm:p-5 space-y-3 min-h-[220px]">
+    <div class="lg:col-span-2 rounded-lg border border-default bg-elevated p-4 sm:p-5 space-y-3 min-h-[220px]">
       <USkeleton :class="`h-3 w-28 ${skeleton}`" />
       <USkeleton :class="`h-8 w-20 ${skeleton}`" />
       <USkeleton :class="`h-3 w-40 ${skeleton}`" />
       <USkeleton :class="`h-[88px] w-full rounded ${skeleton}`" />
     </div>
 
-    <div class="rounded-lg border border-default bg-elevated/25 p-4 space-y-3">
+    <div class="rounded-lg border border-default bg-elevated p-4 space-y-3">
       <USkeleton :class="`h-4 w-32 ${skeleton}`" />
       <div
         v-for="(width, index) in rowWidths"
@@ -41,7 +41,7 @@ const rowWidths = ['55%', '70%', '45%', '60%', '35%']
       </div>
     </div>
 
-    <div class="lg:col-span-2 rounded-lg border border-default bg-elevated/25 p-4 space-y-4">
+    <div class="lg:col-span-2 rounded-lg border border-default bg-elevated p-4 space-y-4">
       <USkeleton :class="`h-4 w-24 ${skeleton}`" />
       <USkeleton :class="`h-3 w-full max-w-md ${skeleton}`" />
       <div class="grid grid-cols-3 gap-3">

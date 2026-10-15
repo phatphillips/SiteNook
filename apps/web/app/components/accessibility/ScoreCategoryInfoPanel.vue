@@ -57,7 +57,7 @@ function openRule(ruleId: string) {
 <template>
   <div
     data-score-info-panel
-    class="flex h-full min-h-0 w-full flex-col gap-4 rounded-lg border border-default bg-elevated/25 p-4 shadow-none ring-0 sm:p-5"
+    class="flex h-full min-h-0 w-full flex-col gap-4 rounded-lg border border-default bg-elevated p-4 shadow-none ring-0 sm:p-5"
   >
     <div class="flex min-h-[18px] min-w-0 items-center gap-2">
       <p class="min-w-0 text-base font-semibold text-highlighted">
@@ -83,11 +83,11 @@ function openRule(ruleId: string) {
         Quick stats
       </h4>
       <dl class="grid grid-cols-2 gap-3">
-        <div class="rounded-lg bg-elevated/40 ring-1 ring-default p-3 text-center">
+        <div class="rounded-lg border border-default bg-elevated p-3 text-center">
           <dt class="text-xs text-muted mb-1">Failing rules</dt>
           <dd class="text-lg font-semibold tabular-nums text-default">{{ stats.failingRules }}</dd>
         </div>
-        <div class="rounded-lg bg-elevated/40 ring-1 ring-default p-3 text-center">
+        <div class="rounded-lg border border-default bg-elevated p-3 text-center">
           <dt class="text-xs text-muted mb-1">Pages affected</dt>
           <dd class="text-lg font-semibold tabular-nums text-default">{{ stats.pagesAffected }}</dd>
         </div>
@@ -108,7 +108,7 @@ function openRule(ruleId: string) {
         >
           <button
             type="button"
-            class="flex w-full items-start justify-between gap-3 rounded-lg bg-elevated/40 px-3 py-2.5 text-left ring-1 ring-default transition-colors hover:bg-elevated/60 hover:ring-default/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            class="flex w-full items-start justify-between gap-3 rounded-lg border border-default bg-elevated px-3 py-2.5 text-left transition-colors hover:bg-muted hover:border-default focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             @click="openRule(fix.ruleId)"
           >
             <div class="min-w-0">

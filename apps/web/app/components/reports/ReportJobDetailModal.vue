@@ -67,7 +67,7 @@ const progress = computed(() => clampReportProgress(props.job?.progress))
 <template>
   <UModal
     v-model:open="open"
-    :ui="{ content: 'sm:max-w-lg' }"
+    :ui="{ content: 'sm:max-w-lg bg-elevated' }"
   >
     <template v-if="job" #header>
       <div class="space-y-1">

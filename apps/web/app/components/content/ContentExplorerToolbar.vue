@@ -7,7 +7,6 @@ import {
   formatScanTimestampLabel
 } from '~/utils/formatCompactRelativeTime'
 
-const search = defineModel<string>('search', { default: '' })
 const addPrompt = defineModel<boolean>('addPrompt', { default: false })
 const viewport = defineModel<PreviewViewportId>('viewport', { default: 'desktop' })
 const viewMode = defineModel<ExplorerViewMode>('viewMode', { default: 'preview' })
@@ -72,14 +71,7 @@ const showViewportGroup = computed(() => props.showViewport && viewMode.value ==
 </script>
 
 <template>
-  <div class="flex h-12 min-h-12 shrink-0 items-center gap-2 overflow-x-auto border-b border-default px-3">
-    <TableSearchInput
-      v-model="search"
-      placeholder="Filter pages…"
-      aria-label="Filter pages"
-      class="shrink-0"
-    />
-
+  <div class="flex h-12 min-h-12 shrink-0 items-center gap-2 overflow-x-auto border-b border-default bg-elevated px-3">
     <a
       v-if="entry"
       :href="entry.url"

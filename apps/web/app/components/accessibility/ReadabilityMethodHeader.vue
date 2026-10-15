@@ -28,7 +28,7 @@ const primaryMethod = computed(() =>
 <template>
   <section
     v-if="loading"
-    class="mb-6 rounded-lg border border-default bg-elevated/25 p-4 sm:p-5"
+    class="mb-6 rounded-lg border border-default bg-elevated p-4 sm:p-5"
     aria-hidden="true"
   >
     <div class="flex flex-wrap items-start justify-between gap-4">
@@ -47,7 +47,7 @@ const primaryMethod = computed(() =>
     </div>
   </section>
 
-  <section v-else-if="primaryMethod" class="mb-6 rounded-lg border border-default bg-elevated/25 p-4 sm:p-5">
+  <section v-else-if="primaryMethod" class="mb-6 rounded-lg border border-default bg-elevated p-4 sm:p-5">
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div class="min-w-0 flex-1 space-y-2">
         <div class="flex flex-wrap items-center gap-2">
@@ -63,7 +63,7 @@ const primaryMethod = computed(() =>
       <button
         v-if="!hideEdit"
         type="button"
-        class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-default bg-default px-2.5 py-1 text-sm transition-colors hover:bg-elevated/50"
+        class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-default bg-elevated px-2.5 py-1 text-sm transition-colors hover:bg-muted"
         aria-label="Edit readability methods"
         @click="emit('edit')"
       >

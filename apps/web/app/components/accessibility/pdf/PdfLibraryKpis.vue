@@ -8,7 +8,7 @@ defineProps<{
 
 <template>
   <div class="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
-    <div class="min-w-0 rounded-xl border border-default p-3">
+    <div class="min-w-0 rounded-xl border border-default bg-elevated p-3">
       <p class="text-xs text-muted">
         Discovered
       </p>
@@ -16,7 +16,7 @@ defineProps<{
         {{ kpis.discovered }}
       </p>
     </div>
-    <div class="min-w-0 rounded-xl border border-default p-3">
+    <div class="min-w-0 rounded-xl border border-default bg-elevated p-3">
       <p class="text-xs text-muted">
         Scanned
       </p>
@@ -24,7 +24,7 @@ defineProps<{
         {{ kpis.validated }}
       </p>
     </div>
-    <div class="min-w-0 rounded-xl border border-default p-3">
+    <div class="min-w-0 rounded-xl border border-default bg-elevated p-3">
       <p class="text-xs text-muted">
         Structured
       </p>
@@ -32,7 +32,7 @@ defineProps<{
         {{ kpis.structured }}
       </p>
     </div>
-    <div class="min-w-0 rounded-xl border border-default p-3">
+    <div class="min-w-0 rounded-xl border border-default bg-elevated p-3">
       <p class="text-xs text-muted">
         Remediated
       </p>
@@ -40,7 +40,7 @@ defineProps<{
         {{ kpis.remediated }}
       </p>
     </div>
-    <div class="min-w-0 rounded-xl border border-default p-3">
+    <div class="min-w-0 rounded-xl border border-default bg-elevated p-3">
       <p class="text-xs text-muted">
         Needs human finish
       </p>
@@ -48,7 +48,7 @@ defineProps<{
         {{ kpis.needsHumanFinish }}
       </p>
     </div>
-    <div class="min-w-0 rounded-xl border border-default p-3">
+    <div class="min-w-0 rounded-xl border border-default bg-elevated p-3">
       <p class="text-xs text-muted">
         Median issue Δ
       </p>
@@ -56,7 +56,7 @@ defineProps<{
         {{ kpis.medianIssueDelta ?? '—' }}
       </p>
     </div>
-    <div class="min-w-0 rounded-xl border border-default p-3">
+    <div class="min-w-0 rounded-xl border border-default bg-elevated p-3">
       <p class="text-xs text-muted">
         Avg lift %
       </p>

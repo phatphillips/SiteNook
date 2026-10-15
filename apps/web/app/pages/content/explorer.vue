@@ -145,7 +145,7 @@ async function downloadZip() {
 <template>
   <OrgFeaturePageShell
     title="Content Explorer"
-    fluid
+    :fluid="Boolean(resolvedSiteId)"
   >
     <template #right>
       <ScanTriggerButton
@@ -174,11 +174,10 @@ async function downloadZip() {
     >
       <div
         ref="workspaceRef"
-        class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-default bg-default"
+        class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-default bg-elevated"
         :style="{ height: workspaceHeight }"
       >
         <ContentExplorerToolbar
-          v-model:search="treeSearch"
           v-model:viewport="previewViewport"
           v-model:view-mode="viewMode"
           :entry="activeEntry"
