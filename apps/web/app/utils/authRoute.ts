@@ -1,13 +1,21 @@
 import type { RouteLocationNormalized } from 'vue-router'
 import { GUEST_AUTH_PATHS } from '~/utils/pbAuth'
 
-/** App sections that require a signed-in PocketBase user. */
+/**
+ * App sections that require a signed-in PocketBase user.
+ * Keep in sync with dashboard nav / pages that use `middleware: 'auth'`.
+ */
 export const PROTECTED_ROUTE_PREFIXES = [
   '/sites',
   '/search',
   '/settings',
   '/scans',
-  '/policies'
+  '/policies',
+  '/accessibility',
+  '/qa',
+  '/seo',
+  '/content',
+  '/reports'
 ] as const
 
 export function isProtectedAppRoute(path: string): boolean {

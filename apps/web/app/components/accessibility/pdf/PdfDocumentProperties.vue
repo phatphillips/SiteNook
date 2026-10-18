@@ -123,9 +123,9 @@ const rows = computed(() => {
 
     <div class="mt-5 grid gap-6 lg:grid-cols-2">
       <div class="min-w-0">
-        <h3 class="mb-3 text-sm font-semibold text-highlighted">
+        <h4 class="mb-3 text-sm font-semibold text-highlighted">
           Compliance
-        </h3>
+        </h4>
         <PdfComplianceSummary
           :document="document"
           :issue-count="issueCount"
@@ -133,9 +133,9 @@ const rows = computed(() => {
       </div>
 
       <div class="min-w-0">
-        <h3 class="mb-3 text-sm font-semibold text-highlighted">
+        <h4 class="mb-3 text-sm font-semibold text-highlighted">
           Document properties
-        </h3>
+        </h4>
         <dl class="grid gap-x-6 gap-y-3 sm:grid-cols-2">
           <div
             v-for="row in rows"

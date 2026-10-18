@@ -43,9 +43,9 @@ function onSelect(issue: PdfIssue) {
       class="space-y-4 p-4"
     >
       <section v-if="documentIssues.length">
-        <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+        <h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
           Document issues ({{ documentIssues.length }})
-        </h3>
+        </h4>
         <ul class="space-y-1">
           <li
             v-for="issue in documentIssues"
@@ -74,9 +74,9 @@ function onSelect(issue: PdfIssue) {
       </section>
 
       <section v-if="elementIssues.length">
-        <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+        <h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
           Element issues ({{ elementIssues.length }})
-        </h3>
+        </h4>
         <ul class="space-y-1">
           <li
             v-for="issue in elementIssues"

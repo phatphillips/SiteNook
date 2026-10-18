@@ -95,14 +95,15 @@ export const INVENTORY_PAGES_TABLE_SKELETON_COLUMNS = INVENTORY_TABLE_SKELETON_C
 /** @deprecated Use INVENTORY_TABLE_SKELETON_COLUMNS */
 export const INVENTORY_ASSETS_TABLE_SKELETON_COLUMNS = INVENTORY_TABLE_SKELETON_COLUMNS
 
-/** Pages breakdown table (expand + url + A + AA + AAA + issues + actions). */
+/** Pages breakdown table (expand + title + url + A + AA + AAA + issues + actions). */
 export const PAGES_BREAKDOWN_TABLE_SKELETON_COLUMNS: DataTableSkeletonColumn[] = [
   { width: '2.75rem', align: 'center', cellVariant: 'button' },
-  { cellVariant: 'double' },
-  { width: '3rem', align: 'center', cellVariant: 'single' },
-  { width: '3rem', align: 'center', cellVariant: 'single' },
-  { width: '3rem', align: 'center', cellVariant: 'single' },
-  { width: '4rem', align: 'center', cellVariant: 'single' },
+  { cellVariant: 'single' },
+  { width: '18rem', cellVariant: 'double' },
+  { width: '5rem', align: 'center', cellVariant: 'single' },
+  { width: '5rem', align: 'center', cellVariant: 'single' },
+  { width: '5rem', align: 'center', cellVariant: 'single' },
+  { width: '6.5rem', align: 'center', cellVariant: 'single' },
   { width: '2.75rem', align: 'right', cellVariant: 'button' }
 ]
 

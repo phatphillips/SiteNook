@@ -1,13 +1,17 @@
 import type { RouteLocationNormalized } from 'vue-router'
 import { isUserRecord } from '~/utils/pbAuth'
 import { AUTH_READY_TIMEOUT_MS, withTimeout } from '~/utils/fetchTimeout'
-import { buildLoginNavigation, isProtectedAppRoute } from '~/utils/authRoute'
+import { buildLoginNavigation } from '~/utils/authRoute'
 
+/**
+ * Require a valid signed-in user for `to`, otherwise redirect to `/login`.
+ * Call sites that only protect some routes should gate with `isProtectedAppRoute` first.
+ * Named middleware `auth` always calls this (no prefix skip).
+ */
 export async function ensureAuthenticatedForRoute(
   to: Pick<RouteLocationNormalized, 'fullPath' | 'path'>
 ): Promise<ReturnType<typeof navigateTo> | undefined> {
   if (import.meta.server) return
-  if (!isProtectedAppRoute(to.path)) return
 
   const { awaitAuthReady, syncAuth, pb } = usePocketBase()
 

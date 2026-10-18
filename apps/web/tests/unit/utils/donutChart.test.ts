@@ -13,7 +13,8 @@ import {
   isDonutChartStyle,
   layoutDonutSegments,
   roundedAnnularSectorPath,
-  scoreDonutSegments
+  scoreDonutSegments,
+  semiDonutRingGeometry
 } from '~/utils/donutChart'
 
 describe('donutChart', () => {
@@ -91,7 +92,8 @@ describe('donutChart', () => {
     const segments = scoreDonutSegments(75)
     const laidOut = layoutDonutSegments(segments, {
       sortDescending: false,
-      chartStyle: 'semi'
+      chartStyle: 'semi',
+      geometry: semiDonutRingGeometry()
     })
     expect(laidOut.length).toBe(2)
     expect(laidOut[0]!.startAngle).toBeCloseTo(DONUT_SEMI_START_ANGLE, 5)
@@ -107,5 +109,12 @@ describe('donutChart', () => {
     // Last tip lands on the same horizontal as the start (π → 2π).
     expect(end).toBeCloseTo(DONUT_SEMI_START_ANGLE + DONUT_SEMI_SWEEP, 5)
     expect(laidOut.every(segment => segment.path.length > 0)).toBe(true)
+  })
+
+  it('uses a larger lower-diameter ring for semi gauges', () => {
+    const semi = semiDonutRingGeometry()
+    const full = donutRingGeometry()
+    expect(semi.outerRadius).toBeGreaterThan(full.outerRadius)
+    expect(semi.cy).toBeGreaterThan(full.cy)
   })
 })

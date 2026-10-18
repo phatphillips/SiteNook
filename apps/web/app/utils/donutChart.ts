@@ -7,9 +7,9 @@
 export const DONUT_VIEWBOX = 100
 /**
  * Display size for overview / site-target score donuts.
- * Matches Nuxt Charts `DonutChart` common `:height="200"`.
+ * Matches Nuxt Charts `DonutChart` sizing (~255px wide).
  */
-export const SCORE_DONUT_SIZE_PX = 200
+export const SCORE_DONUT_SIZE_PX = 255
 /** Outer radius in viewBox units. */
 export const DONUT_OUTER_RADIUS = 48
 /** Ring thickness ≈ 1/8 of chart diameter. Cutout ≈ 74% of outer R. */
@@ -87,19 +87,34 @@ export function donutRingGeometry(
     thickness?: number
     cornerRadius?: number
     gapDeg?: number
+    cx?: number
+    cy?: number
   } = {}
 ): DonutRingGeometry {
   const outerRadius = options.outerRadius ?? DONUT_OUTER_RADIUS
   const thickness = options.thickness ?? DONUT_THICKNESS
   const cornerRadius = options.cornerRadius ?? DONUT_CORNER_RADIUS
   return {
-    cx: DONUT_VIEWBOX / 2,
-    cy: DONUT_VIEWBOX / 2,
+    cx: options.cx ?? DONUT_VIEWBOX / 2,
+    cy: options.cy ?? DONUT_VIEWBOX / 2,
     outerRadius,
     innerRadius: outerRadius - thickness,
     cornerRadius,
     gapRad: ((options.gapDeg ?? DONUT_GAP_DEG) * Math.PI) / 180
   }
+}
+
+/**
+ * Semi-gauge geometry: larger ring with the diameter in the lower half so
+ * the score label can sit inside the bowl, bottom-aligned to the end caps.
+ */
+export function semiDonutRingGeometry(): DonutRingGeometry {
+  return donutRingGeometry({
+    outerRadius: 54,
+    cx: DONUT_VIEWBOX / 2,
+    // Diameter ~76% down — tips near the lower third, arc fills most of the box.
+    cy: 76
+  })
 }
 
 function polar(cx: number, cy: number, r: number, angle: number) {

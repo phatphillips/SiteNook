@@ -7,6 +7,7 @@ import {
   donutRingGeometry,
   layoutDonutSegments,
   scoreDonutSegments,
+  semiDonutRingGeometry,
   type DonutChartStyle,
   type DonutSegmentInput
 } from '~/utils/donutChart'
@@ -104,7 +105,9 @@ function onDonutLeave() {
 const isSiteTarget = computed(() => props.variant === 'site-target')
 const chartStyle = computed((): DonutChartStyle => props.chartStyle ?? DEFAULT_DONUT_CHART_STYLE)
 const isSemi = computed(() => chartStyle.value === 'semi')
-const geometry = computed(() => donutRingGeometry())
+const geometry = computed(() =>
+  isSemi.value ? semiDonutRingGeometry() : donutRingGeometry()
+)
 
 const normalizedScore = computed(() => Math.max(0, Math.min(100, props.score)))
 
@@ -213,8 +216,8 @@ const showImpactRing = computed(() =>
 
 const sizeClass = computed(() => {
   if (props.size === 'sm') return 'size-20'
-  // Overview / default large charts match Nuxt Charts DonutChart `:height="200"`.
-  return 'size-[200px]'
+  // Overview / default large charts match Nuxt Charts DonutChart width (~255px).
+  return 'size-[255px]'
 })
 const isLarge = computed(() => props.size !== 'sm' || isSiteTarget.value)
 
@@ -289,7 +292,8 @@ const hiddenBreakdown = computed(() => {
   >
     <svg
       class="score-donut-svg size-full"
-      :viewBox="`0 0 ${DONUT_VIEWBOX} ${DONUT_VIEWBOX}`"
+      :viewBox="isSemi ? '-8 18 116 72' : `0 0 ${DONUT_VIEWBOX} ${DONUT_VIEWBOX}`"
+      preserveAspectRatio="xMidYMid meet"
       role="img"
       :aria-label="ariaLabel"
     >
@@ -436,14 +440,22 @@ const hiddenBreakdown = computed(() => {
   transition: transform 380ms cubic-bezier(0.34, 1.45, 0.64, 1);
 }
 
-/* Nest the label just under the semi-gauge diameter (viewBox centre). */
+/*
+ * Semi label: inside the bowl, near the diameter. Vertically centred SVG
+ * puts the diameter ~69% down; slightly less padding nudges text down.
+ */
 .score-donut-center--semi {
-  justify-content: flex-start;
-  padding-top: 46%;
+  justify-content: flex-end;
+  padding-bottom: 28%;
+  padding-inline: 18%;
 }
 
 .score-donut--hovered .score-donut-center {
   transform: scale(1.04);
+}
+
+.score-donut--semi.score-donut--hovered .score-donut-center {
+  transform-origin: center bottom;
 }
 
 .score-donut-value {
@@ -472,8 +484,28 @@ const hiddenBreakdown = computed(() => {
   font-size: 15cqw;
 }
 
+.score-donut--semi .score-donut-value {
+  font-size: 12.5cqw;
+}
+
+.score-donut--semi .score-donut-unit {
+  font-size: calc(12.5cqw * 0.35);
+}
+
+.score-donut--semi .score-donut-caption {
+  font-size: calc(12.5cqw * 0.4);
+}
+
+.score-donut--semi .score-donut-delta {
+  font-size: calc(12.5cqw * 0.32);
+}
+
+.score-donut--semi .score-donut-updating {
+  font-size: 12.5cqw;
+}
+
 .score-donut--semi .score-donut-rings-group {
-  transform-origin: 50% 50%;
+  transform-origin: 50% 76%;
 }
 
 .score-donut--semi.score-donut--hovered .score-donut-rings-group {

@@ -389,7 +389,7 @@ sequenceDiagram
 
 ### Pages using `auth` middleware
 
-All main dashboard routes, including `/`, `/sites`, `/scans`, `/policies`, `/settings`, and per-site accessibility/QA pages. Login, signup, forgot-password, and reset-password use `guest` middleware instead.
+All main dashboard routes, including `/`, `/sites`, `/scans`, `/policies`, `/settings`, `/search`, `/reports`, org-level `/accessibility`, `/qa`, `/seo`, `/content`, and per-site feature pages. Prefix list: `PROTECTED_ROUTE_PREFIXES` in `app/utils/authRoute.ts`. Login, signup, forgot-password, and reset-password use `guest` middleware instead.
 
 ---
 

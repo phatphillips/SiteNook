@@ -184,6 +184,18 @@ function severityColor(impact: AccessibilityIssue['impact']): 'error' | 'warning
   return 'info'
 }
 
+/** Colored pill for Severity (and Critical row tags). Keeps existing error/warning/info coding. */
+function severityTagClass(impact: AccessibilityIssue['impact']): string {
+  const color = severityColor(impact)
+  if (color === 'error') return 'issue-sev-tag issue-sev-tag--critical'
+  if (color === 'warning') return 'issue-sev-tag issue-sev-tag--moderate'
+  return 'issue-sev-tag issue-sev-tag--minor'
+}
+
+function isImportantIssue(issue: AccessibilityIssue): boolean {
+  return severityLabel(issue.impact) === 'Critical'
+}
+
 function pageCount(issue: AccessibilityIssue): number {
   const stats = props.ruleStats?.get(issue.rule_id)
   if (stats) return stats.pages
@@ -417,24 +429,35 @@ const columns = computed((): TableColumn<AccessibilityIssue>[] => {
         td: `${STICKY_COL_2} ${ISSUE_COL}`
       }
     },
-    cell: ({ row }) => h('div', {
-      class: ['issues-table-issue-cell', props.readOnly ? 'cursor-pointer' : ''],
-      onClick: props.readOnly ? () => openIssueRow(row.original) : undefined
-    }, [
-      h('p', {
-        class: 'text-sm font-medium truncate min-w-0 w-full',
-        title: row.original.description
-      }, row.original.description),
-      h('div', { class: 'flex items-center gap-1.5 mt-0.5 min-w-0 w-full overflow-hidden' }, [
-        h('span', {
-          class: 'text-[11px] text-muted shrink-0 uppercase tracking-wide'
-        }, 'axe'),
-        h('code', {
-          class: 'text-xs text-muted truncate min-w-0 flex-1 font-mono',
-          title: row.original.rule_id
-        }, row.original.rule_id)
+    cell: ({ row }) => {
+      const important = isImportantIssue(row.original)
+      return h('div', {
+        class: ['issues-table-issue-cell', props.readOnly ? 'cursor-pointer' : ''],
+        onClick: props.readOnly ? () => openIssueRow(row.original) : undefined
+      }, [
+        h('div', { class: 'flex items-center gap-1.5 min-w-0 w-full' }, [
+          h('p', {
+            class: 'text-sm font-medium truncate min-w-0 flex-1',
+            title: row.original.description
+          }, row.original.description),
+          important
+            ? h('span', {
+                class: severityTagClass(row.original.impact),
+                title: 'High-priority severity'
+              }, severityLabel(row.original.impact))
+            : null
+        ]),
+        h('div', { class: 'flex items-center gap-1.5 mt-0.5 min-w-0 w-full overflow-hidden' }, [
+          h('span', {
+            class: 'text-[11px] text-muted shrink-0 uppercase tracking-wide'
+          }, 'axe'),
+          h('code', {
+            class: 'text-xs text-muted truncate min-w-0 flex-1 font-mono',
+            title: row.original.rule_id
+          }, row.original.rule_id)
+        ])
       ])
-    ])
+    }
   })
 
   if (props.showSiteColumn) {
@@ -452,6 +475,75 @@ const columns = computed((): TableColumn<AccessibilityIssue>[] => {
         class: 'text-sm block truncate w-full',
         title: (row.original as AccessibilityIssue & { siteName?: string }).siteName ?? '—'
       }, (row.original as AccessibilityIssue & { siteName?: string }).siteName ?? '—')
+    })
+  }
+
+  // Severity + Points to gain sit left of Type (score-impact columns first).
+  cols.push({
+    id: 'impact',
+    accessorFn: row => IMPACT_SORT[row.impact] ?? 0,
+    header: ({ column }) => sortableHeader(column, 'Severity', 'center'),
+    meta: { class: { th: ISSUES_METRIC_COL.severity, td: ISSUES_METRIC_COL.severity } },
+    cell: ({ row }) => h('div', { class: 'flex justify-center' }, [
+      h('span', {
+        class: severityTagClass(row.original.impact)
+      }, severityLabel(row.original.impact))
+    ])
+  })
+
+  if (props.showResolvedStatus) {
+    cols.push({
+      id: 'resolvedAt',
+      accessorFn: row => resolvedAtMs(row),
+      header: ({ column }) => sortableHeader(column, 'Resolved', 'center'),
+      meta: { class: { th: ISSUES_METRIC_COL.status, td: ISSUES_METRIC_COL.status } },
+      cell: ({ row }) => {
+        const ms = resolvedAtMs(row.original)
+        if (!ms) return '—'
+        return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+      }
+    })
+    cols.push({
+      id: 'resolution',
+      accessorFn: row => row.status,
+      header: ({ column }) => sortableHeader(column, 'Status', 'center'),
+      meta: { class: { th: ISSUES_METRIC_COL.status, td: ISSUES_METRIC_COL.status } },
+      cell: ({ row }) => h('div', { class: 'flex justify-center' }, [
+        h('span', {
+          class: `text-sm ${row.original.status === 'fixed' ? 'text-success' : 'text-muted'}`
+        }, row.original.status === 'fixed' ? 'Fixed' : 'Dismissed')
+      ])
+    })
+  } else {
+    cols.push({
+      id: 'pointsToGain',
+      accessorFn: row => displayPointsToGain(row),
+      header: ({ column }) => sortableHeader(column, 'Points to gain', 'center'),
+      meta: {
+        class: {
+          th: ISSUES_METRIC_COL.points,
+          td: ISSUES_METRIC_COL.points
+        }
+      },
+      cell: ({ row }) => {
+        const pts = displayPointsToGain(row.original)
+        const marginal = marginalPointsToGain(row.original)
+        const label = formatPointsToGain(pts)
+        const prominent = pts >= 1
+        const marginalLabel = formatPointsToGain(marginal)
+        return h('div', { class: 'flex justify-center' }, [
+          h('span', {
+            class: prominent
+              ? 'issue-pts-tag issue-pts-tag--high'
+              : pts > 0
+                ? 'issue-pts-tag'
+                : 'issue-pts-tag issue-pts-tag--muted',
+            title: marginal > 0 && marginal !== pts
+              ? `${label} if all occurrences of this rule are fixed (${marginalLabel} for one occurrence)`
+              : `${label} if all occurrences of this rule are fixed`
+          }, label)
+        ])
+      }
     })
   }
 
@@ -547,20 +639,6 @@ const columns = computed((): TableColumn<AccessibilityIssue>[] => {
     }
   })
   cols.push({
-    id: 'impact',
-    accessorFn: row => IMPACT_SORT[row.impact] ?? 0,
-    header: ({ column }) => sortableHeader(column, 'Severity', 'center'),
-    meta: { class: { th: ISSUES_METRIC_COL.severity, td: ISSUES_METRIC_COL.severity } },
-    cell: ({ row }) => {
-      const color = severityColor(row.original.impact)
-      return h('div', { class: 'flex justify-center' }, [
-        h('span', {
-          class: `text-sm ${color === 'error' ? 'text-error' : color === 'warning' ? 'text-warning' : 'text-info'}`
-        }, severityLabel(row.original.impact))
-      ])
-    }
-  })
-  cols.push({
     id: 'pages',
     accessorFn: row => pageCount(row),
     header: ({ column }) => sortableHeader(column, 'Pages', 'center'),
@@ -574,62 +652,6 @@ const columns = computed((): TableColumn<AccessibilityIssue>[] => {
     meta: { class: { th: ISSUES_METRIC_COL.occurrences, td: ISSUES_METRIC_COL.occurrences } },
     cell: ({ row }) => `${occurrenceCount(row.original)}`
   })
-
-  if (props.showResolvedStatus) {
-    cols.push({
-      id: 'resolvedAt',
-      accessorFn: row => resolvedAtMs(row),
-      header: ({ column }) => sortableHeader(column, 'Resolved', 'center'),
-      meta: { class: { th: ISSUES_METRIC_COL.status, td: ISSUES_METRIC_COL.status } },
-      cell: ({ row }) => {
-        const ms = resolvedAtMs(row.original)
-        if (!ms) return '—'
-        return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-      }
-    })
-    cols.push({
-      id: 'resolution',
-      accessorFn: row => row.status,
-      header: ({ column }) => sortableHeader(column, 'Status', 'center'),
-      meta: { class: { th: ISSUES_METRIC_COL.status, td: ISSUES_METRIC_COL.status } },
-      cell: ({ row }) => h('div', { class: 'flex justify-center' }, [
-        h('span', {
-          class: `text-sm ${row.original.status === 'fixed' ? 'text-success' : 'text-muted'}`
-        }, row.original.status === 'fixed' ? 'Fixed' : 'Dismissed')
-      ])
-    })
-  } else {
-    cols.push({
-      id: 'pointsToGain',
-      accessorFn: row => displayPointsToGain(row),
-      header: ({ column }) => sortableHeader(column, 'Points to gain', 'center'),
-      meta: {
-        class: {
-          th: ISSUES_METRIC_COL.points,
-          td: ISSUES_METRIC_COL.points
-        }
-      },
-      cell: ({ row }) => {
-        const pts = displayPointsToGain(row.original)
-        const marginal = marginalPointsToGain(row.original)
-        const label = formatPointsToGain(pts)
-        const prominent = pts >= 1
-        const marginalLabel = formatPointsToGain(marginal)
-        return h('div', { class: 'flex justify-center' }, [
-          h('span', {
-            class: prominent
-              ? 'text-sm font-semibold text-success'
-              : pts > 0
-                ? 'text-sm'
-                : 'text-sm text-muted',
-            title: marginal > 0 && marginal !== pts
-              ? `${label} if all occurrences of this rule are fixed (${marginalLabel} for one occurrence)`
-              : `${label} if all occurrences of this rule are fixed`
-          }, label)
-        ])
-      }
-    })
-  }
 
   if (!props.readOnly) {
     cols.push({

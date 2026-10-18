@@ -153,9 +153,9 @@ const emit = defineEmits<{
       <div class="relative flex h-full flex-col rounded-lg border border-default bg-elevated p-4 shadow-none ring-0 sm:p-5">
         <div class="mb-4 flex min-h-[18px] items-start justify-between gap-3">
           <div class="flex min-w-0 flex-col items-start gap-1">
-            <h3 class="text-lg font-semibold text-highlighted">
+            <h4 class="text-lg font-semibold text-highlighted">
               Accessibility score
-            </h3>
+            </h4>
             <p class="text-sm text-muted">
               Score and trends for this site over the selected period.
             </p>

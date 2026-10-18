@@ -415,9 +415,9 @@ async function rescanPage() {
 
         <!-- Why it matters -->
         <section class="space-y-2">
-          <h3 class="text-sm font-medium text-highlighted">
+          <h4 class="text-sm font-medium text-highlighted">
             Why it matters
-          </h3>
+          </h4>
           <p class="text-sm text-muted leading-relaxed">
             {{ whyItMatters }}
           </p>
@@ -425,9 +425,9 @@ async function rescanPage() {
 
         <!-- What we found -->
         <section class="space-y-2">
-          <h3 class="text-sm font-medium text-highlighted">
+          <h4 class="text-sm font-medium text-highlighted">
             What we found
-          </h3>
+          </h4>
           <div
             v-if="hasEvidence"
             class="rounded-lg border border-default bg-elevated/40 divide-y divide-default overflow-hidden"
@@ -485,9 +485,9 @@ async function rescanPage() {
         <!-- How to fix -->
         <section class="space-y-2">
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <h3 class="text-sm font-medium text-highlighted">
+            <h4 class="text-sm font-medium text-highlighted">
               How to fix
-            </h3>
+            </h4>
             <UButton
               v-if="fixCopyText"
               size="xs"
@@ -513,9 +513,9 @@ async function rescanPage() {
 
         <!-- Resources -->
         <section v-if="hasResources" class="space-y-2 pt-1 border-t border-default">
-          <h3 class="text-sm font-medium text-highlighted">
+          <h4 class="text-sm font-medium text-highlighted">
             Resources
-          </h3>
+          </h4>
           <div class="flex flex-wrap gap-2">
             <UButton
               v-if="displayIssue.help_url"

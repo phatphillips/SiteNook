@@ -170,7 +170,7 @@ const chartOptions = computed(() => ({
 <template>
   <UCard v-if="!embedded" :ui="{ root: 'overflow-visible', body: 'p-4 sm:p-6' }">
     <template #header>
-      <h3 class="font-medium">Score trend (30 days)</h3>
+      <h4 class="font-medium">Score trend (30 days)</h4>
     </template>
     <ClientOnly>
       <div class="trend-chart-container">
@@ -197,7 +197,7 @@ const chartOptions = computed(() => ({
   </UCard>
   <div v-else>
     <div class="p-4 sm:px-6">
-      <h3 class="font-medium">Score trend (30 days)</h3>
+      <h4 class="font-medium">Score trend (30 days)</h4>
     </div>
     <div class="p-4 sm:p-6">
       <ClientOnly>

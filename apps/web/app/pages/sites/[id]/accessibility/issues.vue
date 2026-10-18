@@ -97,8 +97,24 @@ const issuesFooterSummary = computed(() => {
   return `Showing ${start}-${end} of ${openUniqueCount.value} issue types (${openOccurrencesCount.value} occurrences in site target)`
 })
 
+/** True while the Pages tab is waiting on the client accessibility payload. */
+const pagesLoadPending = ref(false)
+let pagesLoadGeneration = 0
+
+async function ensurePagesDataLoaded() {
+  const generation = ++pagesLoadGeneration
+  pagesLoadPending.value = true
+  try {
+    await ensureAccessibilityLoaded()
+  } catch {
+    // Toast / empty state handled by the table once loading settles.
+  } finally {
+    if (generation === pagesLoadGeneration) pagesLoadPending.value = false
+  }
+}
+
 const pagesFooterSummary = computed(() => {
-  if (pagesLoading.value) return ''
+  if (pagesLoading.value || pagesLoadPending.value) return ''
   const openPages = new Set(
     filteredIssues.value
       .filter(issue => issue.status === 'open' && issue.expand?.page?.url)
@@ -120,14 +136,15 @@ const filterMenuIssues = computed(() =>
   viewTab.value === 'pages' ? siteTargetIssues.value : items.value
 )
 
+// viewTab is useState-backed, so revisiting the page can land on "pages" without a
+// tab change. Load immediately in that case (not only when switching from Issues).
 watch(viewTab, (tab) => {
-  if (tab === 'pages') {
-    ensureAccessibilityLoaded().catch(() => {})
-  }
-})
+  if (tab === 'pages') void ensurePagesDataLoaded()
+}, { immediate: true })
 
 watch(siteId, () => {
   activeSiteId.value = siteId.value
+  if (viewTab.value === 'pages') void ensurePagesDataLoaded()
 })
 
 onMounted(() => {
@@ -511,7 +528,7 @@ function runExport(options: import('~/utils/tableExportScope').TableExportOption
           ref="pagesTableRef"
           v-model:search="pagesTableSearch"
           hide-toolbar
-          :loading="pagesLoading"
+          :loading="pagesLoading || pagesLoadPending"
           :issues="filteredIssues"
           :footer-summary="pagesFooterSummary"
           :site-id="siteId"

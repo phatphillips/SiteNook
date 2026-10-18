@@ -100,9 +100,9 @@ function goToPage() {
           </UBadge>
         </div>
 
-        <h3 class="text-base font-semibold text-highlighted">
+        <h4 class="text-base font-semibold text-highlighted">
           {{ issue.title }}
-        </h3>
+        </h4>
 
         <p
           v-if="guidance?.summary"

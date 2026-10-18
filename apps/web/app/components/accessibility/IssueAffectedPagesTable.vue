@@ -110,6 +110,13 @@ function severityColor(impact: AccessibilityIssue['impact']): 'error' | 'warning
   return 'info'
 }
 
+function severityTagClass(impact: AccessibilityIssue['impact']): string {
+  const color = severityColor(impact)
+  if (color === 'error') return 'issue-sev-tag issue-sev-tag--critical'
+  if (color === 'warning') return 'issue-sev-tag issue-sev-tag--moderate'
+  return 'issue-sev-tag issue-sev-tag--minor'
+}
+
 function isColumnVisible(id: string): boolean {
   const vis = props.columnVisibility
   if (!vis || !(id in vis)) return true
@@ -165,6 +172,60 @@ const columns = computed((): TableColumn<AffectedPageSummary>[] => {
         class: 'text-sm block truncate w-full',
         title: props.siteName || '—'
       }, props.siteName || '—')
+    })
+  }
+
+  if (isColumnVisible('impact')) {
+    cols.push({
+      id: 'impact',
+      accessorFn: () => props.impact,
+      enableSorting: false,
+      header: ({ column }) => sortableHeader(column, 'Severity', 'center'),
+      meta: { class: { th: ISSUES_METRIC_COL.severity, td: ISSUES_METRIC_COL.severity } },
+      cell: () => h('div', { class: 'flex justify-center' }, [
+        h('span', {
+          class: severityTagClass(props.impact)
+        }, severityLabel(props.impact))
+      ])
+    })
+  }
+
+  if (props.showResolvedStatus) {
+    if (isColumnVisible('resolution')) {
+      cols.push({
+        id: 'resolution',
+        accessorFn: () => 'open',
+        enableSorting: false,
+        header: ({ column }) => sortableHeader(column, 'Status', 'center'),
+        meta: { class: { th: ISSUES_METRIC_COL.status, td: ISSUES_METRIC_COL.status } },
+        cell: () => h('div', { class: 'flex justify-center' }, [
+          h('span', { class: 'text-sm text-muted' }, '—')
+        ])
+      })
+    }
+  } else if (isColumnVisible('pointsToGain')) {
+    cols.push({
+      id: 'pointsToGain',
+      accessorFn: row => pagePointsToGain(row),
+      header: ({ column }) => sortableHeader(column, 'Points to gain', 'center'),
+      meta: {
+        class: {
+          th: ISSUES_METRIC_COL.points,
+          td: ISSUES_METRIC_COL.points
+        }
+      },
+      cell: ({ row }) => {
+        const points = pagePointsToGain(row.original)
+        return h('div', { class: 'flex justify-center' }, [
+          h('span', {
+            class: points >= 1
+              ? 'issue-pts-tag issue-pts-tag--high'
+              : points > 0
+                ? 'issue-pts-tag'
+                : 'issue-pts-tag issue-pts-tag--muted'
+          }, formatPointsToGain(points))
+        ])
+      }
     })
   }
 
@@ -256,24 +317,6 @@ const columns = computed((): TableColumn<AffectedPageSummary>[] => {
     })
   }
 
-  if (isColumnVisible('impact')) {
-    cols.push({
-      id: 'impact',
-      accessorFn: () => props.impact,
-      enableSorting: false,
-      header: ({ column }) => sortableHeader(column, 'Severity', 'center'),
-      meta: { class: { th: ISSUES_METRIC_COL.severity, td: ISSUES_METRIC_COL.severity } },
-      cell: () => {
-        const color = severityColor(props.impact)
-        return h('div', { class: 'flex justify-center' }, [
-          h('span', {
-            class: `text-sm ${color === 'error' ? 'text-error' : color === 'warning' ? 'text-warning' : 'text-info'}`
-          }, severityLabel(props.impact))
-        ])
-      }
-    })
-  }
-
   if (isColumnVisible('pages')) {
     cols.push({
       id: 'pages',
@@ -292,41 +335,6 @@ const columns = computed((): TableColumn<AffectedPageSummary>[] => {
       header: ({ column }) => sortableHeader(column, 'Occurrences', 'center'),
       meta: { class: { th: ISSUES_METRIC_COL.occurrences, td: ISSUES_METRIC_COL.occurrences } },
       cell: ({ row }) => String(row.original.occurrences)
-    })
-  }
-
-  if (props.showResolvedStatus) {
-    if (isColumnVisible('resolution')) {
-      cols.push({
-        id: 'resolution',
-        accessorFn: () => 'open',
-        enableSorting: false,
-        header: ({ column }) => sortableHeader(column, 'Status', 'center'),
-        meta: { class: { th: ISSUES_METRIC_COL.status, td: ISSUES_METRIC_COL.status } },
-        cell: () => h('div', { class: 'flex justify-center' }, [
-          h('span', { class: 'text-sm text-muted' }, '—')
-        ])
-      })
-    }
-  } else if (isColumnVisible('pointsToGain')) {
-    cols.push({
-      id: 'pointsToGain',
-      accessorFn: row => pagePointsToGain(row),
-      header: ({ column }) => sortableHeader(column, 'Points to gain', 'center'),
-      meta: {
-        class: {
-          th: ISSUES_METRIC_COL.points,
-          td: ISSUES_METRIC_COL.points
-        }
-      },
-      cell: ({ row }) => {
-        const points = pagePointsToGain(row.original)
-        return h('div', { class: 'flex justify-center' }, [
-          h('span', {
-            class: points > 0 ? 'text-sm text-default' : 'text-sm text-muted'
-          }, formatPointsToGain(points))
-        ])
-      }
     })
   }
 
@@ -490,9 +498,9 @@ watch(
     class="issue-affected-pages"
   >
     <div class="issue-affected-pages-frame">
-      <h3 class="issue-affected-pages-heading text-xs font-medium text-muted">
+      <h4 class="issue-affected-pages-heading text-xs font-medium text-muted">
         Pages with this issue
-      </h3>
+      </h4>
 
       <div class="issue-affected-pages-split">
         <div class="issue-affected-pages-frozen">

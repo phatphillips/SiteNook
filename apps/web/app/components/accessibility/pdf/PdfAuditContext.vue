@@ -210,9 +210,9 @@ function goToPage() {
       <template v-else>
         <div class="space-y-2.5 border-b border-default p-2.5">
           <section v-if="documentIssues.length">
-            <h3 class="mb-1 px-0.5 text-xs font-medium text-muted">
+            <h4 class="mb-1 px-0.5 text-xs font-medium text-muted">
               Document · {{ documentIssues.length }}
-            </h3>
+            </h4>
             <ul class="space-y-0.5">
               <li
                 v-for="issue in documentIssues"
@@ -240,9 +240,9 @@ function goToPage() {
           </section>
 
           <section v-if="elementIssues.length">
-            <h3 class="mb-1 px-0.5 text-xs font-medium text-muted">
+            <h4 class="mb-1 px-0.5 text-xs font-medium text-muted">
               Element · {{ elementIssues.length }}
-            </h3>
+            </h4>
             <ul class="space-y-0.5">
               <li
                 v-for="issue in elementIssues"
@@ -301,9 +301,9 @@ function goToPage() {
             </UBadge>
           </div>
 
-          <h3 class="text-sm font-semibold text-highlighted">
+          <h4 class="text-sm font-semibold text-highlighted">
             {{ selectedIssue.title }}
-          </h3>
+          </h4>
 
           <p
             v-if="guidance?.summary"

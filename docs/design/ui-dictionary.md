@@ -78,7 +78,7 @@ Main score and trend dashboard for one site.
 
 #### Overview score donut
 
-Thick annular-sector ring (`ScoreDonut` + `utils/donutChart.ts`): cutout ~75% of radius, soft corner fillets, even gaps. Overview display size **200px** (Nuxt Charts `DonutChart` `:height="200"`). Palette tokens `--donut-segment-1`…`5`. Centre label: value + unit baseline, caption below. Wrapped in `ScoreDonutButton` (hover/focus border). Click opens `ScoreBreakdownModal`: donut + slice legend on the left, category/impact detail on the right. Card header **Score donut menu** (`ScoreDonutMenu`, top-right ellipsis): checked **Full donut** / **Semi donut** (persisted via `useDonutChartStyle`) plus **Score breakdown**.
+Thick annular-sector ring (`ScoreDonut` + `utils/donutChart.ts`): cutout ~75% of radius, soft corner fillets, even gaps. Overview display size **255px** (Nuxt Charts `DonutChart` width). Palette tokens `--donut-segment-1`…`5`. Centre label: value + unit baseline, caption below. Wrapped in `ScoreDonutButton` (hover/focus border). Click opens `ScoreBreakdownModal`: donut + slice legend on the left, category/impact detail on the right. Card header **Score donut menu** (`ScoreDonutMenu`, top-right ellipsis): checked **Full donut** / **Semi donut** (persisted via `useDonutChartStyle`) plus **Score breakdown**.
 
 #### Overview score section — left column (1/3)
 

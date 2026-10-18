@@ -43,10 +43,10 @@ function toggleBucket(bucketId: string) {
   >
     <template #breakdown-body>
       <div class="pb-2">
-        <h3 class="text-sm font-medium text-default text-center mb-6">
+        <h4 class="text-sm font-medium text-default text-center mb-6">
           Readability score based on:
           <span class="font-semibold">{{ method.label }}</span>
-        </h3>
+        </h4>
 
         <p
           v-if="!scoredPageCount"

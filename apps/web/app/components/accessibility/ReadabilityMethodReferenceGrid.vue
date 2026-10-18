@@ -19,9 +19,9 @@ defineProps<{
         : 'border-default bg-default/50'"
     >
       <div class="flex items-start justify-between gap-2 mb-2">
-        <h3 class="text-sm font-semibold text-default">
+        <h4 class="text-sm font-semibold text-default">
           {{ method.label }}
-        </h3>
+        </h4>
         <span class="readability-badge shrink-0" :class="method.badgeClass">{{ method.badge }}</span>
       </div>
       <p class="text-sm text-muted mb-2">
