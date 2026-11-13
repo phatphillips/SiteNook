@@ -4,6 +4,7 @@ import {
   DEFAULT_DONUT_CHART_STYLE,
   DONUT_SEGMENT_TOKENS,
   DONUT_VIEWBOX,
+  SCORE_DONUT_SIZE_PX,
   donutRingGeometry,
   layoutDonutSegments,
   scoreDonutSegments,
@@ -57,6 +58,16 @@ const props = defineProps<{
   sortSegments?: boolean
   /** Full ring or 180° semi-gauge. Defaults to full. */
   chartStyle?: DonutChartStyle
+  /**
+   * Per-segment translucent halo on hover/focus/touch.
+   * Defaults on; set false to disable.
+   */
+  segmentHalo?: boolean
+  /**
+   * Keyboard-focusable segments (same halo as hover). Defaults on when
+   * custom `segments` are provided so overview buttons stay nesting-safe.
+   */
+  segmentFocusable?: boolean
 }>()
 
 const SCORE_TOOLTIP =
@@ -69,8 +80,15 @@ const IMPACT_COLOR_TOKENS: Record<string, string> = {
   minor: 'var(--donut-segment-3)'
 }
 
+const rootEl = ref<HTMLElement | null>(null)
 const hovered = ref(false)
 const reduceMotion = ref(false)
+/** Pointer hover over a solid segment. */
+const hoveredSegmentIndex = ref<number | null>(null)
+/** Keyboard focus on a solid segment. */
+const focusedSegmentIndex = ref<number | null>(null)
+/** Touch selection; cleared when tapping outside. */
+const touchSegmentIndex = ref<number | null>(null)
 
 onMounted(() => {
   if (!import.meta.client) return
@@ -80,10 +98,33 @@ onMounted(() => {
     reduceMotion.value = mq.matches
   }
   mq.addEventListener('change', onChange)
-  onUnmounted(() => mq.removeEventListener('change', onChange))
+
+  const onDocPointerDown = (event: PointerEvent) => {
+    if (touchSegmentIndex.value == null) return
+    const target = event.target as Node | null
+    if (target && rootEl.value?.contains(target)) return
+    touchSegmentIndex.value = null
+  }
+  document.addEventListener('pointerdown', onDocPointerDown)
+
+  onUnmounted(() => {
+    mq.removeEventListener('change', onChange)
+    document.removeEventListener('pointerdown', onDocPointerDown)
+  })
 })
 
 const hoverInteractive = computed(() => props.severityHover || props.hoverZoom)
+const segmentHaloEnabled = computed(() => props.segmentHalo !== false)
+const segmentFocusEnabled = computed(
+  () => props.segmentFocusable ?? Boolean(props.segments?.length)
+)
+
+const activeSegmentIndex = computed(() => {
+  if (!segmentHaloEnabled.value) return null
+  return focusedSegmentIndex.value
+    ?? hoveredSegmentIndex.value
+    ?? touchSegmentIndex.value
+})
 
 const scoreSegmentColor = computed(() => {
   if (props.severityHover && hovered.value) {
@@ -100,6 +141,43 @@ function onDonutEnter() {
 function onDonutLeave() {
   if (!hoverInteractive.value) return
   hovered.value = false
+}
+
+function onSegmentEnter(index: number) {
+  if (!segmentHaloEnabled.value) return
+  hoveredSegmentIndex.value = index
+}
+
+function onSegmentLeave() {
+  hoveredSegmentIndex.value = null
+}
+
+function onSegmentFocus(index: number) {
+  if (!segmentHaloEnabled.value || !segmentFocusEnabled.value) return
+  focusedSegmentIndex.value = index
+}
+
+function onSegmentBlur() {
+  nextTick(() => {
+    const active = document.activeElement
+    if (!(active instanceof Element) || !active.classList.contains('score-donut-segment')) {
+      focusedSegmentIndex.value = null
+    }
+  })
+}
+
+function onSegmentPointerDown(index: number, event: PointerEvent) {
+  if (!segmentHaloEnabled.value) return
+  if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return
+  touchSegmentIndex.value = index
+}
+
+function formatSegmentCentreValue(value: number): string {
+  if (props.unit === '' || props.unit == null || props.unit === '%') {
+    const rounded = Math.round(value * 10) / 10
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+  }
+  return String(Math.round(value))
 }
 
 const isSiteTarget = computed(() => props.variant === 'site-target')
@@ -189,11 +267,17 @@ const impactSegments = computed((): DonutSegmentInput[] => {
 
 const impactGeometry = computed(() => {
   const base = geometry.value
-  const thickness = Math.max(4, base.outerRadius - base.innerRadius) * 0.38
+  // Stay inside the square viewBox (no halo on the impact ring).
+  const maxOuter = DONUT_VIEWBOX / 2 - 0.5
+  const gap = 1.25
+  const thickness = Math.min(
+    Math.max(2.5, (base.outerRadius - base.innerRadius) * 0.35),
+    Math.max(0, maxOuter - base.outerRadius - gap)
+  )
   return donutRingGeometry({
-    outerRadius: Math.min(49.5, base.outerRadius + thickness + 1.25),
+    outerRadius: Math.min(maxOuter, base.outerRadius + gap + thickness),
     thickness,
-    cornerRadius: Math.max(1.6, base.cornerRadius * 0.7),
+    cornerRadius: Math.max(1.2, base.cornerRadius * 0.65),
     gapDeg: 4
   })
 })
@@ -215,11 +299,17 @@ const showImpactRing = computed(() =>
 )
 
 const sizeClass = computed(() => {
-  if (props.size === 'sm') return 'size-20'
+  if (props.size === 'sm') return 'score-donut--sm'
   // Overview / default large charts match Nuxt Charts DonutChart width (~255px).
-  return 'size-[255px]'
+  return 'score-donut--lg'
 })
 const isLarge = computed(() => props.size !== 'sm' || isSiteTarget.value)
+
+const rootStyle = computed(() => ({
+  // Soft cap only — width is always 100% of the parent so the chart cannot
+  // overflow a narrower card. Parents should set the available width.
+  '--score-donut-size': props.size === 'sm' ? '5rem' : `${SCORE_DONUT_SIZE_PX}px`
+}))
 
 const displayScore = computed(() => formatAccessibilityScore(props.score))
 const displayPotentialScore = computed(() =>
@@ -228,16 +318,36 @@ const displayPotentialScore = computed(() =>
     : formatAccessibilityScore(normalizedPotential.value)
 )
 
+const activeSegment = computed(() => {
+  const index = activeSegmentIndex.value
+  if (index == null) return null
+  return laidOutScoreSegments.value[index] ?? null
+})
+
 const displayValue = computed(() => {
+  if (activeSegment.value) {
+    return formatSegmentCentreValue(activeSegment.value.value)
+  }
   if (showPotentialGain.value && displayPotentialScore.value) {
     return displayPotentialScore.value
   }
   return displayScore.value
 })
 
-const displayUnit = computed(() => props.unit ?? '%')
+const baseUnit = computed(() => props.unit ?? '%')
+
+const displayUnit = computed(() => baseUnit.value)
+
+function segmentAriaLabel(segment: { label: string, value: number }): string {
+  const value = formatSegmentCentreValue(segment.value)
+  const unit = baseUnit.value
+  if (!unit) return `${segment.label}: ${value}`
+  if (unit === '%') return `${segment.label}: ${value}%`
+  return `${segment.label}: ${value} ${unit}`
+}
 
 const displayCaption = computed(() => {
+  if (activeSegment.value) return activeSegment.value.label
   if (props.caption) return props.caption
   if (showPotentialGain.value) return 'Could be'
   if (props.label) return props.label
@@ -245,6 +355,8 @@ const displayCaption = computed(() => {
   if (props.showOverallLabel && isLarge.value) return 'Overall score'
   return ''
 })
+
+const hasActiveSegment = computed(() => activeSegmentIndex.value != null)
 
 const deltaClass = computed(() => {
   if (!props.delta) return 'text-muted'
@@ -277,6 +389,7 @@ const hiddenBreakdown = computed(() => {
 
 <template>
   <div
+    ref="rootEl"
     class="score-donut relative inline-flex flex-col items-center"
     :class="[
       sizeClass,
@@ -284,26 +397,55 @@ const hiddenBreakdown = computed(() => {
         'score-donut--interactive': hoverInteractive,
         'score-donut--hovered': hoverInteractive && hovered,
         'score-donut--animate': !reduceMotion,
-        'score-donut--semi': isSemi
+        'score-donut--semi': isSemi,
+        'score-donut--segment-active': hasActiveSegment,
+        'score-donut--halo': segmentHaloEnabled
       }
     ]"
+    :style="rootStyle"
     @mouseenter="onDonutEnter"
     @mouseleave="onDonutLeave"
   >
     <svg
-      class="score-donut-svg size-full"
-      :viewBox="isSemi ? '-8 18 116 72' : `0 0 ${DONUT_VIEWBOX} ${DONUT_VIEWBOX}`"
+      class="score-donut-svg"
+      :viewBox="`0 0 ${DONUT_VIEWBOX} ${DONUT_VIEWBOX}`"
       preserveAspectRatio="xMidYMid meet"
-      role="img"
+      :role="segmentHaloEnabled && segmentFocusEnabled ? 'group' : 'img'"
       :aria-label="ariaLabel"
     >
       <g class="score-donut-rings-group">
+        <!-- Halos under solid segments so fill colour stays untinted. -->
+        <g v-if="segmentHaloEnabled" class="score-donut-halo-group" aria-hidden="true">
+          <path
+            v-for="(segment, index) in laidOutScoreSegments"
+            :key="`halo-${segment.label}-${index}`"
+            class="score-donut-halo"
+            :class="{ 'score-donut-halo--active': activeSegmentIndex === index }"
+            :d="segment.haloPath"
+            :fill="segment.color"
+            pointer-events="none"
+          />
+        </g>
         <path
           v-for="(segment, index) in laidOutScoreSegments"
           :key="`score-${segment.label}-${index}`"
           class="score-donut-segment"
+          :class="{
+            'score-donut-segment--dimmed': hasActiveSegment && activeSegmentIndex !== index,
+            'score-donut-segment--active': activeSegmentIndex === index
+          }"
           :d="segment.path"
           :fill="segment.color"
+          :tabindex="segmentHaloEnabled && segmentFocusEnabled ? 0 : undefined"
+          :role="segmentHaloEnabled && segmentFocusEnabled ? 'button' : undefined"
+          :aria-label="segmentHaloEnabled && segmentFocusEnabled
+            ? segmentAriaLabel(segment)
+            : undefined"
+          @mouseenter="onSegmentEnter(index)"
+          @mouseleave="onSegmentLeave"
+          @focus="onSegmentFocus(index)"
+          @blur="onSegmentBlur"
+          @pointerdown="onSegmentPointerDown(index, $event)"
         />
         <path
           v-if="gainSegment"
@@ -405,16 +547,81 @@ const hiddenBreakdown = computed(() => {
 
 <style scoped>
 .score-donut {
+  box-sizing: border-box;
   container-type: inline-size;
   container-name: score-donut;
+  /*
+   * Fill the parent. Soft-cap with --score-donut-size so a wide card does not
+   * stretch the chart past the design size. Never wider than the parent.
+   */
+  width: 100%;
+  max-width: min(100%, var(--score-donut-size, 255px));
+  height: auto;
+  aspect-ratio: 1;
+  overflow: visible;
+}
+
+.score-donut--sm {
+  --score-donut-size: 5rem;
+}
+
+.score-donut--lg {
+  --score-donut-size: 255px;
+}
+
+.score-donut-svg {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  /* SVG default overflow is hidden in some engines — keep halo/ring visible. */
+  overflow: visible !important;
 }
 
 .score-donut--interactive {
   cursor: default;
 }
 
+.score-donut--halo .score-donut-segment {
+  cursor: pointer;
+  outline: none;
+}
+
 .score-donut-segment {
-  transition: fill 320ms cubic-bezier(0.22, 1, 0.36, 1), stroke 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    fill 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    stroke 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 150ms ease;
+}
+
+.score-donut-segment--dimmed {
+  opacity: 0.75;
+}
+
+.score-donut-halo {
+  opacity: 0;
+  transform: scale(0.97);
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  pointer-events: none;
+  /* Same token as the segment; alpha via opacity (follows theme / primary). */
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.score-donut-halo--active {
+  opacity: 0.3;
+  transform: scale(1);
+}
+
+.score-donut--semi .score-donut-halo {
+  transform-origin: 50% 58%;
+}
+
+.score-donut--semi .score-donut-halo--active {
+  transform: scale(1);
 }
 
 .score-donut-gain {
@@ -441,12 +648,12 @@ const hiddenBreakdown = computed(() => {
 }
 
 /*
- * Semi label: inside the bowl, near the diameter. Vertically centred SVG
- * puts the diameter ~69% down; slightly less padding nudges text down.
+ * Semi label: inside the bowl, near the diameter (~58% down in the square
+ * viewBox). Pad from the bottom so the value sits just above the end caps.
  */
 .score-donut-center--semi {
   justify-content: flex-end;
-  padding-bottom: 28%;
+  padding-bottom: 36%;
   padding-inline: 18%;
 }
 
@@ -505,7 +712,7 @@ const hiddenBreakdown = computed(() => {
 }
 
 .score-donut--semi .score-donut-rings-group {
-  transform-origin: 50% 76%;
+  transform-origin: 50% 58%;
 }
 
 .score-donut--semi.score-donut--hovered .score-donut-rings-group {
@@ -542,6 +749,21 @@ const hiddenBreakdown = computed(() => {
   to {
     opacity: 1;
     transform: rotate(0deg) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .score-donut-halo,
+  .score-donut-segment {
+    transition: none;
+  }
+
+  .score-donut-halo {
+    transform: none;
+  }
+
+  .score-donut-halo--active {
+    transform: none;
   }
 }
 </style>

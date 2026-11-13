@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, resolveComponent, inject } from 'vue'
+import { h, inject } from 'vue'
 import { upperFirst } from 'scule'
 import { getPaginationRowModel, getSortedRowModel } from '@tanstack/vue-table'
 import type { TableColumn } from '@nuxt/ui'
@@ -66,9 +66,6 @@ const emit = defineEmits<{
   markFixed: [pageUrl: string, issueIds?: string[]]
   select: [page: AffectedPageSummary]
 }>()
-
-const UDropdownMenu = resolveComponent('UDropdownMenu')
-const UButton = resolveComponent('UButton')
 
 const pagination = ref({ pageIndex: 0, pageSize: props.pageSize })
 const sorting = ref<SortingState>([{ id: 'occurrences', desc: true }])
@@ -338,36 +335,20 @@ const columns = computed((): TableColumn<AffectedPageSummary>[] => {
     })
   }
 
-  if (!props.readOnly) {
-    cols.push({
-      id: 'actions',
-      header: '',
-      enableSorting: false,
-      enableHiding: false,
-      meta: { class: { th: ISSUES_METRIC_COL.actions, td: ISSUES_METRIC_COL.actions } },
-      cell: ({ row }) => h(UDropdownMenu, {
-        content: { align: 'end' },
-        items: issueRowActionGroups({
-          onViewDetails: () => emit('select', row.original),
-          onRescan: () => emit('rescan', row.original.url),
-          onMarkFixed: () => emit('markFixed', row.original.url, row.original.issueIds),
-          onDismiss: reason => emit('dismiss', row.original.url, reason, row.original.issueIds),
-          rescanLabel: 'Rescan page'
-        }),
-        'aria-label': `Actions for ${pageDisplayTitle(row.original)}`
-      }, () => h(UButton, {
-        icon: 'i-lucide-ellipsis-vertical',
-        color: 'neutral',
-        variant: 'ghost',
-        square: true,
-        'aria-label': `Actions for ${pageDisplayTitle(row.original)}`,
-        onClick: (event: Event) => event.stopPropagation()
-      }))
-    })
-  }
+  // Page actions live in the sticky-right rail (same chrome as parent Issues rows).
 
   return cols
 })
+
+function pageRowActions(page: AffectedPageSummary) {
+  return issueRowActionGroups({
+    onViewDetails: () => emit('select', page),
+    onRescan: () => emit('rescan', page.url),
+    onMarkFixed: () => emit('markFixed', page.url, page.issueIds),
+    onDismiss: reason => emit('dismiss', page.url, reason, page.issueIds),
+    rescanLabel: 'Rescan page'
+  })
+}
 
 const sortedPages = computed(() => {
   const list = [...props.pages]
@@ -600,6 +581,49 @@ watch(
           class="issue-affected-pages-tail"
           aria-hidden="true"
         />
+
+        <div
+          v-if="!readOnly"
+          class="issue-affected-pages-actions"
+        >
+          <div
+            class="issue-affected-pages-actions-th"
+            aria-hidden="true"
+          />
+          <template v-if="loading">
+            <div
+              v-for="row in skeletonRowCount"
+              :key="`skel-actions-${row}`"
+              class="issue-affected-pages-actions-td"
+            >
+              <USkeleton class="size-7 rounded-md !bg-elevated/30" />
+            </div>
+          </template>
+          <template v-else>
+            <div
+              v-for="page in pagedPages"
+              :key="`actions-${page.url}`"
+              class="issue-affected-pages-actions-td"
+              :class="{ 'issue-row--exiting': isRemovingPage(page) }"
+            >
+              <UDropdownMenu
+                :content="{ align: 'end' }"
+                :items="pageRowActions(page)"
+                :aria-label="`Actions for ${pageDisplayTitle(page)}`"
+              >
+                <UButton
+                  icon="i-lucide-ellipsis-vertical"
+                  color="neutral"
+                  variant="soft"
+                  square
+                  size="xs"
+                  :aria-label="`Actions for ${pageDisplayTitle(page)}`"
+                  @click.stop
+                />
+              </UDropdownMenu>
+            </div>
+          </template>
+        </div>
       </div>
 
       <div
@@ -785,6 +809,61 @@ watch(
   background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 
+/* Pin page actions to the same sticky right edge as parent Issues rows. */
+.issue-affected-pages-actions {
+  position: sticky;
+  right: 0;
+  z-index: 4;
+  flex: 0 0 3.25rem;
+  width: 3.25rem;
+  min-width: 3.25rem;
+  max-width: 3.25rem;
+  box-sizing: border-box;
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
+  box-shadow: -6px 0 10px -8px color-mix(in srgb, #000 22%, transparent 78%);
+}
+
+.issue-affected-pages-actions::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  background: color-mix(in srgb, var(--ui-border) 92%, transparent 8%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.issue-affected-pages-actions-th,
+.issue-affected-pages-actions-td {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.5rem;
+  background-color: var(--table-surface-bg, var(--ui-bg-elevated));
+  border-bottom: 1px solid color-mix(in srgb, var(--ui-border) 90%, transparent 10%);
+}
+
+.issue-affected-pages-actions-th {
+  height: var(--issues-affected-header-height, 3.5rem);
+  min-height: var(--issues-affected-header-height, 3.5rem);
+  max-height: var(--issues-affected-header-height, 3.5rem);
+  border-top: 1px solid color-mix(in srgb, var(--ui-border) 90%, transparent 10%);
+}
+
+.issue-affected-pages-actions-td {
+  height: var(--issues-affected-row-height, 3.25rem);
+  min-height: var(--issues-affected-row-height, 3.25rem);
+  max-height: var(--issues-affected-row-height, 3.25rem);
+}
+
+.issue-affected-pages-actions-td:last-child {
+  border-bottom: none;
+}
+
 .issue-affected-pages-metrics :deep(table) {
   table-layout: fixed !important;
   width: max-content !important;
@@ -936,6 +1015,13 @@ watch(
   .issue-affected-pages-frozen {
     position: static;
     box-shadow: none;
+  }
+
+  /* Keep page actions pinned on narrower viewports. */
+  .issue-affected-pages-actions {
+    position: sticky;
+    right: 0;
+    z-index: 4;
   }
 }
 

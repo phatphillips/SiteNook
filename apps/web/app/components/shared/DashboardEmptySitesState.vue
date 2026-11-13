@@ -32,6 +32,7 @@ const headline = computed(() => {
     <div class="flex max-w-md flex-col items-center text-center">
       <SiteNookLogo
         size="lg"
+        wordmark
         class="dashboard-empty-sites__logo pointer-events-none mb-6"
       />
       <h2 class="text-lg font-semibold text-highlighted sm:text-xl">

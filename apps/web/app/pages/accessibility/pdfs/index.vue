@@ -186,7 +186,7 @@ watch(siteFilter, () => {
 
       <p class="text-sm text-muted">
         PDFs discovered during site scans appear here. Open PDF Inspector to audit issues,
-        convert content, generate an assisted fix, or ignore a file on future crawls.
+        extract content, generate an assisted fix, or ignore a file on future crawls.
       </p>
 
       <AccessibilityPdfUploadPanel

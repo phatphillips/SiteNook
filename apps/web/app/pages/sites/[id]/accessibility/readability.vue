@@ -195,6 +195,7 @@ const {
           :title="error"
         />
 
+        <div class="space-y-4">
         <AccessibilityReadabilityMethodHeader
 
           :settings="siteSettings"
@@ -209,7 +210,7 @@ const {
 
           v-if="activeMethodId && pages.length"
 
-          class="mb-6 space-y-4"
+          class="space-y-4"
 
         >
 
@@ -244,10 +245,10 @@ const {
 
 
         <p
-          v-if="latestScan"
-          class="text-sm text-muted mb-4"
+          v-if="latestScan && !pages.length && !error"
+          class="text-sm text-muted"
         >
-          Latest scan: {{ latestScan.completed_at || latestScan.created }}<template v-if="!pages.length && !error">. No pages were stored for this scan yet.</template>
+          No pages were stored for this scan yet.
         </p>
 
 
@@ -316,6 +317,7 @@ const {
 
           />
 
+        </div>
         </div>
 
       <AccessibilityReadabilityMethodPicker

@@ -10,13 +10,21 @@ Website accessibility matters. Tools that check it shouldn't cost a fortune. Sit
 
 ## 🖼️ Screenshots
 
-<!-- Replace these placeholders with real images -->
+![Accessibility overview](docs/images/accessibility-overview.png)
 
-**[SCREENSHOT]** Dashboard overview
+*Accessibility overview — site score, conformance levels, and score trend*
 
-**[SCREENSHOT]** Accessibility issues list
+![Accessibility issues](docs/images/accessibility-issues.png)
 
-**[SCREENSHOT]** Scan run / crawl progress
+*Open WCAG issues with severity and points-to-gain*
+
+![Readability](docs/images/readability.png)
+
+*Readability scores across pages (Flesch–Kincaid)*
+
+![Scan monitor](docs/images/scans-monitor.png)
+
+*Live scan monitor and site crawl activity*
 
 ---
 

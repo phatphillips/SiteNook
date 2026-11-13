@@ -17,6 +17,16 @@ function odlBaseUrl(): string {
   return (process.env.OPENDATALOADER_URL || 'http://opendataloader:8095').replace(/\/$/, '')
 }
 
+function odlUnreachableMessage(cause: unknown): string {
+  const detail = cause instanceof Error ? cause.message : String(cause || '')
+  const base = odlBaseUrl()
+  return (
+    `OpenDataLoader unreachable at ${base}` +
+    (detail ? ` (${detail})` : '') +
+    '. Start Docker with --profile pdf so the opendataloader service is running.'
+  )
+}
+
 async function postConvert(
   buffer: Buffer,
   filename: string,
@@ -26,11 +36,14 @@ async function postConvert(
   form.append('file', new Blob([new Uint8Array(buffer)], { type: 'application/pdf' }), filename || 'document.pdf')
   form.append('format', format)
 
-  const response = await fetch(`${odlBaseUrl()}/api/convert`, {
-    method: 'POST',
-    body: form
-  })
-  return response
+  try {
+    return await fetch(`${odlBaseUrl()}/api/convert`, {
+      method: 'POST',
+      body: form
+    })
+  } catch (err) {
+    throw new Error(odlUnreachableMessage(err))
+  }
 }
 
 export async function convertPdfStructure(

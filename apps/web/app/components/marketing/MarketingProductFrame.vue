@@ -151,9 +151,8 @@ const hoveredId = ref<string | null>(null)
         class="hidden w-52 shrink-0 flex-col border-r border-default/70 bg-elevated/40 lg:flex"
         aria-label="Demo navigation"
       >
-        <div class="flex items-center gap-2 border-b border-default/60 px-3 py-3">
-          <UIcon name="i-lucide-search-check" class="size-4 text-primary" />
-          <span class="text-xs font-semibold tracking-tight text-highlighted">SiteNook</span>
+        <div class="flex items-center border-b border-default/60 px-3 py-3">
+          <SiteNookLogo size="sm" wordmark />
         </div>
 
         <nav class="flex flex-col gap-4 p-2">

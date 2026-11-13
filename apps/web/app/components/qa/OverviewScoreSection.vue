@@ -131,22 +131,26 @@ watch(categoryModalOpen, (open) => {
             @breakdown="openBreakdownModal"
           />
         </div>
-        <div class="flex flex-1 flex-col items-center justify-center gap-2">
-          <ScoreDonutButton
+        <div class="flex flex-1 flex-col items-center justify-center gap-2 overflow-visible">
+          <div
             v-if="qaScore != null"
-            label="Open QA score breakdown"
-            @click="openBreakdownModal"
+            class="mx-auto w-full max-w-[min(100%,17.75rem)] overflow-visible"
           >
-            <AccessibilityScoreDonut
-              variant="site-target"
-              :score="qaScore"
-              label="QA score"
-              ring-color="var(--ui-primary)"
-              :delta="formattedDelta"
-              :delta-tooltip="DELTA_TOOLTIP"
-              :chart-style="chartStyle"
-            />
-          </ScoreDonutButton>
+            <ScoreDonutButton
+              label="Open QA score breakdown"
+              @click="openBreakdownModal"
+            >
+              <AccessibilityScoreDonut
+                variant="site-target"
+                :score="qaScore"
+                label="QA score"
+                ring-color="var(--ui-primary)"
+                :delta="formattedDelta"
+                :delta-tooltip="DELTA_TOOLTIP"
+                :chart-style="chartStyle"
+              />
+            </ScoreDonutButton>
+          </div>
           <p v-else class="max-w-xs text-center text-sm text-muted">
             QA score appears after a completed scan with quality checks enabled.
           </p>

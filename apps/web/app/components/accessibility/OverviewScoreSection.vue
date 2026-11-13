@@ -162,20 +162,22 @@ const emit = defineEmits<{
           </div>
           <ScoreDonutMenu @breakdown="openBreakdownModal" />
         </div>
-        <div class="flex flex-1 flex-col items-center justify-center">
-          <ScoreDonutButton
-            label="Open accessibility score breakdown"
-            :class="scoreUpdating ? 'opacity-70' : ''"
-            @click="openBreakdownModal"
-          >
-            <AccessibilityScoreDonut
-              variant="site-target"
-              :score="overallScore"
-              ring-color="var(--ui-primary)"
-              :score-updating="scoreUpdating"
-              :chart-style="chartStyle"
-            />
-          </ScoreDonutButton>
+        <div class="flex flex-1 flex-col items-center justify-center overflow-visible">
+          <div class="mx-auto w-full max-w-[min(100%,17.75rem)] overflow-visible">
+            <ScoreDonutButton
+              label="Open accessibility score breakdown"
+              :class="scoreUpdating ? 'opacity-70' : ''"
+              @click="openBreakdownModal"
+            >
+              <AccessibilityScoreDonut
+                variant="site-target"
+                :score="overallScore"
+                ring-color="var(--ui-primary)"
+                :score-updating="scoreUpdating"
+                :chart-style="chartStyle"
+              />
+            </ScoreDonutButton>
+          </div>
         </div>
       </div>
 

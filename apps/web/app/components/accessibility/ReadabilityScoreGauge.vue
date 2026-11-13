@@ -33,11 +33,11 @@ const markerValue = computed(() => {
 <template>
   <div class="readability-gauge space-y-2">
     <div class="flex items-baseline justify-between gap-4">
-      <p class="text-sm text-muted">
-        Site average · {{ method.shortLabel }}
-      </p>
       <p class="text-2xl font-semibold tabular-nums text-default">
         {{ displayValue }}
+      </p>
+      <p class="text-sm text-muted text-right shrink-0">
+        Site average · {{ method.shortLabel }}
       </p>
     </div>
 

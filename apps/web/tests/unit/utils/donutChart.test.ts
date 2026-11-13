@@ -3,12 +3,21 @@ import { describe, expect, it } from 'vitest'
 import {
   DONUT_CORNER_RADIUS,
   DONUT_GAP_DEG,
+  DONUT_EDGE_MARGIN,
+  DONUT_HALO_INNER_EXPAND,
+  DONUT_HALO_OUTER_EXPAND,
+  DONUT_INNER_RATIO,
+  DONUT_OUTER_RADIUS,
   DONUT_SEMI_START_ANGLE,
   DONUT_SEMI_SWEEP,
   DONUT_START_ANGLE,
   DONUT_THICKNESS,
+  DONUT_VIEWBOX,
+  DONUT_VIEWBOX_PADDING,
   annularSectorPath,
   donutArcOptions,
+  donutGeometryFitsViewBox,
+  donutHaloGeometry,
   donutRingGeometry,
   isDonutChartStyle,
   layoutDonutSegments,
@@ -18,12 +27,34 @@ import {
 } from '~/utils/donutChart'
 
 describe('donutChart', () => {
-  it('keeps cutout near 70–75% of outer radius and thickness near 1/8 diameter', () => {
+  it('derives outer radius from viewBox padding so the halo and margin fit', () => {
+    expect(DONUT_VIEWBOX_PADDING).toBeCloseTo(
+      DONUT_HALO_OUTER_EXPAND + DONUT_EDGE_MARGIN,
+      5
+    )
+    expect(DONUT_OUTER_RADIUS).toBeCloseTo(
+      DONUT_VIEWBOX / 2 - DONUT_VIEWBOX_PADDING,
+      5
+    )
     const geo = donutRingGeometry()
-    expect(DONUT_THICKNESS).toBe(12.5)
-    expect(geo.innerRadius / geo.outerRadius).toBeGreaterThanOrEqual(0.7)
-    expect(geo.innerRadius / geo.outerRadius).toBeLessThanOrEqual(0.76)
-    expect(DONUT_CORNER_RADIUS).toBeGreaterThanOrEqual(2.5)
+    expect(donutGeometryFitsViewBox(geo, { includeHalo: true })).toBe(true)
+    const halo = donutHaloGeometry(geo)
+    // Halo stays inside; edge margin leaves empty space outside it.
+    expect(halo.outerRadius + geo.cx).toBeLessThanOrEqual(
+      DONUT_VIEWBOX - DONUT_EDGE_MARGIN + 1e-6
+    )
+  })
+
+  it('keeps ring thickness near 12% of outer diameter (inner ≈ 0.75 × outer)', () => {
+    const geo = donutRingGeometry()
+    expect(DONUT_INNER_RATIO).toBeCloseTo(0.75, 5)
+    expect(geo.innerRadius / geo.outerRadius).toBeCloseTo(DONUT_INNER_RATIO, 5)
+    const thicknessRatio = (geo.outerRadius - geo.innerRadius) / (geo.outerRadius * 2)
+    expect(thicknessRatio).toBeGreaterThanOrEqual(0.11)
+    expect(thicknessRatio).toBeLessThanOrEqual(0.13)
+    expect(DONUT_THICKNESS).toBeCloseTo(geo.outerRadius - geo.innerRadius, 5)
+    expect(DONUT_CORNER_RADIUS).toBeGreaterThan(0)
+    expect(DONUT_CORNER_RADIUS).toBeLessThan(geo.outerRadius - geo.innerRadius)
     expect(DONUT_GAP_DEG).toBeGreaterThanOrEqual(3.5)
   })
 
@@ -42,10 +73,19 @@ describe('donutChart', () => {
   })
 
   it('builds rounded corners as small fillet arcs, not sharp radials only', () => {
-    const sharp = annularSectorPath(50, 50, 35.5, 48, 0, Math.PI / 2)
-    const rounded = roundedAnnularSectorPath(50, 50, 35.5, 48, 0, Math.PI / 2, DONUT_CORNER_RADIUS)
+    const outer = DONUT_OUTER_RADIUS
+    const inner = outer * DONUT_INNER_RATIO
+    const sharp = annularSectorPath(50, 50, inner, outer, 0, Math.PI / 2)
+    const rounded = roundedAnnularSectorPath(
+      50,
+      50,
+      inner,
+      outer,
+      0,
+      Math.PI / 2,
+      DONUT_CORNER_RADIUS
+    )
     expect(rounded).not.toBe(sharp)
-    // Four corner fillets use the corner radius as the arc radius.
     const fillet = new RegExp(`A ${DONUT_CORNER_RADIUS} ${DONUT_CORNER_RADIUS}`, 'g')
     expect(rounded.match(fillet)?.length).toBe(4)
     expect(rounded.endsWith('Z')).toBe(true)
@@ -73,7 +113,6 @@ describe('donutChart', () => {
     const laidOut = layoutDonutSegments(segments, { sortDescending: false })
     expect(laidOut[0]!.label).toBe('Score')
     expect(laidOut[0]!.color).toBe('var(--donut-segment-1)')
-    // Gaps between score and remainder leave a clear break.
     const gap = (laidOut[1]!.startAngle - laidOut[0]!.endAngle + Math.PI * 2) % (Math.PI * 2)
     expect(gap).toBeCloseTo((DONUT_GAP_DEG * Math.PI) / 180, 5)
   })
@@ -98,7 +137,6 @@ describe('donutChart', () => {
     expect(laidOut.length).toBe(2)
     expect(laidOut[0]!.startAngle).toBeCloseTo(DONUT_SEMI_START_ANGLE, 5)
     const gapRad = (DONUT_GAP_DEG * Math.PI) / 180
-    // Open arcs reserve gaps between segments only (n - 1).
     const usable = DONUT_SEMI_SWEEP - gapRad * (laidOut.length - 1)
     const totalSweep = laidOut.reduce(
       (sum, segment) => sum + (segment.endAngle - segment.startAngle),
@@ -106,15 +144,36 @@ describe('donutChart', () => {
     )
     expect(totalSweep).toBeCloseTo(usable, 5)
     const end = laidOut[laidOut.length - 1]!.endAngle
-    // Last tip lands on the same horizontal as the start (π → 2π).
     expect(end).toBeCloseTo(DONUT_SEMI_START_ANGLE + DONUT_SEMI_SWEEP, 5)
     expect(laidOut.every(segment => segment.path.length > 0)).toBe(true)
   })
 
-  it('uses a larger lower-diameter ring for semi gauges', () => {
+  it('keeps semi gauge ring metrics inside the square viewBox', () => {
     const semi = semiDonutRingGeometry()
     const full = donutRingGeometry()
-    expect(semi.outerRadius).toBeGreaterThan(full.outerRadius)
-    expect(semi.cy).toBeGreaterThan(full.cy)
+    expect(semi.outerRadius).toBeCloseTo(full.outerRadius, 5)
+    expect(semi.innerRadius / semi.outerRadius).toBeCloseTo(DONUT_INNER_RATIO, 5)
+    expect(semi.cy).toBeGreaterThanOrEqual(full.cy)
+    // Top of halo stays in viewBox; end caps sit on the diameter (y = cy).
+    expect(semi.cy - semi.outerRadius - DONUT_HALO_OUTER_EXPAND).toBeGreaterThanOrEqual(-1e-6)
+    expect(semi.cx - semi.outerRadius - DONUT_HALO_OUTER_EXPAND).toBeGreaterThanOrEqual(-1e-6)
+    expect(semi.cx + semi.outerRadius + DONUT_HALO_OUTER_EXPAND).toBeLessThanOrEqual(
+      DONUT_VIEWBOX + 1e-6
+    )
+  })
+
+  it('builds a halo path with the same angles and a larger outer radius', () => {
+    const geo = donutRingGeometry()
+    const halo = donutHaloGeometry(geo)
+    expect(halo.outerRadius).toBeCloseTo(geo.outerRadius + DONUT_HALO_OUTER_EXPAND, 5)
+    expect(halo.innerRadius).toBeCloseTo(geo.innerRadius - DONUT_HALO_INNER_EXPAND, 5)
+
+    const laidOut = layoutDonutSegments([
+      { label: 'A', value: 40 },
+      { label: 'B', value: 60 }
+    ], { geometry: geo })
+    expect(laidOut.every(segment => segment.haloPath.length > 0)).toBe(true)
+    expect(laidOut[0]!.haloPath).not.toBe(laidOut[0]!.path)
+    expect(laidOut[0]!.startAngle).toBeLessThan(laidOut[0]!.endAngle)
   })
 })

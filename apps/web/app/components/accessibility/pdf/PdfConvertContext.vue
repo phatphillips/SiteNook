@@ -43,9 +43,9 @@ const emptyHint = computed(() => {
     return 'Extracting structure…'
   }
   if (props.document.structure_status === 'failed') {
-    return props.document.structure_error || 'Structure extraction failed. Switch away and back to Convert to retry.'
+    return props.document.structure_error || 'Structure extraction failed. Switch away and back to Extract to retry.'
   }
-  return 'No content yet. Structure extraction will start automatically in Convert.'
+  return 'No content yet. Structure extraction will start automatically in Extract.'
 })
 
 function selectContent(value: PdfContentPaneView) {

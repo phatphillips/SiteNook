@@ -28,7 +28,7 @@ const overviewOpenColumnVisibility = {
 <template>
   <div class="marketing-a11y-showcase space-y-5">
     <div class="grid items-stretch gap-4 lg:grid-cols-3 lg:gap-4">
-      <div class="flex flex-col items-center justify-center gap-1.5">
+      <div class="mx-auto flex w-full max-w-[min(100%,17.75rem)] flex-col items-center justify-center gap-1.5 overflow-visible">
         <AccessibilityScoreDonut
           :score="MARKETING_DEMO_A11Y_SCORE"
           label="Accessibility score"
@@ -57,7 +57,7 @@ const overviewOpenColumnVisibility = {
       :pages-by-rule="MARKETING_DEMO_PAGES_BY_RULE"
       read-only
       hide-toolbar
-      :page-size="5"
+      :page-size="6"
     />
   </div>
 </template>

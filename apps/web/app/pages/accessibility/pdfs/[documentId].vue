@@ -94,7 +94,7 @@ const structureLoading = computed(() => {
 
 const studioModeItems = [
   { label: 'Audit', value: 'audit' },
-  { label: 'Convert', value: 'convert' }
+  { label: 'Extract', value: 'extract' }
 ]
 
 async function refreshStudio() {
@@ -119,7 +119,7 @@ async function ensureStructureQueued() {
     await requestStructure(document.value.id)
     await refreshStudio()
   } catch {
-    // Leave empty state in Convert context.
+    // Leave empty state in Extract context.
   }
 }
 
@@ -127,13 +127,13 @@ onMounted(async () => {
   loading.value = true
   await refreshStudio()
   loading.value = false
-  if (mode.value === 'convert') {
+  if (mode.value === 'extract') {
     await ensureStructureQueued()
   }
 })
 
 watch(mode, async (next) => {
-  if (next === 'convert') {
+  if (next === 'extract') {
     await ensureStructureQueued()
     for (let i = 0; i < 30; i++) {
       if (!document.value) break
@@ -211,7 +211,7 @@ watch([loading, mode], async () => {
           color="warning"
           variant="subtle"
           title="Structure extraction failed"
-          :description="document.structure_error || 'Could not parse this PDF. Try switching to Convert again, or upload a copy if the crawl URL is blocked.'"
+          :description="document.structure_error || 'Could not parse this PDF. Try switching to Extract again, or upload a copy if the crawl URL is blocked.'"
         />
         <UAlert
           v-else-if="!document.file && document.url"

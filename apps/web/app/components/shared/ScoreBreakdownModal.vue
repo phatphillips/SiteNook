@@ -83,9 +83,8 @@ function slicePrimaryValue(slice: ScoreBreakdownSlice): string {
         <!-- Top: donut + each slice's information to its right -->
         <section class="grid gap-5 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:items-center">
           <div class="flex flex-col items-center gap-2 sm:items-start">
-            <div class="size-44">
+            <div class="mx-auto w-full max-w-[11rem] overflow-visible sm:mx-0">
               <AccessibilityScoreDonut
-                class="!size-full"
                 :score="model.score"
                 :segments="donutSegments"
                 :sort-segments="model.sortSlices ?? false"

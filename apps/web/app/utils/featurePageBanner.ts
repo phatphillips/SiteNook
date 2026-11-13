@@ -57,7 +57,7 @@ const COPY: Record<FeaturePageBannerKey, FeaturePageBannerCopy> = {
   },
   'accessibility-pdf-inspector': {
     description:
-      'Audit veraPDF findings, convert content for the web, generate an assisted structural fix, and decide whether to skip this file on future crawls.'
+      'Audit veraPDF findings, extract content for the web, generate an assisted structural fix, and decide whether to skip this file on future crawls.'
   },
   'qa-links': {
     description:

@@ -69,10 +69,10 @@ function isActivePath(to: string) {
       <!-- Left: brand -->
       <NuxtLink
         to="/"
-        class="relative z-10 flex min-h-11 shrink-0 items-center gap-2 rounded-md font-semibold tracking-tight text-highlighted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        class="relative z-10 inline-flex min-h-11 shrink-0 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        aria-label="SiteNook home"
       >
-        <UIcon name="i-lucide-search-check" class="size-5 text-primary sm:size-6" aria-hidden="true" />
-        <span class="text-sm sm:text-base">SiteNook</span>
+        <SiteNookLogo size="md" wordmark />
       </NuxtLink>
 
       <!-- Center: Product / Resources (desktop). Cursor absolute-center pattern -->

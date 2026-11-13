@@ -184,16 +184,12 @@ function severityColor(impact: AccessibilityIssue['impact']): 'error' | 'warning
   return 'info'
 }
 
-/** Colored pill for Severity (and Critical row tags). Keeps existing error/warning/info coding. */
+/** Colored pill for Severity. Keeps existing error/warning/info coding. */
 function severityTagClass(impact: AccessibilityIssue['impact']): string {
   const color = severityColor(impact)
   if (color === 'error') return 'issue-sev-tag issue-sev-tag--critical'
   if (color === 'warning') return 'issue-sev-tag issue-sev-tag--moderate'
   return 'issue-sev-tag issue-sev-tag--minor'
-}
-
-function isImportantIssue(issue: AccessibilityIssue): boolean {
-  return severityLabel(issue.impact) === 'Critical'
 }
 
 function pageCount(issue: AccessibilityIssue): number {
@@ -405,10 +401,11 @@ const columns = computed((): TableColumn<AccessibilityIssue>[] => {
       if (pageCount(row.original) === 0) return null
       return h(UButton, {
         color: 'neutral',
-        variant: 'ghost',
+        variant: 'soft',
         icon: 'i-lucide-chevron-down',
         square: true,
         size: 'xs',
+        class: 'issues-table-expand-btn',
         'aria-label': 'Expand affected pages',
         ui: {
           leadingIcon: ['transition-transform', row.getIsExpanded() ? 'duration-200 rotate-180' : '']
@@ -430,7 +427,6 @@ const columns = computed((): TableColumn<AccessibilityIssue>[] => {
       }
     },
     cell: ({ row }) => {
-      const important = isImportantIssue(row.original)
       return h('div', {
         class: ['issues-table-issue-cell', props.readOnly ? 'cursor-pointer' : ''],
         onClick: props.readOnly ? () => openIssueRow(row.original) : undefined
@@ -439,13 +435,7 @@ const columns = computed((): TableColumn<AccessibilityIssue>[] => {
           h('p', {
             class: 'text-sm font-medium truncate min-w-0 flex-1',
             title: row.original.description
-          }, row.original.description),
-          important
-            ? h('span', {
-                class: severityTagClass(row.original.impact),
-                title: 'High-priority severity'
-              }, severityLabel(row.original.impact))
-            : null
+          }, row.original.description)
         ]),
         h('div', { class: 'flex items-center gap-1.5 mt-0.5 min-w-0 w-full overflow-hidden' }, [
           h('span', {
@@ -654,11 +644,12 @@ const columns = computed((): TableColumn<AccessibilityIssue>[] => {
   })
 
   if (!props.readOnly) {
+    const actionsCol = `${ISSUES_METRIC_COL.actions} issues-table-sticky-actions`
     cols.push({
       id: 'actions',
       enableSorting: false,
       enableHiding: false,
-      meta: { class: { th: ISSUES_METRIC_COL.actions, td: ISSUES_METRIC_COL.actions } },
+      meta: { class: { th: actionsCol, td: actionsCol } },
       cell: ({ row }) => h(UDropdownMenu, {
         content: { align: 'end' },
         items: rowActions(row),
@@ -666,7 +657,9 @@ const columns = computed((): TableColumn<AccessibilityIssue>[] => {
       }, () => h(UButton, {
         icon: 'i-lucide-ellipsis-vertical',
         color: 'neutral',
-        variant: 'ghost',
+        variant: 'soft',
+        square: true,
+        size: 'xs',
         'aria-label': 'Issue actions'
       }))
     })
@@ -777,13 +770,18 @@ function syncIssueColumnWidthVar() {
 
   const expandTh = scroll.querySelector<HTMLElement>('thead th.issues-table-expand-col')
   const issueTh = scroll.querySelector<HTMLElement>('thead th.issues-table-issue-col')
-  const firstMetricTh = scroll.querySelector<HTMLElement>('thead th.issues-metric-col')
+  const firstMetricTh = scroll.querySelector<HTMLElement>(
+    'thead th.issues-metric-col:not(.issues-table-sticky-actions)'
+  )
+  const actionsTh = scroll.querySelector<HTMLElement>('thead th.issues-table-sticky-actions')
 
   const expandWidth = Math.round(expandTh?.offsetWidth ?? remToPx(EXPAND_COL_REM))
   const issueWidth = Math.round(issueTh?.offsetWidth ?? remToPx(ISSUE_COL_MIN_REM))
+  const actionsWidth = Math.round(actionsTh?.offsetWidth ?? 0)
 
   panel.style.setProperty('--issues-expand-col-width', `${expandWidth}px`)
   panel.style.setProperty('--issues-issue-col-width', `${issueWidth}px`)
+  panel.style.setProperty('--issues-actions-col-width', `${actionsWidth}px`)
 
   let railWidth = expandWidth + issueWidth
   if (expandTh && firstMetricTh) {
@@ -1167,6 +1165,32 @@ defineExpose({
   box-sizing: border-box;
 }
 
+/* Pin the row-actions menu to the visible right edge while metrics scroll. */
+.issues-table-panel :deep(.issues-table-sticky-actions) {
+  position: sticky;
+  right: 0;
+  z-index: 4;
+  overflow: visible;
+  background-color: var(--table-surface-bg, var(--ui-bg));
+  box-shadow: -6px 0 10px -8px color-mix(in srgb, #000 22%, transparent 78%);
+}
+
+.issues-table-panel :deep(thead .issues-table-sticky-actions) {
+  z-index: 6;
+}
+
+.issues-table-panel :deep(.issues-table-sticky-actions)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  background: color-mix(in srgb, var(--ui-border) 92%, transparent 8%);
+  pointer-events: none;
+  z-index: 2;
+}
+
 .issues-table-panel :deep(.issues-table-scroll tbody td[colspan]) {
   padding-left: 0 !important;
   padding-right: 0 !important;
@@ -1295,14 +1319,13 @@ defineExpose({
 .issues-table-right-shadow {
   position: absolute;
   top: 0;
-  right: 0;
+  right: var(--issues-actions-col-width, 0px);
   bottom: 0;
   z-index: 12;
   width: 12px;
   pointer-events: none;
   opacity: 0;
   transition: opacity 180ms ease;
-  border-top-right-radius: 0.5rem;
   background: linear-gradient(
     to left,
     color-mix(in srgb, #000 14%, transparent 86%) 0%,
@@ -1318,11 +1341,10 @@ defineExpose({
 .issues-table-header-cap {
   position: absolute;
   top: 0;
-  right: 0;
+  right: var(--issues-actions-col-width, 0px);
   width: 12px;
   z-index: 13;
   pointer-events: none;
-  border-top-right-radius: 0.5rem;
   background: linear-gradient(
     to right,
     transparent 0%,
@@ -1331,7 +1353,7 @@ defineExpose({
 }
 
 @media (max-width: 1023px) {
-  /* Unstick. Column mins + table min-width prevent Issue/Site overlap. */
+  /* Unstick left rail. Column mins + table min-width prevent Issue/Site overlap. */
   .issues-table-panel :deep(.issues-table-issue-col) {
     width: auto;
     min-width: 28rem;
@@ -1355,16 +1377,30 @@ defineExpose({
     display: none;
   }
 
+  /* Keep the actions menu pinned on narrower viewports. */
+  .issues-table-panel :deep(.issues-table-sticky-actions) {
+    position: sticky;
+    right: 0;
+    z-index: 4;
+    background-color: var(--table-surface-bg, var(--ui-bg));
+    box-shadow: -6px 0 10px -8px color-mix(in srgb, #000 22%, transparent 78%);
+  }
+
+  .issues-table-panel :deep(thead .issues-table-sticky-actions) {
+    z-index: 6;
+  }
+
   .issues-table-scroll--overflow-right {
     box-shadow: inset -18px 0 18px -10px color-mix(in srgb, #000 20%, transparent 80%);
   }
 }
 
-.issues-table-panel :deep(tr[data-expanded='true'] td:not(.issues-table-sticky-col)) {
+.issues-table-panel :deep(tr[data-expanded='true'] td:not(.issues-table-sticky-col):not(.issues-table-sticky-actions)) {
   background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 
-.issues-table-panel :deep(tr[data-expanded='true'] .issues-table-sticky-col) {
+.issues-table-panel :deep(tr[data-expanded='true'] .issues-table-sticky-col),
+.issues-table-panel :deep(tr[data-expanded='true'] .issues-table-sticky-actions) {
   background-color: var(--table-surface-bg, var(--ui-bg-elevated));
 }
 

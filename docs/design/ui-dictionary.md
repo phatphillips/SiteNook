@@ -78,7 +78,7 @@ Main score and trend dashboard for one site.
 
 #### Overview score donut
 
-Thick annular-sector ring (`ScoreDonut` + `utils/donutChart.ts`): cutout ~75% of radius, soft corner fillets, even gaps. Overview display size **255px** (Nuxt Charts `DonutChart` width). Palette tokens `--donut-segment-1`…`5`. Centre label: value + unit baseline, caption below. Wrapped in `ScoreDonutButton` (hover/focus border). Click opens `ScoreBreakdownModal`: donut + slice legend on the left, category/impact detail on the right. Card header **Score donut menu** (`ScoreDonutMenu`, top-right ellipsis): checked **Full donut** / **Semi donut** (persisted via `useDonutChartStyle`) plus **Score breakdown**.
+Thick annular-sector ring (`ScoreDonut` + `utils/donutChart.ts`): cutout ~75% of radius, soft corner fillets, even gaps. Overview display size **255px** (Nuxt Charts `DonutChart` width). Palette tokens `--donut-segment-1`…`5`. Centre label: value + unit baseline, caption below. Wrapped in `ScoreDonutButton` (no square frame; hover uses segment halo on the ring, plus a small expand hint). Click opens `ScoreBreakdownModal`: donut + slice legend on the left, category/impact detail on the right. Card header **Score donut menu** (`ScoreDonutMenu`, top-right ellipsis): checked **Full donut** / **Semi donut** (persisted via `useDonutChartStyle`) plus **Score breakdown**.
 
 #### Overview score section — left column (1/3)
 
@@ -166,11 +166,11 @@ Thick annular-sector ring (`ScoreDonut` + `utils/donutChart.ts`): cutout ~75% of
 
 | Name | Description |
 |------|-------------|
-| **PDF Inspector** | Document studio (Audit / Convert). Breadcrumb uses literal `/`: `PDFs / PDF Inspector`. Mode tabs sit on the filename row. `sites/.../pdfs/[documentId].vue` |
+| **PDF Inspector** | Document studio (Audit / Extract). Breadcrumb uses literal `/`: `PDFs / PDF Inspector`. Mode tabs sit on the filename row. `sites/.../pdfs/[documentId].vue` |
 | **Pages rail** | Left column of page thumbnails. `PdfPageThumbnails` |
 | **Preview pane** | Middle column — PDF preview only. `PdfPreviewViewer` |
 | **Issues context** | Audit right pane — issue list + guidance. `PdfAuditContext` |
-| **Content context** | Convert right pane — copyable Markdown/HTML/JSON/Gutenberg/Images. `PdfConvertContext` |
+| **Content context** | Extract right pane — copyable Markdown/HTML/JSON/Gutenberg/Images. `PdfConvertContext` |
 | **Inspector shell** | Shared `Pages \| Preview \| Context` layout. `PdfInspectorShell` |
 
 ---

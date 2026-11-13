@@ -46,25 +46,32 @@ describe('pdfStructureViews', () => {
       view2: 'markdown',
       content: 'markdown'
     })
-    expect(parsePdfStudioQuery({ mode: 'convert', view1: 'json', view2: 'html' })).toEqual({
-      mode: 'convert',
+    expect(parsePdfStudioQuery({ mode: 'extract', view1: 'json', view2: 'html' })).toEqual({
+      mode: 'extract',
       view1: 'json',
       view2: 'html',
       content: 'html'
     })
-    expect(parsePdfStudioQuery({ mode: 'convert', content: 'gutenberg' }).content).toBe('gutenberg')
-    expect(parsePdfStudioQuery({ mode: 'convert', view2: 'pdf' }).content).toBe('markdown')
+    expect(parsePdfStudioQuery({ mode: 'extract', content: 'gutenberg' }).content).toBe('gutenberg')
+    expect(parsePdfStudioQuery({ mode: 'extract', view2: 'pdf' }).content).toBe('markdown')
     expect(isPdfInspectorPaneView('html')).toBe(true)
     expect(isPdfInspectorPaneView('gutenberg')).toBe(true)
     expect(isPdfInspectorPaneView('image')).toBe(true)
     expect(isPdfInspectorPaneView('docx')).toBe(false)
   })
 
-  it('aliases legacy structure and compare modes', () => {
-    expect(normalizePdfStudioMode('structure')).toBe('convert')
+  it('aliases legacy convert, structure, and compare modes', () => {
+    expect(normalizePdfStudioMode('convert')).toBe('extract')
+    expect(normalizePdfStudioMode('structure')).toBe('extract')
     expect(normalizePdfStudioMode('compare')).toBe('audit')
+    expect(parsePdfStudioQuery({ mode: 'convert', view1: 'json', view2: 'markdown' })).toEqual({
+      mode: 'extract',
+      view1: 'json',
+      view2: 'markdown',
+      content: 'markdown'
+    })
     expect(parsePdfStudioQuery({ mode: 'structure', view1: 'json', view2: 'markdown' })).toEqual({
-      mode: 'convert',
+      mode: 'extract',
       view1: 'json',
       view2: 'markdown',
       content: 'markdown'

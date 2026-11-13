@@ -7,8 +7,8 @@ const skeleton = DATA_TABLE_SKELETON_CLASS
 <template>
   <div class="readability-gauge space-y-2" aria-hidden="true">
     <div class="flex items-baseline justify-between gap-4">
+      <USkeleton :class="`h-8 w-40 ${skeleton}`" />
       <USkeleton :class="`h-4 w-36 ${skeleton}`" />
-      <USkeleton :class="`h-8 w-16 ${skeleton}`" />
     </div>
 
     <div class="relative pt-6 pb-1">

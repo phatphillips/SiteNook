@@ -77,19 +77,23 @@ const breakdownModel = computed((): ScoreBreakdownModel | null => {
         @breakdown="breakdownOpen = true"
       />
     </div>
-    <div class="flex flex-1 flex-col items-center justify-center gap-2">
-      <ScoreDonutButton
+    <div class="flex flex-1 flex-col items-center justify-center gap-2 overflow-visible">
+      <div
         v-if="score != null"
-        :label="`Open ${title || 'score'} breakdown`"
-        @click="breakdownOpen = true"
+        class="mx-auto w-full max-w-[min(100%,17.75rem)] overflow-visible"
       >
-        <AccessibilityScoreDonut
-          variant="site-target"
-          :score="score"
-          ring-color="var(--ui-primary)"
-          :chart-style="chartStyle"
-        />
-      </ScoreDonutButton>
+        <ScoreDonutButton
+          :label="`Open ${title || 'score'} breakdown`"
+          @click="breakdownOpen = true"
+        >
+          <AccessibilityScoreDonut
+            variant="site-target"
+            :score="score"
+            ring-color="var(--ui-primary)"
+            :chart-style="chartStyle"
+          />
+        </ScoreDonutButton>
+      </div>
       <p
         v-else
         class="max-w-xs text-center text-sm text-muted"

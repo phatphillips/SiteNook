@@ -28,8 +28,7 @@ withDefaults(defineProps<{
             v-if="brand"
             class="auth-page-brand mb-4 flex justify-center overflow-visible"
           >
-            <SiteNookLogo size="lg" />
-            <span class="sr-only">SiteNook</span>
+            <SiteNookLogo size="lg" wordmark />
           </div>
           <div
             v-else-if="icon"

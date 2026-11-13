@@ -167,7 +167,8 @@ const sidebarNavUi = {
           aria-label="SiteNook home"
         >
           <SiteNookLogo
-            size="sm"
+            size="md"
+            wordmark
             :shine="logoShine"
           />
         </NuxtLink>

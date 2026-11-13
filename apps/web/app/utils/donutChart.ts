@@ -1,28 +1,64 @@
 /**
  * Annular-sector donut geometry (plain SVG).
- * Thick ring, soft corner fillets (not pill caps), even gaps, clockwise from ~11 o'clock.
+ * Soft corner fillets (not pill caps), even gaps, clockwise from ~11 o'clock.
  * Semi style uses a 180° gauge (left → top → right) with the same ring math.
+ *
+ * All radii derive from a square viewBox so the solid ring and its hover halo
+ * stay inside 0…S at every display size.
  */
 
+/** Square viewBox side length (S). */
 export const DONUT_VIEWBOX = 100
 /**
  * Display size for overview / site-target score donuts.
  * Matches Nuxt Charts `DonutChart` sizing (~255px wide).
  */
 export const SCORE_DONUT_SIZE_PX = 255
-/** Outer radius in viewBox units. */
-export const DONUT_OUTER_RADIUS = 48
-/** Ring thickness ≈ 1/8 of chart diameter. Cutout ≈ 74% of outer R. */
-export const DONUT_THICKNESS = DONUT_VIEWBOX / 8
+
+/**
+ * Halo extent beyond the solid outer edge (viewBox units).
+ * ~3.5 ≈ 9px outward at 255px display; ~1.6 ≈ 4px inward.
+ */
+export const DONUT_HALO_OUTER_EXPAND = 3.5
+export const DONUT_HALO_INNER_EXPAND = 1.6
+
+/**
+ * Extra empty margin outside the halo so the chart never sits flush against
+ * the SVG edge (or a parent border) at any display size.
+ * Larger value = more obvious breathing room around the ring + halo.
+ */
+export const DONUT_EDGE_MARGIN = 4
+
+/**
+ * Inset from each viewBox edge so the full halo + margin stay inside.
+ * Paths are fills (no stroke), so no half-stroke inset is required.
+ * outerRadius = S/2 − padding.
+ */
+export const DONUT_VIEWBOX_PADDING = DONUT_HALO_OUTER_EXPAND + DONUT_EDGE_MARGIN
+
+/** Outer radius: S/2 − padding. Halo + margin stay inside the viewBox. */
+export const DONUT_OUTER_RADIUS = DONUT_VIEWBOX / 2 - DONUT_VIEWBOX_PADDING
+
+/**
+ * Cutout ratio. inner ≈ 0.75 × outer → ring thickness ≈ 12.5% of outer diameter
+ * (≈ 12% of the chart diameter the user measures).
+ */
+export const DONUT_INNER_RATIO = 0.75
+
+/** Ring thickness in viewBox units (derived; do not add stroke on top). */
+export const DONUT_THICKNESS = DONUT_OUTER_RADIUS * (1 - DONUT_INNER_RATIO)
+
 /**
  * Angular gap between segments. ~6.5° ≈ 8–10px on size-40/52 Overview charts.
  */
 export const DONUT_GAP_DEG = 6.5
+
 /**
- * Corner fillet radius in viewBox units.
- * ~7px at size-52 (208px), soft rounding without full pill caps.
+ * Corner fillet radius in viewBox units (~28% of thickness).
+ * Soft rounding without full pill caps.
  */
-export const DONUT_CORNER_RADIUS = 3.4
+export const DONUT_CORNER_RADIUS = Math.round(DONUT_THICKNESS * 0.28 * 10) / 10
+
 /**
  * Start angle in radians (0 = 3 o'clock, increasing clockwise in SVG y-down).
  * 11 o'clock = -120° from +x.
@@ -70,6 +106,8 @@ export type DonutSegmentLayout = {
   startAngle: number
   endAngle: number
   path: string
+  /** Larger annular sector for hover/focus halo (same angles + gaps). */
+  haloPath: string
 }
 
 export type DonutRingGeometry = {
@@ -81,9 +119,26 @@ export type DonutRingGeometry = {
   gapRad: number
 }
 
+/** Expanded ring geometry for a translucent hover/focus halo. */
+export function donutHaloGeometry(
+  base: DonutRingGeometry,
+  options: { outerExpand?: number, innerExpand?: number } = {}
+): DonutRingGeometry {
+  const outerExpand = options.outerExpand ?? DONUT_HALO_OUTER_EXPAND
+  const innerExpand = options.innerExpand ?? DONUT_HALO_INNER_EXPAND
+  return {
+    ...base,
+    outerRadius: base.outerRadius + outerExpand,
+    innerRadius: Math.max(0, base.innerRadius - innerExpand)
+  }
+}
+
 export function donutRingGeometry(
   options: {
     outerRadius?: number
+    /** Override inner radius. Ignored when `thickness` is set. */
+    innerRadius?: number
+    /** Override thickness (outer − inner). Defaults to ~12% of outer diameter. */
     thickness?: number
     cornerRadius?: number
     gapDeg?: number
@@ -92,29 +147,54 @@ export function donutRingGeometry(
   } = {}
 ): DonutRingGeometry {
   const outerRadius = options.outerRadius ?? DONUT_OUTER_RADIUS
-  const thickness = options.thickness ?? DONUT_THICKNESS
+  const innerRadius = options.thickness != null
+    ? outerRadius - options.thickness
+    : (options.innerRadius ?? outerRadius * DONUT_INNER_RATIO)
   const cornerRadius = options.cornerRadius ?? DONUT_CORNER_RADIUS
   return {
     cx: options.cx ?? DONUT_VIEWBOX / 2,
     cy: options.cy ?? DONUT_VIEWBOX / 2,
     outerRadius,
-    innerRadius: outerRadius - thickness,
+    innerRadius: Math.max(0, Math.min(innerRadius, outerRadius)),
     cornerRadius,
     gapRad: ((options.gapDeg ?? DONUT_GAP_DEG) * Math.PI) / 180
   }
 }
 
 /**
- * Semi-gauge geometry: larger ring with the diameter in the lower half so
- * the score label can sit inside the bowl, bottom-aligned to the end caps.
+ * Semi-gauge geometry: same ring metrics as full, diameter slightly below
+ * centre so the HTML label sits in the bowl. Halo still fits in the square
+ * viewBox (top: cy − outer − halo ≥ 0).
  */
 export function semiDonutRingGeometry(): DonutRingGeometry {
+  const outerRadius = DONUT_OUTER_RADIUS
+  const halo = DONUT_HALO_OUTER_EXPAND
+  const minCy = outerRadius + halo
+  const maxCy = DONUT_VIEWBOX - halo
+  const preferredCy = DONUT_VIEWBOX * 0.58
+  const cy = Math.min(maxCy, Math.max(minCy, preferredCy))
   return donutRingGeometry({
-    outerRadius: 54,
+    outerRadius,
     cx: DONUT_VIEWBOX / 2,
-    // Diameter ~76% down — tips near the lower third, arc fills most of the box.
-    cy: 76
+    cy
   })
+}
+
+/** True when a ring (including optional halo) stays inside the square viewBox. */
+export function donutGeometryFitsViewBox(
+  geometry: DonutRingGeometry,
+  options: { includeHalo?: boolean } = {}
+): boolean {
+  const expand = options.includeHalo === false ? 0 : DONUT_HALO_OUTER_EXPAND
+  const maxR = geometry.outerRadius + expand
+  const left = geometry.cx - maxR
+  const right = geometry.cx + maxR
+  const top = geometry.cy - maxR
+  const bottom = geometry.cy + maxR
+  return left >= -1e-6
+    && top >= -1e-6
+    && right <= DONUT_VIEWBOX + 1e-6
+    && bottom <= DONUT_VIEWBOX + 1e-6
 }
 
 function polar(cx: number, cy: number, r: number, angle: number) {
@@ -348,6 +428,16 @@ export function layoutDonutSegments(
       segEnd,
       geometry.cornerRadius
     )
+    const halo = donutHaloGeometry(geometry)
+    const haloPath = roundedAnnularSectorPath(
+      halo.cx,
+      halo.cy,
+      halo.innerRadius,
+      halo.outerRadius,
+      segStart,
+      segEnd,
+      geometry.cornerRadius
+    )
 
     return {
       label: segment.label,
@@ -356,7 +446,8 @@ export function layoutDonutSegments(
       fraction,
       startAngle: segStart,
       endAngle: segEnd,
-      path
+      path,
+      haloPath
     }
   })
 }

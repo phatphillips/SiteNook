@@ -41,7 +41,7 @@ const averageScore = computed(() => averageRawScore(pages, methodId))
 
 <style scoped>
 /* Tone down the large “9.1 · Hard” average so it fits the marketing frame. */
-.marketing-readability-showcase :deep(.readability-gauge > div:first-child > p:last-child) {
+.marketing-readability-showcase :deep(.readability-gauge > div:first-child > p:first-child) {
   font-size: 1rem;
   line-height: 1.5rem;
   font-weight: 600;

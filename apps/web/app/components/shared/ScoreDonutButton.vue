@@ -39,50 +39,38 @@ function onClick(event: MouseEvent) {
 
 <style scoped>
 .score-donut-button {
+  box-sizing: border-box;
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.75rem;
+  width: 100%;
+  max-width: 100%;
+  /* Tight pad so the expand hint clears the ring; no square frame. */
+  padding: 0.25rem;
   margin: 0;
-  border: 2px solid transparent;
-  border-radius: 1rem;
+  border: none;
+  border-radius: 50%;
   background: transparent;
   text-align: left;
   cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+  overflow: visible;
+  transition: transform 0.15s ease;
 }
 
-/* Neutral grey hover/focus (not primary) — works in light and dark. */
-.score-donut-button:not(.score-donut-button--disabled):hover {
-  border-color: #d4d4d8;
-  background-color: #f6f6f6;
-  box-shadow: 0 0 0 1px rgb(24 24 27 / 8%);
+.score-donut-button > :deep(.score-donut) {
+  width: 100%;
+  max-width: 100%;
 }
 
+/*
+ * No square border / grey plate on hover. Hover feedback lives on the donut
+ * segments (halo). Keep a circular focus ring for keyboard users opening the
+ * breakdown, and the small expand hint as the click affordance.
+ */
 .score-donut-button:not(.score-donut-button--disabled):focus-visible {
-  border-color: #a1a1aa;
-  background-color: #ececec;
-  outline: none;
-  box-shadow: 0 0 0 2px rgb(24 24 27 / 12%);
-}
-
-:root.dark .score-donut-button:not(.score-donut-button--disabled):hover,
-.dark .score-donut-button:not(.score-donut-button--disabled):hover {
-  border-color: color-mix(in srgb, white 20%, transparent);
-  background-color: color-mix(in srgb, white 8%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, white 12%, transparent);
-}
-
-:root.dark .score-donut-button:not(.score-donut-button--disabled):focus-visible,
-.dark .score-donut-button:not(.score-donut-button--disabled):focus-visible {
-  border-color: color-mix(in srgb, white 32%, transparent);
-  background-color: color-mix(in srgb, white 12%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, white 18%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--ui-text, #3f3f46) 35%, transparent);
+  outline-offset: 4px;
 }
 
 .score-donut-button:not(.score-donut-button--disabled):active {
@@ -97,8 +85,8 @@ function onClick(event: MouseEvent) {
 .score-donut-button__hint {
   pointer-events: none;
   position: absolute;
-  right: 0.375rem;
-  bottom: 0.375rem;
+  right: 0.125rem;
+  bottom: 0.125rem;
   display: inline-flex;
   width: 1.5rem;
   height: 1.5rem;

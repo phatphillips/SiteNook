@@ -138,22 +138,26 @@ watch(categoryModalOpen, (open) => {
             @breakdown="openBreakdownModal"
           />
         </div>
-        <div class="flex flex-1 flex-col items-center justify-center gap-2">
-          <ScoreDonutButton
+        <div class="flex flex-1 flex-col items-center justify-center gap-2 overflow-visible">
+          <div
             v-if="seoScore != null"
-            label="Open SEO score breakdown"
-            @click="openBreakdownModal"
+            class="mx-auto w-full max-w-[min(100%,17.75rem)] overflow-visible"
           >
-            <AccessibilityScoreDonut
-              variant="site-target"
-              :score="seoScore"
-              label="SEO score"
-              ring-color="var(--ui-primary)"
-              :delta="formattedDelta"
-              :delta-tooltip="DELTA_TOOLTIP"
-              :chart-style="chartStyle"
-            />
-          </ScoreDonutButton>
+            <ScoreDonutButton
+              label="Open SEO score breakdown"
+              @click="openBreakdownModal"
+            >
+              <AccessibilityScoreDonut
+                variant="site-target"
+                :score="seoScore"
+                label="SEO score"
+                ring-color="var(--ui-primary)"
+                :delta="formattedDelta"
+                :delta-tooltip="DELTA_TOOLTIP"
+                :chart-style="chartStyle"
+              />
+            </ScoreDonutButton>
+          </div>
           <p v-else class="max-w-xs text-center text-sm text-muted">
             SEO score appears after a completed scan with SEO checks enabled.
           </p>

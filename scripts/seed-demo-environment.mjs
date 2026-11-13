@@ -58,32 +58,36 @@ const HISTORY_ONLY = args.has('--history-only')
 const WAIT = args.has('--wait')
 const MAX_PAGES = Number(process.env.DEMO_MAX_PAGES || 20)
 
-/** Credible public sites with a mix of quality for a11y / SEO / QA demos. */
+/**
+ * Public sites mixed for screenshot / demo value:
+ * one intentionally poor baseline, mid-tier real sites with room to improve,
+ * and one strong reference so the product story is not all near-100% scores.
+ */
 const DEMO_SITES = [
   {
-    name: 'WebAIM',
-    url: 'https://webaim.org',
-    description: 'Web accessibility training and resources'
+    name: 'W3C Before (bad demo)',
+    url: 'https://www.w3.org/WAI/demos/bad/before/home.html',
+    description: 'W3C intentionally inaccessible demo — clear remediation story'
   },
   {
-    name: 'The A11Y Project',
-    url: 'https://www.a11yproject.com',
-    description: 'Community-driven accessibility patterns and checklist'
+    name: 'Harvard University',
+    url: 'https://www.harvard.edu',
+    description: 'Large institutional site with typical real-world a11y gaps'
   },
   {
-    name: 'Inclusive Components',
-    url: 'https://inclusive-components.design',
-    description: 'Heydon Pickering inclusive component patterns'
+    name: 'BBC News',
+    url: 'https://www.bbc.com/news',
+    description: 'High-traffic publishing site for mixed a11y / SEO / QA signals'
+  },
+  {
+    name: 'Smashing Magazine',
+    url: 'https://www.smashingmagazine.com',
+    description: 'Content site with forms, media, and navigation patterns'
   },
   {
     name: 'GOV.UK Design System',
     url: 'https://design-system.service.gov.uk',
-    description: 'UK government design system and components'
-  },
-  {
-    name: 'NHS service manual',
-    url: 'https://service-manual.nhs.uk',
-    description: 'NHS digital service manual and accessibility guidance'
+    description: 'Strong baseline — shows what high conformance looks like'
   }
 ]
 
@@ -106,42 +110,50 @@ function historyPoints(seed, latest) {
   const days = [28, 21, 14, 7, 3]
   const endIssues = Math.max(8, Number(latest?.open_issue_count) || 80)
   const endBroken = Math.max(0, Number(latest?.broken_link_count) || 3)
-  const endOverall = clamp(Number(latest?.score_overall) || 82, 50, 99)
-  const endQa = clamp(Number(latest?.score_qa) || endOverall - 4, 45, 99)
-  const endSeo = clamp(Number(latest?.score_seo) || endOverall - 6, 40, 99)
+  const endOverall = clamp(Number(latest?.score_overall) || 78, 45, 99)
+  const endQa = clamp(Number(latest?.score_qa) || endOverall - 5, 40, 99)
+  const endSeo = clamp(Number(latest?.score_seo) || endOverall - 7, 38, 99)
   const endPages = Math.max(8, Number(latest?.pages_crawled) || 16)
+  const endBest = clamp(Number(latest?.score_best_practices) || endOverall - 6, 35, 99)
 
-  // Oldest point: clearly worse, then ease toward just above today's real scan.
-  const startIssues = Math.round(endIssues * (1.55 + (seed % 4) * 0.04))
-  const nearIssues = Math.round(endIssues * 1.06)
-  const startBroken = Math.max(endBroken + 8, Math.round(endBroken * 2.4) + 5)
-  const nearBroken = Math.max(endBroken + 1, Math.round(endBroken * 1.12))
-  const startOverall = clamp(endOverall - (13 + (seed % 4)), 42, 96)
+  // When the latest scan is already excellent, stretch the arc so trends still
+  // show remediation value instead of a flat near-100% line.
+  const overallSpan = endOverall >= 90 ? 18 + (seed % 3) : 12 + (seed % 5)
+  const startIssues = Math.round(endIssues * (1.7 + (seed % 4) * 0.05))
+  const nearIssues = Math.round(endIssues * 1.08)
+  const startBroken = Math.max(endBroken + 10, Math.round(endBroken * 2.6) + 6)
+  const nearBroken = Math.max(endBroken + 1, Math.round(endBroken * 1.15))
+  const startOverall = clamp(endOverall - overallSpan, 38, 94)
   const nearOverall = clamp(endOverall - 1, startOverall + 1, 99)
-  const startQa = clamp(endQa - (12 + (seed % 3)), 40, 96)
+  const startQa = clamp(endQa - (overallSpan - 1), 36, 94)
   const nearQa = clamp(endQa - 1, startQa + 1, 99)
-  const startSeo = clamp(endSeo - (14 + ((seed + 1) % 4)), 38, 96)
+  const startSeo = clamp(endSeo - (overallSpan + 1), 34, 94)
   const nearSeo = clamp(endSeo - 1, startSeo + 1, 99)
+  const startBest = clamp(endBest - (overallSpan + 2), 32, 92)
+  const nearBest = clamp(endBest - 1, startBest + 1, 99)
 
   return days.map((daysAgo, i) => {
     const t = i / (days.length - 1)
     // Ease-out: remediation progresses steadily, slightly faster later.
     const ease = 1 - (1 - t) ** 1.35
-    const overall = clamp(Math.round(startOverall + (nearOverall - startOverall) * ease), 40, 99)
-    const qa = clamp(Math.round(startQa + (nearQa - startQa) * ease), 38, 99)
-    const seo = clamp(Math.round(startSeo + (nearSeo - startSeo) * ease), 36, 99)
+    const overall = clamp(Math.round(startOverall + (nearOverall - startOverall) * ease), 36, 99)
+    const qa = clamp(Math.round(startQa + (nearQa - startQa) * ease), 34, 99)
+    const seo = clamp(Math.round(startSeo + (nearSeo - startSeo) * ease), 32, 99)
+    const best = clamp(Math.round(startBest + (nearBest - startBest) * ease), 30, 99)
     const openIssues = Math.max(endIssues, Math.round(startIssues + (nearIssues - startIssues) * ease))
     const broken = Math.max(endBroken, Math.round(startBroken + (nearBroken - startBroken) * ease))
+    // Level A leads; AA is the compliance bottleneck; AAA / best practices lag.
     return {
       daysAgo,
       score_overall: overall,
-      score_a: clamp(overall + 2, 0, 100),
+      score_a: clamp(overall + 6 + (seed % 3), 0, 100),
       score_aa: overall,
-      score_aaa: clamp(overall - 8, 0, 100),
+      score_aaa: clamp(overall - 11, 0, 100),
+      score_best_practices: best,
       score_qa: qa,
       score_seo: seo,
       score_seo_technical: clamp(seo + 2, 0, 100),
-      score_seo_content: clamp(seo - 3, 0, 100),
+      score_seo_content: clamp(seo - 4, 0, 100),
       open_issue_count: openIssues,
       pages_crawled: Math.max(6, endPages - (days.length - 1 - i) * 2 + (seed % 3)),
       broken_link_count: broken
@@ -397,6 +409,7 @@ async function seedHistory(token, site, seed) {
         score_a: point.score_a,
         score_aa: point.score_aa,
         score_aaa: point.score_aaa,
+        score_best_practices: point.score_best_practices,
         score_overall: point.score_overall,
         score_qa: point.score_qa,
         score_seo: point.score_seo,

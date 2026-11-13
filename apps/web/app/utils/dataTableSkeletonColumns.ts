@@ -37,7 +37,7 @@ export const ISSUES_TABLE_READONLY_SKELETON_COLUMNS: DataTableSkeletonColumn[] =
   { width: '6.5rem', align: 'right', cellVariant: 'single' }
 ]
 
-/** Affected pages metrics skeleton (Title rail is rendered separately). */
+/** Affected pages metrics skeleton (Title rail + sticky actions are rendered separately). */
 export const AFFECTED_PAGES_METRICS_SKELETON_COLUMNS: DataTableSkeletonColumn[] = [
   { width: '9.5rem', align: 'center', cellVariant: 'chip' },
   { width: '8.5rem', align: 'center', cellVariant: 'chip' },
@@ -47,8 +47,7 @@ export const AFFECTED_PAGES_METRICS_SKELETON_COLUMNS: DataTableSkeletonColumn[] 
   { width: '8.5rem', align: 'center', cellVariant: 'single' },
   { width: '6.5rem', align: 'center', cellVariant: 'single' },
   { width: '9rem', align: 'center', cellVariant: 'single' },
-  { width: '9.5rem', align: 'center', cellVariant: 'single' },
-  { width: '3.25rem', align: 'right', cellVariant: 'button' }
+  { width: '9.5rem', align: 'center', cellVariant: 'single' }
 ]
 
 /** Affected pages metrics skeleton when Site column is visible. */

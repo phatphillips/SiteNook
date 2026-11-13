@@ -44,6 +44,7 @@
   --ui-border-muted: #d4d4d4;
   --ui-border-accented: #b0b0b0;
   --ui-border-inverted: #3f3f46;
+  --ui-border-nested: #b0b0b0;
 
   --color-background-secondary: rgba(24, 24, 27, 0.04);
   --color-background-primary: rgba(24, 24, 27, 0.02);

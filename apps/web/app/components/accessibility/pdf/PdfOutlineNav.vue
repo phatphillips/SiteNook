@@ -37,7 +37,7 @@ const emptyMessage = computed(() => {
   if (props.document.structure_status === 'failed') {
     return props.document.structure_error || 'Structure extraction failed.'
   }
-  return 'No outline yet. Open Convert to extract structure.'
+  return 'No outline yet. Open Extract to load structure.'
 })
 </script>
 

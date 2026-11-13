@@ -41,9 +41,9 @@ const rowStateClass = computed(() => {
     return 'bg-elevated/70 border-default shadow-sm'
   }
   if (props.active) {
-    return 'bg-elevated/50 border-default/80'
+    return 'bg-elevated/50 border-default'
   }
-  return 'hover:bg-elevated/35 hover:border-default/60'
+  return 'border-default/55 hover:bg-elevated/35 hover:border-default'
 })
 
 const rowStyle = computed(() => {
@@ -72,7 +72,7 @@ function onHelpClick(event: MouseEvent) {
   <button
     type="button"
     data-score-row
-    class="score-detail-row group flex w-full flex-col justify-center gap-1.5 rounded-lg border border-transparent px-3 py-2.5 -mx-3 text-left transition-[background-color,border-color,box-shadow] duration-150 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    class="score-detail-row group flex w-full flex-col justify-center gap-1.5 rounded-lg border border-dashed px-3 py-2.5 text-left transition-[background-color,border-color,box-shadow] duration-150 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     :class="[
       rowStateClass,
       {
