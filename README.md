@@ -1,4 +1,11 @@
-# 🪺 SiteNook
+<a href="https://github.com/phatphillips/SiteNook">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/sitenook-logo-white.svg" />
+    <img src="docs/images/sitenook-logo.svg" height="50" alt="SiteNook logo" />
+  </picture>
+</a>
+
+# SiteNook
 
 **The free, self-hosted alternative to expensive accessibility tools like SiteImprove.**
 
